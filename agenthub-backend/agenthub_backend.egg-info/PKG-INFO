@@ -1,0 +1,80 @@
+Metadata-Version: 2.4
+Name: agenthub-backend
+Version: 0.1.0
+Summary: Backend service for AgentHub built with FastAPI, AgentScope, and SQLite.
+Requires-Python: >=3.11
+Description-Content-Type: text/markdown
+Requires-Dist: fastapi>=0.115.0
+Requires-Dist: uvicorn[standard]>=0.30.0
+Requires-Dist: sqlalchemy>=2.0.32
+Requires-Dist: pydantic>=2.8.2
+Requires-Dist: pydantic-settings>=2.4.0
+Requires-Dist: agentscope>=1.0.0
+Requires-Dist: httpx>=0.27.0
+Requires-Dist: pyjwt>=2.9.0
+Requires-Dist: list-tools>=0.0.1
+Provides-Extra: dev
+Requires-Dist: pytest>=8.3.2; extra == "dev"
+Requires-Dist: ruff>=0.5.7; extra == "dev"
+
+# AgentHub Backend
+
+`AgentHub Backend` is the server-side foundation for an enterprise-deployable multi-agent collaboration platform.
+
+This initial scaffold uses:
+
+- `uv` for project and dependency management
+- `FastAPI` for HTTP APIs
+- `AgentScope` as the agent runtime foundation
+- `SQLite` as the planned first-stage storage
+
+## Project Structure
+
+```text
+agenthub-backend/
+├── app/                      # AgentHub2-style FastAPI application package
+│   ├── api/                  # API routers
+│   ├── common/               # Shared helpers
+│   ├── core/                 # Settings
+│   ├── db/                   # Engine and base metadata
+│   ├── models/               # SQLAlchemy models (one file per table)
+│   ├── schemas/              # Pydantic request/response models
+│   ├── services/             # Domain services
+│   └── main.py               # FastAPI entrypoint
+├── docs/                     # Architecture, roadmap, and database design
+└── pyproject.toml
+```
+
+## Quick Start
+
+```bash
+cd /Users/youtao/Projects/AgentHub-agentscope/agenthub-backend
+uv sync
+uv run uvicorn app.main:app --reload
+```
+
+## Seed Demo Data
+
+Start backend first, then run:
+
+```bash
+cd /Users/youtao/Projects/AgentHub-agentscope/agenthub-backend
+uv run python scripts/seed_demo.py --base-url http://127.0.0.1:8000/api/v1
+```
+
+## Current Scope
+
+This scaffold currently includes:
+
+- AgentHub2-style app structure
+- health endpoint and API v1 routers
+- SQLite persistence with configuration CRUD and message APIs
+- architecture and phase planning docs
+
+## Next Build Targets
+
+- group chat and membership APIs
+- plan creation and DAG editing APIs
+- node/job execution lifecycle with AgentScope workers
+- streaming event API for node-level progress
+- ACP-compatible external runner integration
