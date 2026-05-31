@@ -19,7 +19,6 @@ class Settings(BaseSettings):
     ai_short_term_history_limit: int = 50
     memory_compress_trigger_tokens: int = 3500
     memory_compress_keep_recent_messages: int = 12
-    manager_plan_ttl_seconds: int = 1800
 
     model_config = SettingsConfigDict(
         env_prefix="AGENTHUB_",

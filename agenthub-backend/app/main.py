@@ -10,7 +10,6 @@ from app.api.groups import router as groups_router
 from app.api.mcps import router as mcps_router
 from app.api.members import router as members_router
 from app.api.messages import router as messages_router
-from app.api.skills import router as skills_router
 from app.api.tools import router as tools_router
 from app.api.users import router as users_router
 from app.api.ws_groups import router as ws_groups_router
@@ -68,7 +67,6 @@ app.include_router(users_router, prefix=settings.api_prefix)
 app.include_router(groups_router, prefix=settings.api_prefix)
 app.include_router(tools_router, prefix=settings.api_prefix)
 app.include_router(mcps_router, prefix=settings.api_prefix)
-app.include_router(skills_router, prefix=settings.api_prefix)
 app.include_router(agent_profiles_router, prefix=settings.api_prefix)
 app.include_router(agents_router, prefix=settings.api_prefix)
 app.include_router(members_router, prefix=settings.api_prefix)

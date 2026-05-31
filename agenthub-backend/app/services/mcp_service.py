@@ -15,12 +15,8 @@ def create_mcp(db: Session, payload: dict) -> MCP:
     return item
 
 
-def get_mcp(db: Session, mcp_id: int) -> MCP | None:
-    return db.query(MCP).filter(MCP.id == mcp_id).first()
-
-
 def update_mcp(db: Session, mcp_id: int, payload: dict) -> MCP:
-    item = get_mcp(db, mcp_id)
+    item = db.query(MCP).filter(MCP.id == mcp_id).first()
     if not item:
         raise ValueError("MCP not found")
     for k, v in payload.items():
@@ -32,7 +28,7 @@ def update_mcp(db: Session, mcp_id: int, payload: dict) -> MCP:
 
 
 def delete_mcp(db: Session, mcp_id: int) -> None:
-    item = get_mcp(db, mcp_id)
+    item = db.query(MCP).filter(MCP.id == mcp_id).first()
     if not item:
         return
     db.delete(item)

@@ -1396,11 +1396,6 @@ const dagGraph = computed(() => {
   return { width, height, nodes: visualNodes, edges }
 })
 
-function edgePolylinePoints(edge: { x1: number; y1: number; x2: number; y2: number }) {
-  const midX = (edge.x1 + edge.x2) / 2
-  return `${edge.x1},${edge.y1} ${midX},${edge.y1} ${midX},${edge.y2} ${edge.x2},${edge.y2}`
-}
-
 function fitDagView() {
   const viewport = dagViewportRef.value
   if (!viewport || dagGraph.value.width <= 0 || dagGraph.value.height <= 0) return

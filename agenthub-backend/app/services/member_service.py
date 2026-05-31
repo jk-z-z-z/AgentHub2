@@ -1,7 +1,6 @@
 from fastapi import HTTPException, status
 from sqlalchemy.orm import Session
 
-from app.models import Member
 from app.models.agent_instance import AgentInstance
 from app.models.group import Group
 from app.models.member import Member
@@ -53,17 +52,6 @@ def create_agent_member(db: Session, group_id: str,display_name: str,agent_insta
         title=title,
     )
     db.add(item)
-    db.commit()
-    db.refresh(item)
-    return item
-
-
-def update_member(db: Session, member_id: int, display_name:str,title:str|None) -> type[Member]:
-    item = db.query(Member).filter(Member.id == member_id).first()
-    if not item:
-        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Member not found")
-    item.display_name = display_name
-    item.title = title
     db.commit()
     db.refresh(item)
     return item

@@ -288,10 +288,6 @@ export async function apiAddAgentMember(body: {
   return httpPost<Member, typeof body>('/api/v1/members/agents', { title: null, ...body })
 }
 
-export async function apiUpdateMember(memberId: string, body: { display_name: string; title?: string | null }): Promise<ApiResult<Member>> {
-  return httpPut<Member, { display_name: string; title?: string | null }>(`/api/v1/members/${memberId}`, { title: null, ...body })
-}
-
 export async function apiDeleteMember(memberId: string): Promise<ApiResult<boolean>> {
   return httpDelete<boolean>(`/api/v1/members/${memberId}`)
 }
@@ -341,14 +337,6 @@ export async function apiCreateAgent(body: {
     soul_md: null,
     ...body,
   })
-}
-
-export async function apiGetAgentSoul(agentId: string): Promise<ApiResult<{ soul_md: string }>> {
-  return httpGet<{ soul_md: string }>(`/api/v1/agents/${agentId}/soul`)
-}
-
-export async function apiUpdateAgentSoul(agentId: string, soul_md: string): Promise<ApiResult<{ soul_md: string }>> {
-  return httpPut<{ soul_md: string }, { soul_md: string }>(`/api/v1/agents/${agentId}/soul`, { soul_md })
 }
 
 export type FsEntry = {
@@ -456,18 +444,6 @@ export type MCP = {
   updated_at: string
 }
 
-export type Skill = {
-  id: string
-  name: string
-  code: string
-  description: string | null
-  content: string
-  version: string
-  is_active: number
-  created_at: string
-  updated_at: string
-}
-
 export async function apiListTools(): Promise<ApiResult<Tool[]>> {
   return httpGet<Tool[]>('/api/v1/tools')
 }
@@ -512,46 +488,6 @@ export async function apiUpdateMcp(mcpId: string | number, body: {
 
 export async function apiDeleteMcp(mcpId: string | number): Promise<ApiResult<boolean>> {
   return httpDelete<boolean>(`/api/v1/mcps/${mcpId}`)
-}
-
-export async function apiListSkills(): Promise<ApiResult<Skill[]>> {
-  return httpGet<Skill[]>('/api/v1/skills')
-}
-
-export async function apiCreateSkill(body: {
-  name: string
-  code: string
-  description?: string | null
-  content: string
-  version?: string
-  is_active?: number
-}): Promise<ApiResult<Skill>> {
-  return httpPost<Skill, typeof body>('/api/v1/skills', {
-    description: null,
-    version: '1.0.0',
-    is_active: 1,
-    ...body,
-  })
-}
-
-export async function apiUpdateSkill(skillId: string | number, body: {
-  name: string
-  code: string
-  description?: string | null
-  content: string
-  version?: string
-  is_active?: number
-}): Promise<ApiResult<Skill>> {
-  return httpPut<Skill, typeof body>(`/api/v1/skills/${skillId}`, {
-    description: null,
-    version: '1.0.0',
-    is_active: 1,
-    ...body,
-  })
-}
-
-export async function apiDeleteSkill(skillId: string | number): Promise<ApiResult<boolean>> {
-  return httpDelete<boolean>(`/api/v1/skills/${skillId}`)
 }
 
 export async function apiGetAgentToolToggles(agentId: string): Promise<ApiResult<{ enabled: Record<string, boolean> }>> {

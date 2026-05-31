@@ -13,7 +13,6 @@ from app.models.group import Group
 from app.models.group_assistant_config import GroupAssistantConfig
 from app.models.member import Member
 from app.models.message import Message
-from app.core.config import settings
 from app.services.context_builder import build_personal_system_prompt, build_project_system_prompt
 from app.services.ai_service import ai_chat
 from app.services.group_task_service import get_or_create_manager_member
@@ -281,9 +280,7 @@ async def create_message_and_trigger_ai(
                 save_pending_plan(
                     group_id=int(group_id),
                     creator_member_id=int(sender_member_id),
-                    goal_text=goal_text,
                     plan=plan,
-                    ttl_seconds=int(settings.manager_plan_ttl_seconds),
                 )
                 manager_reply = (
                     "我已生成规划草案（已按当前目标校正），请确认是否落库执行（回复：确认 / 同意）。\n\n"

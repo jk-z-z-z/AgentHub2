@@ -249,14 +249,13 @@ def _pending_plan_path(group_id: int):
     return root / "runs" / "pending_plan.json"
 
 
-def save_pending_plan(*, group_id: int, creator_member_id: int, goal_text: str, plan: dict, ttl_seconds: int = 1800) -> None:
+def save_pending_plan(*, group_id: int, creator_member_id: int, plan: dict) -> None:
     path = _pending_plan_path(int(group_id))
     path.parent.mkdir(parents=True, exist_ok=True)
     now = datetime.now(timezone.utc)
     payload = {
         "group_id": int(group_id),
         "creator_member_id": int(creator_member_id),
-        "goal_text": str(goal_text or ""),
         "plan": plan,
         "created_at": now.isoformat(),
     }
