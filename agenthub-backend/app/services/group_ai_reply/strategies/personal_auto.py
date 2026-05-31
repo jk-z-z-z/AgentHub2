@@ -1,7 +1,5 @@
 from __future__ import annotations
 
-import json
-
 from fastapi import HTTPException, status
 
 from app.models.agent_instance import AgentInstance
@@ -10,6 +8,7 @@ from app.services.group_ai_reply.agent_factory import AgentFactory
 from app.services.group_ai_reply.agents.assistant_agent import AssistantRoleAgent
 from app.services.group_ai_reply.context import ReplyContext
 from app.services.group_ai_reply.helpers import extract_agent_mentions
+from app.services.group_ai_reply.reply_utils import emit_ai_reply
 from app.services.group_ai_reply.strategies.base import ReplyStrategy
 
 
@@ -38,11 +37,4 @@ class PersonalAutoReplyStrategy(ReplyStrategy):
             return
 
         reply_text = await self._agent.run_personal(ctx, agent_id=int(agent.id), user_id=user_id)
-        await ctx.emit_message(
-            ctx.db,
-            int(ctx.group.id),
-            int(agent_member.id),
-            "ai",
-            reply_text,
-            json.dumps({"reply_to": str(ctx.user_message.id), "trigger": "personal_auto"}, ensure_ascii=False),
-        )
+        await emit_ai_reply(ctx, sender_member_id=int(agent_member.id), content=reply_text, trigger="personal_auto")

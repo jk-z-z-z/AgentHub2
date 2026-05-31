@@ -5,18 +5,9 @@ from pathlib import Path
 
 import frontmatter
 
+from app.common.json_utils import safe_dump_json, safe_load_json_dict
 from app.core.config import settings
 from app.services.storage_paths import agent_dir
-
-
-def _safe_json_load(path: Path) -> dict:
-    if not path.exists():
-        return {}
-    try:
-        raw = json.loads(path.read_text(encoding="utf-8") or "{}")
-        return raw if isinstance(raw, dict) else {}
-    except Exception:
-        return {}
 
 
 def _safe_read_list(raw: dict, key: str) -> list[str]:
@@ -60,7 +51,7 @@ def ensure_agent_skills_config(agent_id: int) -> Path:
 
 def load_agent_skills_config(agent_id: int) -> dict:
     ensure_agent_skills_config(agent_id)
-    raw = _safe_json_load(_agent_skills_config_path(agent_id))
+    raw = safe_load_json_dict(_agent_skills_config_path(agent_id))
     return {
         "enable_agent_local_skills": bool(raw.get("enable_agent_local_skills", True)),
         "pool_skill_codes": _safe_read_list(raw, "pool_skill_codes"),
@@ -73,7 +64,7 @@ def save_agent_skills_config(agent_id: int, *, enable_agent_local_skills: bool, 
         "enable_agent_local_skills": bool(enable_agent_local_skills),
         "pool_skill_codes": _safe_read_list({"pool_skill_codes": pool_skill_codes}, "pool_skill_codes"),
     }
-    _agent_skills_config_path(agent_id).write_text(json.dumps(out, ensure_ascii=False, indent=2), encoding="utf-8")
+    safe_dump_json(_agent_skills_config_path(agent_id), out)
     return out
 
 

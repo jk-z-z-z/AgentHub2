@@ -7,6 +7,7 @@ from app.services.group_ai_reply.agent_factory import AgentFactory
 from app.services.group_ai_reply.agents.manager_agent import ManagerRoleAgent
 from app.services.group_ai_reply.context import ReplyContext
 from app.services.group_ai_reply.helpers import build_short_term_history_msgs, extract_agent_mentions
+from app.services.group_ai_reply.reply_utils import build_reply_metadata, emit_ai_reply
 from app.services.group_ai_reply.strategies.base import ReplyStrategy
 from app.services.group_task_service import auto_assign_pending_nodes, get_or_create_manager_member, list_group_task_nodes, run_agent_for_node
 from app.services.manager_planning_service import (
@@ -60,7 +61,7 @@ class ProjectManagerMentionStrategy(ReplyStrategy):
             int(manager_member.id),
             "ai",
             manager_reply,
-            json.dumps({"reply_to": str(ctx.user_message.id), "trigger": "manager_assistant"}, ensure_ascii=False),
+            build_reply_metadata(reply_to_message_id=int(ctx.user_message.id), trigger="manager_assistant"),
         )
 
     def _is_confirm_text(self, goal_text: str) -> bool:
@@ -86,13 +87,11 @@ class ProjectManagerMentionStrategy(ReplyStrategy):
         pending_creator = int(pending.get("creator_member_id") or 0)
         if pending_creator != int(ctx.sender.id):
             manager_reply = "该规划草案仅允许发起人确认。请让发起人回复“确认”。"
-            await ctx.emit_message(
-                ctx.db,
-                int(ctx.group.id),
-                int(manager_member_id),
-                "ai",
-                manager_reply,
-                json.dumps({"reply_to": str(ctx.user_message.id), "trigger": "manager_assistant"}, ensure_ascii=False),
+            await emit_ai_reply(
+                ctx,
+                sender_member_id=int(manager_member_id),
+                content=manager_reply,
+                trigger="manager_assistant",
             )
             return None
 

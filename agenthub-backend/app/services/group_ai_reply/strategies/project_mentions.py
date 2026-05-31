@@ -1,7 +1,6 @@
 from __future__ import annotations
 
 import asyncio
-import json
 
 from app.models.agent_instance import AgentInstance
 from app.models.group_assistant_config import GroupAssistantConfig
@@ -10,6 +9,7 @@ from app.services.group_ai_reply.agent_factory import AgentFactory
 from app.services.group_ai_reply.agents.assistant_agent import AssistantRoleAgent
 from app.services.group_ai_reply.context import ReplyContext
 from app.services.group_ai_reply.helpers import extract_agent_mentions
+from app.services.group_ai_reply.reply_utils import emit_ai_reply
 from app.services.group_ai_reply.strategies.base import ReplyStrategy
 from app.services.group_task_service import get_or_create_manager_member
 from app.services.memory_compressor_service import maybe_compress_project_memory
@@ -49,11 +49,4 @@ class ProjectMentionedAgentsStrategy(ReplyStrategy):
         except Exception:
             pass
         reply_text = await self._agent.run_project(ctx, agent_id=int(agent.id))
-        await ctx.emit_message(
-            ctx.db,
-            int(ctx.group.id),
-            int(agent_member.id),
-            "ai",
-            reply_text,
-            json.dumps({"reply_to": str(ctx.user_message.id), "trigger": "mention"}, ensure_ascii=False),
-        )
+        await emit_ai_reply(ctx, sender_member_id=int(agent_member.id), content=reply_text, trigger="mention")
