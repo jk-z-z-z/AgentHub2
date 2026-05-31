@@ -11,7 +11,7 @@ from app.services.group_ai_reply.context import ReplyContext
 from app.services.group_ai_reply.helpers import extract_agent_mentions
 from app.services.group_ai_reply.reply_utils import emit_ai_reply
 from app.services.group_ai_reply.strategies.base import ReplyStrategy
-from app.services.group_task_service import get_or_create_manager_member
+from app.services.group_task.manager_service import get_or_create_manager_member
 from app.services.memory_compressor_service import maybe_compress_project_memory
 
 

@@ -7,7 +7,7 @@ from sqlalchemy.orm import Session
 
 from app.models.group_task_run import GroupTaskRun
 from app.services.ai_service import ai_chat
-from app.services.group_task_service import create_group_task_run, list_group_task_runs, update_group_task_dag
+from app.services.group_task.node_service import create_group_task_run, list_group_task_runs, update_group_task_dag
 from app.services.storage_paths import project_dir
 
 

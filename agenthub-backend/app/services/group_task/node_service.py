@@ -1,208 +1,21 @@
 from __future__ import annotations
 
 import json
-from pathlib import Path
 
 from fastapi import HTTPException, status
 from sqlalchemy.orm import Session
 
 from app.models.group import Group
-from app.models.group_assistant_config import GroupAssistantConfig
-from app.models.group_task_event import GroupTaskEvent
 from app.models.group_task_node import GroupTaskNode
 from app.models.group_task_run import GroupTaskRun
 from app.models.member import Member
-from app.services.storage_paths import project_dir
 from app.services.ai_service import ai_chat
 from app.services.context_builder import build_project_system_prompt
+from app.services.group_task.event_service import list_group_task_events, log_group_task_event
+from app.services.group_task.helpers import assistant_is_enabled, ensure_group_member, runtime_dir_for_run, validate_dag_nodes, write_run_files
+from app.services.group_task.manager_service import get_or_create_manager_member
 
 
-def _runtime_dir_for_run(group_id: int, run_id: int) -> Path:
-    return project_dir(int(group_id)) / "runs" / str(run_id)
-
-
-def _ensure_group_member(db: Session, *, group_id: int, member_id: int) -> Member:
-    member = db.query(Member).filter(Member.id == int(member_id), Member.group_id == int(group_id)).first()
-    if not member:
-        raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail="Member not in group")
-    return member
-
-
-MANAGER_MEMBER_NAME = "管家"
-
-
-def _assistant_is_enabled(db: Session, *, group_id: int) -> bool:
-    cfg = db.query(GroupAssistantConfig).filter(GroupAssistantConfig.group_id == int(group_id)).first()
-    return bool(cfg and int(cfg.enabled) == 1)
-
-
-def get_or_create_manager_member(db: Session, *, group_id: int) -> Member:
-    row = (
-        db.query(Member)
-        .filter(Member.group_id == int(group_id), Member.kind == "system", Member.display_name == MANAGER_MEMBER_NAME)
-        .first()
-    )
-    if row:
-        return row
-    row = Member(
-        group_id=int(group_id),
-        kind="system",
-        display_name=MANAGER_MEMBER_NAME,
-        user_ref=None,
-        agent_instance_id=None,
-        title="group-manager",
-    )
-    db.add(row)
-    db.commit()
-    db.refresh(row)
-    return row
-
-
-def get_or_create_group_assistant_config(db: Session, *, group_id: int, creator_user_id: int) -> GroupAssistantConfig:
-    row = db.query(GroupAssistantConfig).filter(GroupAssistantConfig.group_id == int(group_id)).first()
-    if row:
-        return row
-    row = GroupAssistantConfig(
-        group_id=int(group_id),
-        assistant_agent_instance_id=None,
-        enabled=0,
-        creator_user_id=int(creator_user_id),
-    )
-    db.add(row)
-    db.commit()
-    db.refresh(row)
-    return row
-
-
-def update_group_assistant_config(
-    db: Session,
-    *,
-    group_id: int,
-    creator_user_id: int,
-    enabled: int,
-) -> GroupAssistantConfig:
-    row = get_or_create_group_assistant_config(db, group_id=int(group_id), creator_user_id=int(creator_user_id))
-    if int(row.creator_user_id) != int(creator_user_id):
-        raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail="Only creator can update assistant config")
-    # Keep legacy column unused for backward compatibility.
-    row.assistant_agent_instance_id = None
-    row.enabled = 1 if int(enabled) == 1 else 0
-    db.add(row)
-    db.commit()
-    db.refresh(row)
-    if int(row.enabled) == 1:
-        get_or_create_manager_member(db, group_id=int(group_id))
-    return row
-
-
-def _write_run_files(run: GroupTaskRun, nodes: list[GroupTaskNode]) -> None:
-    root = Path(run.runtime_dir)
-    root.mkdir(parents=True, exist_ok=True)
-    dag = {
-        "run_id": int(run.id),
-        "group_id": int(run.group_id),
-        "title": run.title,
-        "goal_text": run.goal_text,
-        "status": run.status,
-        "nodes": [
-            {
-                "id": int(n.id),
-                "node_key": n.node_key,
-                "title": n.title,
-                "detail": n.detail,
-                "role_required": n.role_required,
-                "deps": json.loads(n.deps_json or "[]"),
-                "status": n.status,
-                "assignee_kind": n.assignee_kind,
-                "assignee_member_id": int(n.assignee_member_id) if n.assignee_member_id else None,
-                "output_summary": n.output_summary,
-                "manager_review_status": n.manager_review_status,
-            }
-            for n in nodes
-        ],
-    }
-    (root / "dag.json").write_text(json.dumps(dag, ensure_ascii=False, indent=2), encoding="utf-8")
-    (root / "run.json").write_text(json.dumps({"run": dag}, ensure_ascii=False, indent=2), encoding="utf-8")
-
-
-def _validate_dag_nodes(nodes: list[dict]) -> None:
-    if not nodes:
-        raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail="DAG nodes cannot be empty")
-
-    keys: list[str] = []
-    for item in nodes:
-        key = str(item.get("node_key") or "").strip()
-        if not key:
-            raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail="node_key is required")
-        keys.append(key)
-    if len(set(keys)) != len(keys):
-        raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail="Duplicate node_key in DAG")
-
-    key_set = set(keys)
-    graph: dict[str, list[str]] = {}
-    for item in nodes:
-        key = str(item.get("node_key") or "").strip()
-        deps = [str(d).strip() for d in (item.get("deps") or []) if str(d).strip()]
-        if key in deps:
-            raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail=f"Node '{key}' cannot depend on itself")
-        for d in deps:
-            if d not in key_set:
-                raise HTTPException(
-                    status_code=status.HTTP_400_BAD_REQUEST,
-                    detail=f"Node '{key}' depends on unknown node_key '{d}'",
-                )
-        graph[key] = deps
-
-    # Cycle check via DFS (deps graph).
-    visiting: set[str] = set()
-    visited: set[str] = set()
-
-    def dfs(node_key: str) -> None:
-        if node_key in visited:
-            return
-        if node_key in visiting:
-            raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail="DAG contains a cycle")
-        visiting.add(node_key)
-        for dep_key in graph.get(node_key, []):
-            dfs(dep_key)
-        visiting.remove(node_key)
-        visited.add(node_key)
-
-    for k in keys:
-        dfs(k)
-
-
-def _append_event_file(run: GroupTaskRun, event: GroupTaskEvent) -> None:
-    root = Path(run.runtime_dir) / "events"
-    root.mkdir(parents=True, exist_ok=True)
-    path = root / "events.jsonl"
-    entry = {
-        "id": int(event.id),
-        "run_id": int(event.run_id),
-        "node_id": int(event.node_id) if event.node_id else None,
-        "event_type": event.event_type,
-        "payload": json.loads(event.payload_json or "{}"),
-        "created_at": event.created_at.isoformat() if event.created_at else None,
-    }
-    with path.open("a", encoding="utf-8") as f:
-        f.write(json.dumps(entry, ensure_ascii=False) + "\n")
-
-
-def log_group_task_event(db: Session, *, run_id: int, node_id: int | None, event_type: str, payload: dict | None = None) -> GroupTaskEvent:
-    run = get_group_task_run(db, run_id=int(run_id))
-    if not run:
-        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Run not found")
-    event = GroupTaskEvent(
-        run_id=int(run_id),
-        node_id=int(node_id) if node_id is not None else None,
-        event_type=str(event_type),
-        payload_json=json.dumps(payload or {}, ensure_ascii=False),
-    )
-    db.add(event)
-    db.commit()
-    db.refresh(event)
-    _append_event_file(run, event)
-    return event
 
 
 def create_group_task_run(
@@ -215,14 +28,14 @@ def create_group_task_run(
     nodes: list[dict],
     trigger_message_id: int | None = None,
 ) -> GroupTaskRun:
-    _validate_dag_nodes(nodes)
+    validate_dag_nodes(nodes)
     group = db.query(Group).filter(Group.id == int(group_id)).first()
     if not group:
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Group not found")
     if group.type != "project":
         raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail="Task runs only supported in project groups")
-    _ensure_group_member(db, group_id=int(group_id), member_id=int(creator_member_id))
-    if not _assistant_is_enabled(db, group_id=int(group_id)):
+    ensure_group_member(db, group_id=int(group_id), member_id=int(creator_member_id))
+    if not assistant_is_enabled(db, group_id=int(group_id)):
         raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail="Group assistant is not enabled")
 
     run = GroupTaskRun(
@@ -239,7 +52,7 @@ def create_group_task_run(
     db.commit()
     db.refresh(run)
 
-    run.runtime_dir = _runtime_dir_for_run(int(group_id), int(run.id)).as_posix()
+    run.runtime_dir = runtime_dir_for_run(int(group_id), int(run.id)).as_posix()
     db.add(run)
     db.commit()
     db.refresh(run)
@@ -284,7 +97,7 @@ def create_group_task_run(
     db.add(run)
     db.commit()
     db.refresh(run)
-    _write_run_files(run, node_rows)
+    write_run_files(run, node_rows)
     log_group_task_event(
         db,
         run_id=int(run.id),
@@ -317,17 +130,8 @@ def list_group_task_nodes(db: Session, *, run_id: int) -> list[GroupTaskNode]:
     )
 
 
-def list_group_task_events(db: Session, *, run_id: int) -> list[GroupTaskEvent]:
-    return (
-        db.query(GroupTaskEvent)
-        .filter(GroupTaskEvent.run_id == int(run_id))
-        .order_by(GroupTaskEvent.id.asc())
-        .all()
-    )
-
-
 def update_group_task_dag(db: Session, *, run_id: int, nodes: list[dict]) -> GroupTaskRun:
-    _validate_dag_nodes(nodes)
+    validate_dag_nodes(nodes)
     run = get_group_task_run(db, run_id=int(run_id))
     if not run:
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Run not found")
@@ -390,7 +194,7 @@ def update_group_task_dag(db: Session, *, run_id: int, nodes: list[dict]) -> Gro
     db.add(run)
     db.commit()
     db.refresh(run)
-    _write_run_files(run, refreshed_nodes)
+    write_run_files(run, refreshed_nodes)
     log_group_task_event(
         db,
         run_id=int(run.id),
@@ -408,7 +212,7 @@ def claim_task_node(db: Session, *, node_id: int, member_id: int) -> GroupTaskNo
     run = get_group_task_run(db, run_id=int(node.run_id))
     if not run:
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Run not found")
-    member = _ensure_group_member(db, group_id=int(run.group_id), member_id=int(member_id))
+    member = ensure_group_member(db, group_id=int(run.group_id), member_id=int(member_id))
 
     deps = json.loads(node.deps_json or "[]")
     if deps:
@@ -425,7 +229,7 @@ def claim_task_node(db: Session, *, node_id: int, member_id: int) -> GroupTaskNo
     db.commit()
     db.refresh(node)
     run_rows = list_group_task_nodes(db, run_id=int(run.id))
-    _write_run_files(run, run_rows)
+    write_run_files(run, run_rows)
     log_group_task_event(
         db,
         run_id=int(run.id),
@@ -481,7 +285,7 @@ def auto_assign_pending_nodes(db: Session, *, run_id: int) -> int:
         )
     if changed > 0:
         db.commit()
-        _write_run_files(run, list_group_task_nodes(db, run_id=int(run.id)))
+        write_run_files(run, list_group_task_nodes(db, run_id=int(run.id)))
     return changed
 
 
@@ -505,7 +309,7 @@ def complete_task_node(db: Session, *, node_id: int, member_id: int, output_summ
             db.add(run)
             db.commit()
             db.refresh(run)
-        _write_run_files(run, run_rows)
+        write_run_files(run, run_rows)
         log_group_task_event(
             db,
             run_id=int(run.id),
@@ -540,7 +344,7 @@ def review_task_node(db: Session, *, node_id: int, manager_review_status: str, n
         db.add(run)
         db.commit()
         db.refresh(run)
-        _write_run_files(run, run_rows)
+        write_run_files(run, run_rows)
         log_group_task_event(
             db,
             run_id=int(run.id),
@@ -706,7 +510,7 @@ def block_role_branch_nodes(db: Session, *, run_id: int, role_required: str, rea
             changed += 1
     db.commit()
     if changed > 0:
-        _write_run_files(run, list_group_task_nodes(db, run_id=int(run.id)))
+        write_run_files(run, list_group_task_nodes(db, run_id=int(run.id)))
         log_group_task_event(
             db,
             run_id=int(run.id),
@@ -732,7 +536,7 @@ def unblock_role_branch_nodes(db: Session, *, run_id: int, role_required: str, r
             changed += 1
     db.commit()
     if changed > 0:
-        _write_run_files(run, list_group_task_nodes(db, run_id=int(run.id)))
+        write_run_files(run, list_group_task_nodes(db, run_id=int(run.id)))
         log_group_task_event(
             db,
             run_id=int(run.id),

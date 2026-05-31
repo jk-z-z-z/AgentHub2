@@ -9,7 +9,8 @@ from app.services.group_ai_reply.context import ReplyContext
 from app.services.group_ai_reply.helpers import build_short_term_history_msgs, extract_agent_mentions
 from app.services.group_ai_reply.reply_utils import build_reply_metadata, emit_ai_reply
 from app.services.group_ai_reply.strategies.base import ReplyStrategy
-from app.services.group_task_service import auto_assign_pending_nodes, get_or_create_manager_member, list_group_task_nodes, run_agent_for_node
+from app.services.group_task.manager_service import get_or_create_manager_member
+from app.services.group_task.orchestration.run_orchestration import trigger_ready_agent_nodes
 from app.services.manager_planning_service import (
     clear_pending_plan,
     load_pending_plan,
@@ -104,13 +105,7 @@ class ProjectManagerMentionStrategy(ReplyStrategy):
             plan=plan,
         )
         clear_pending_plan(group_id=int(ctx.group.id))
-        _ = auto_assign_pending_nodes(ctx.db, run_id=int(run.id))
-        for node in list_group_task_nodes(ctx.db, run_id=int(run.id)):
-            if node.status == "running" and node.assignee_kind == "agent":
-                try:
-                    await run_agent_for_node(ctx.db, node_id=int(node.id))
-                except Exception:
-                    pass
+        _ = await trigger_ready_agent_nodes(ctx.db, run_id=int(run.id))
         return f"{'已新建' if action == 'created' else '已更新（仅未执行节点）'}并开始分配执行。\nrun_id={run.id}"
 
     async def _handle_draft(self, ctx: ReplyContext, *, goal_text: str) -> str:

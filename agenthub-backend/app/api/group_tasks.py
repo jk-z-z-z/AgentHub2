@@ -24,24 +24,24 @@ from app.schemas.group_tasks import (
     GroupTaskRunCreateRequest,
     GroupTaskRunOut,
 )
-from app.services.group_task_service import (
-    auto_review_completed_node,
+from app.services.group_task.node_service import (
     block_role_branch_nodes,
     claim_task_node,
-    complete_task_node,
     create_group_task_run,
     get_group_task_run,
-    get_or_create_group_assistant_config,
-    get_or_create_manager_member,
     list_group_task_nodes,
     list_group_task_events,
     list_group_task_runs,
     review_task_node,
     unblock_role_branch_nodes,
-    update_group_assistant_config,
     update_group_task_dag,
 )
-from app.services.message_service import create_message
+from app.services.group_task.manager_service import (
+    get_or_create_group_assistant_config,
+    get_or_create_manager_member,
+    update_group_assistant_config,
+)
+from app.services.group_task.orchestration.node_orchestration import complete_node_with_auto_review
 
 
 router = APIRouter(prefix="/group-tasks", tags=["group-tasks"])
@@ -243,48 +243,14 @@ async def complete_group_task_node_api(
     db: Session = Depends(get_db),
     user=Depends(get_current_user),
 ):
-    member = db.query(Member).filter(Member.kind == "user", Member.user_ref == str(user.id)).first()
-    if not member:
-        raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail="No user member")
-    node = complete_task_node(
+    node, err = await complete_node_with_auto_review(
         db,
         node_id=int(node_id),
-        member_id=int(member.id),
+        user_id=int(user.id),
         output_summary=payload.output_summary,
     )
-    pre_review_status = str(node.manager_review_status)
-    try:
-        reviewed = await auto_review_completed_node(db, node_id=int(node.id))
-        if reviewed is not None:
-            node = reviewed
-    except Exception:
-        # Auto-review failure should not break complete API.
-        pass
-
-    # Publish manager auto-review result to user-visible message stream.
-    try:
-        if pre_review_status == "pending" and node.manager_review_status in {"approved", "rework"}:
-            run = get_group_task_run(db, run_id=int(node.run_id))
-            if run:
-                manager_member = get_or_create_manager_member(db, group_id=int(run.group_id))
-                if manager_member:
-                    verdict_text = "通过" if node.manager_review_status == "approved" else "需返工"
-                    content = (
-                        f"【管家复核】节点「{node.title}」复核结果：{verdict_text}\n"
-                        f"节点Key：{node.node_key}\n"
-                        f"说明：{(node.output_summary or '').strip()[:300]}"
-                    )
-                    await create_message(
-                        db,
-                        int(run.group_id),
-                        int(manager_member.id),
-                        "ai",
-                        content,
-                        '{"trigger":"manager_auto_review"}',
-                    )
-    except Exception:
-        # Messaging failure should not block API response.
-        pass
+    if err:
+        raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail=err)
 
     out = GroupTaskNodeOut(
         **{
