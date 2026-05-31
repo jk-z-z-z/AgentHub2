@@ -1,5 +1,7 @@
 import { httpDelete, httpGet, httpPost, httpPut, type ApiResult } from './http'
 
+type Id = string | number
+
 export type Group = {
   id: string
   name: string
@@ -80,7 +82,7 @@ export type User = {
   updated_at: string
 }
 
-export type UserSelfUpdate = {
+type UserSelfUpdate = {
   display_name: string | null
   bio: string | null
 }
@@ -112,7 +114,7 @@ export type MemoryCompressorConfig = {
   min_interval_seconds: number
 }
 
-export type MemoryCompressRunResult = {
+type MemoryCompressRunResult = {
   compressed: boolean
   reason?: string | null
   compressed_count?: number | null
@@ -126,7 +128,7 @@ export type GroupAssistantConfig = {
   creator_user_id: string
 }
 
-export type GroupTaskNodeIn = {
+type GroupTaskNodeIn = {
   node_key: string
   title: string
   detail?: string
@@ -187,12 +189,12 @@ export async function apiUpdateGroupAssistantConfig(
 }
 
 export async function apiCreateGroupTaskRun(body: {
-  group_id: string | number
-  creator_member_id: string | number
+  group_id: Id
+  creator_member_id: Id
   title: string
   goal_text: string
   nodes: GroupTaskNodeIn[]
-  trigger_message_id?: string | number | null
+  trigger_message_id?: Id | null
 }): Promise<ApiResult<GroupTaskRun>> {
   return httpPost<GroupTaskRun, typeof body>('/api/v1/group-tasks/runs', body)
 }
@@ -214,7 +216,7 @@ export async function apiUpdateGroupTaskDag(runId: string, nodes: GroupTaskNodeI
 }
 
 export async function apiClaimGroupTaskNode(nodeId: string, memberId: string): Promise<ApiResult<GroupTaskNode>> {
-  return httpPost<GroupTaskNode, { member_id: string | number }>(`/api/v1/group-tasks/nodes/${nodeId}/claim`, { member_id: memberId })
+  return httpPost<GroupTaskNode, { member_id: Id }>(`/api/v1/group-tasks/nodes/${nodeId}/claim`, { member_id: memberId })
 }
 
 export async function apiCompleteGroupTaskNode(nodeId: string, outputSummary: string): Promise<ApiResult<GroupTaskNode>> {
@@ -314,8 +316,8 @@ export async function apiCreateGroup(body: {
   name: string
   description: string | null
   type: 'project' | 'personal'
-  users: Array<{ user_id: string | number; display_name: string; title?: string | null }>
-  agents: Array<{ agent_id: string | number; display_name: string; title?: string | null }>
+  users: Array<{ user_id: Id; display_name: string; title?: string | null }>
+  agents: Array<{ agent_id: Id; display_name: string; title?: string | null }>
 }): Promise<ApiResult<Group>> {
   return httpPost<Group, typeof body>('/api/v1/groups', body)
 }
@@ -326,7 +328,7 @@ export async function apiCreateAgent(body: {
   base_url?: string | null
   api_key_ref?: string | null
   status?: string
-  template_profile_id?: string | number | null
+  template_profile_id?: Id | null
   soul_md?: string | null
 }): Promise<ApiResult<Agent>> {
   return httpPost<Agent, typeof body>('/api/v1/agents', {
@@ -469,7 +471,7 @@ export async function apiCreateMcp(body: {
   })
 }
 
-export async function apiUpdateMcp(mcpId: string | number, body: {
+export async function apiUpdateMcp(mcpId: Id, body: {
   name: string
   server_code: string
   description?: string | null
@@ -486,7 +488,7 @@ export async function apiUpdateMcp(mcpId: string | number, body: {
   })
 }
 
-export async function apiDeleteMcp(mcpId: string | number): Promise<ApiResult<boolean>> {
+export async function apiDeleteMcp(mcpId: Id): Promise<ApiResult<boolean>> {
   return httpDelete<boolean>(`/api/v1/mcps/${mcpId}`)
 }
 
@@ -511,7 +513,7 @@ export type SkillPoolItem = {
   dir: string
 }
 
-export type AgentSkillConfig = {
+type AgentSkillConfig = {
   enable_agent_local_skills: boolean
   pool_skill_codes: string[]
 }

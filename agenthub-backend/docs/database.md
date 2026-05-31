@@ -3,7 +3,7 @@
 ## Design Principles
 
 - keep the first version SQLite-friendly
-- model plans and jobs explicitly rather than hiding structure in JSON
+- model DAG runs and nodes explicitly rather than hiding structure in JSON
 - store events as append-only records
 - allow UI-level in-place DAG editing while preserving backend revision history
 - isolate execution at the job level
@@ -49,15 +49,13 @@ Key fields:
 
 ### `agent_instances`
 
-Runtime-configured agents bound to a group.
+Runtime-configured agents created by users.
 
 Key fields:
 
-- `group_id`
-- `profile_id`
+- `creator_user_id`
 - `display_name`
-- `api_key_ref`
-- `base_url`
+- `workspace_root`
 
 ### `tools`
 
@@ -67,14 +65,6 @@ Registry of reusable tool definitions.
 
 Registry of MCP server definitions.
 
-### `skills`
-
-Registry of reusable skill definitions.
-
-### `acp_providers`
-
-Registry of ACP-compatible external providers.
-
 ### `agent_profile_tools`
 
 Join table between profiles and tools.
@@ -83,19 +73,11 @@ Join table between profiles and tools.
 
 Join table between profiles and MCP servers.
 
-### `agent_profile_skills`
-
-Join table between profiles and skills.
-
-### `agent_profile_acp_bindings`
-
-Join table between profiles and ACP providers.
-
 ### `messages`
 
 IM chat messages stored separately from future execution events.
 
-### `plans`
+### `group_task_runs`
 
 Top-level DAG container for one orchestrated task.
 
@@ -105,114 +87,50 @@ Key fields:
 - `title`
 - `goal`
 - `status`
-- `revision`
 
-### `jobs`
+### `group_task_nodes`
 
 DAG nodes.
 
 Key fields:
 
-- `plan_id`
+- `run_id`
 - `node_key`
 - `title`
-- `instructions`
+- `detail`
 - `status`
-- `sort_order`
+- `assignee_member_id`
+- `role_required`
 
-### `job_edges`
+### `group_task_events`
 
-DAG edges.
-
-Key fields:
-
-- `plan_id`
-- `from_job_id`
-- `to_job_id`
-- `condition`
-
-### `job_assignments`
-
-Who should execute a job.
+Append-only event log used for DAG progress and audit.
 
 Key fields:
 
-- `job_id`
-- `assignee_kind`
-- `member_id`
-- `rationale`
-
-### `job_reports`
-
-Structured result summary from a node.
-
-Key fields:
-
-- `job_id`
-- `summary`
-- `blockers_json`
-- `assumptions_json`
-- `missing_inputs_json`
-- `suggested_next_steps_json`
-
-### `external_runs`
-
-One isolated execution session per job.
-
-Key fields:
-
-- `job_id`
-- `agent_instance_id`
-- `provider_type`
-- `external_session_id`
-- `workspace_path`
-- `status`
-
-### `events`
-
-Append-only event log used for UI progress and audit.
-
-Key fields:
-
-- `run_scope`
-- `scope_id`
+- `run_id`
+- `node_id`
 - `event_type`
 - `payload_json`
 
 Recommended event families:
 
-- `plan.created`
-- `plan.replanned`
-- `assignment.suggested`
-- `assignment.approved`
-- `job.started`
-- `job.progress`
-- `job.question`
-- `job.waiting`
-- `job.completed`
-- `job.failed`
-
-### `approvals`
-
-Generic approval gate.
-
-Key fields:
-
-- `kind`
-- `scope_id`
-- `requested_by`
-- `status`
-- `prompt`
-- `decision_note`
+- `plan.draft.generated`
+- `plan.confirmed`
+- `node.assigned`
+- `node.exec.started`
+- `node.exec.thinking`
+- `node.exec.tool_call`
+- `node.exec.tool_result`
+- `node.exec.stream_chunk`
+- `node.exec.finished`
 
 ## Early Query Patterns
 
 - list all groups
-- list plans in one group
-- load one plan with jobs and edges
-- load one job and its latest external run
-- stream events for one job or one plan
-- fetch pending approvals for one group
+- list runs in one group
+- load one run with nodes and deps
+- stream events for one node or one run
 
 ## Migration Guidance
 

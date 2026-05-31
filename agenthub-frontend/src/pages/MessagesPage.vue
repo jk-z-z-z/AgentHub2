@@ -840,6 +840,24 @@ function connectWs(groupId: string) {
           }
           updatePreview(groupId)
         }
+      } else if (payload.event === 'reply.failed') {
+        const data = (payload.data || {}) as Record<string, any>
+        if (String(data.group_id || '') === String(groupId) && String(activeGroupId.value) === String(groupId)) {
+          const errText = String(data.error || 'unknown error')
+          ElMessage.error(`AI回复失败：${errText}`)
+          const systemMsg = normalizeMessage({
+            id: `local-reply-failed-${Date.now()}`,
+            group_id: groupId,
+            sender_member_id: 'system',
+            message_type: 'system',
+            content: `系统提示：AI 回复失败（${errText}）`,
+            metadata_json: '{}',
+            created_at: new Date().toISOString(),
+            updated_at: new Date().toISOString(),
+          })
+          messages.value = [...messages.value, systemMsg]
+          updatePreview(groupId)
+        }
       }
     } catch {
       // ignore

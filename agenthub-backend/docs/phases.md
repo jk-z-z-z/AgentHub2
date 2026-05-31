@@ -31,60 +31,52 @@ Modules:
 - `api/messages`
 - `api/tools`
 - `api/mcps`
-- `api/skills`
-- `api/acp_providers`
 - `api/agent_profiles`
-- `api/agent_instances`
+- `api/agents`
 - `services/group_service`
-- `services/agent_registry_service`
+- `services/agent_instance_service`
 
 Deliverables:
 
 - create groups
 - create user members and agent members
-- create tools, MCPs, skills, and ACP providers
-- create agent profiles and bind them to tool or MCP or skill or ACP records
-- instantiate agents from profiles
+- read builtin tools and manage MCP metadata
+- create agent profiles as template files
+- instantiate agents from profiles and own workspace
 - send and store chat messages through HTTP
 - establish the first SQLite persistence layer
 
-## Phase 3: Planning And DAG Editing
+## Phase 3: Group Planning And DAG Editing
 
-Goal: let the orchestrator create and revise plans.
+Goal: let the manager agent create and revise plans.
 
 Modules:
 
-- `api/jobs`
-- `api/job_edges`
-- `api/approvals`
-- `services/orchestrator_service`
-- future `services/planner_service`
+- `api/group_tasks`
+- `services/group_task_service`
+- `services/manager_planning_service`
 
 Deliverables:
 
-- create plan nodes and edges
-- store assignment suggestions
-- support in-place DAG edits with revision tracking
-- support assignment approval workflow
+- create and update group task DAG nodes and edges
+- support manager draft -> user confirm -> run upsert
+- support in-place DAG edits and reassignment
 
-## Phase 4: Execution Runtime
+## Phase 4: Node Execution Runtime
 
 Goal: run isolated node sessions through AgentScope and external runners.
 
 Modules:
 
-- `api/runs`
-- `api/events`
-- `services/agentscope_runtime`
-- future `services/external_run_service`
-- future `services/event_service`
+- `api/group_tasks`
+- `services/group_task_service`
+- `services/ai_service`
 
 Deliverables:
 
-- start one external run per node
-- store node event stream
-- expose polling or SSE APIs for node progress
-- support cancel and retry for one node
+- execute agent nodes with LLM runtime
+- store node execution events for progress/audit
+- expose node events API for frontend polling
 
 ## Phase 5: Replan And Governance
 
@@ -92,17 +84,15 @@ Goal: support orchestrator-led follow-up decisions and safe replanning.
 
 Modules:
 
-- `services/orchestrator_service`
-- `services/approval_service`
-- `api/approvals`
-- future `api/replans`
+- `services/manager_planning_service`
+- `services/group_task_service`
+- `api/group_tasks`
 
 Deliverables:
 
-- node can report blockers and missing inputs
-- orchestrator can auto-answer low-risk questions
-- orchestrator can produce replan patches
-- human approval gates important replans
+- manager can generate structured plan draft from recent context
+- only draft creator can confirm and落库
+- new planning requests update existing active graph
 
 ## Phase 6: Production Hardening
 
@@ -111,7 +101,7 @@ Goal: improve reliability and enterprise readiness.
 Modules:
 
 - migrations
-- auth and RBAC
+- auth hardening
 - audit logging
 - observability
 - queue or worker integration
@@ -119,6 +109,6 @@ Modules:
 Deliverables:
 
 - Alembic migrations
-- authentication and organization-level permission controls
+- stronger permission boundaries and operation audit
 - structured logs and tracing
 - move from SQLite to PostgreSQL when concurrency increases

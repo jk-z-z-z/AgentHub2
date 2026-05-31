@@ -4,11 +4,11 @@
 
 This backend is designed for an IM-style multi-agent collaboration platform where:
 
-- each group has one global `Orchestrator`
-- each plan is represented as a mutable DAG
-- each node is a `Job`
-- each `Job` executes in its own isolated external session
-- human approval is required for assignment confirmation and important replans
+- each project group can enable one global `Manager Agent`
+- planning is represented as one mutable DAG run per group
+- each node is assigned to one group member (`user` or `agent`)
+- agent nodes can be auto-executed through LLM runtime
+- manager planning is confirm-first, then persisted
 
 ## Module Responsibilities
 
@@ -25,12 +25,9 @@ Planned slices:
 - `groups`: collaboration container
 - `members`: group participants
 - `agent_profiles`: reusable agent templates
-- `agent_instances`: group-bound agents
-- `plans`: DAG container
-- `jobs`: node lifecycle
-- `events`: node and plan progress stream
-- `approvals`: assignment, permission, and replan gates
-- `runs`: external execution sessions
+- `agents`: agent instance and workspace management
+- `group_tasks`: DAG run, nodes, events, and confirmation flow
+- `messages`: user chat and manager-triggered planning
 
 ### `core/`
 
@@ -56,9 +53,9 @@ Business logic and external integration boundaries.
 
 Key services:
 
-- `OrchestratorService`: planning, routing, replan decisions
-- `AgentScopeRuntime`: node execution runtime boundary
-- future `ApprovalService`, `EventService`, `ExternalRunService`
+- `ManagerPlanningService`: @manager context build and plan draft generation
+- `GroupTaskService`: DAG upsert, assignment, execution, and event persistence
+- `AIService`: model call boundary
 
 ## Execution Model
 
@@ -66,26 +63,25 @@ Key services:
 
 - a group contains human members and agent members
 - agent members are backed by `AgentInstance`
-- agent instances are created from `AgentProfile`
+- group can optionally enable one manager agent profile
 
 ### Plan Scope
 
-- a plan is a DAG with nodes and edges
+- one active DAG run is maintained per group
+- new planning requests patch remaining nodes instead of creating unrelated graphs
 - the DAG is editable in place from the UI
-- the backend still records `revision` for replay and audit
 
 ### Job Scope
 
-- each job has one execution owner at a time
+- each node has one execution owner at a time
 - the owner can be a user or an agent member
-- if the owner is an agent, execution creates an `ExternalRun`
+- if the owner is an agent, execution is performed by backend LLM runtime
 
 ### Decision Flow
 
-- orchestrator suggests assignment
-- human confirms assignment
-- node agent runs and streams progress
-- node agent can raise blockers or questions
-- orchestrator decides whether it can answer directly or requires approval
-- orchestrator may propose a replan patch
-- human confirms important replans
+- user `@管家` triggers manager planning draft
+- manager returns structured DAG draft and asks for confirmation
+- only the draft creator can confirm and persist
+- backend auto-assigns nodes by role to members when possible
+- assigned agent nodes execute and append node-level events
+- manager can review node outcomes and propose graph updates for unstarted nodes

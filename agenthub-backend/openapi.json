@@ -178,6 +178,146 @@
         }
       }
     },
+    "/api/v1/users/me": {
+      "get": {
+        "tags": [
+          "users"
+        ],
+        "summary": "Get My User Api",
+        "operationId": "get_my_user_api_api_v1_users_me_get",
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiResponse_UserOut_"
+                }
+              }
+            }
+          }
+        },
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ]
+      },
+      "put": {
+        "tags": [
+          "users"
+        ],
+        "summary": "Update My User Api",
+        "operationId": "update_my_user_api_api_v1_users_me_put",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/UserSelfUpdateRequest"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiResponse_UserOut_"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        },
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ]
+      }
+    },
+    "/api/v1/users/me/profile-md": {
+      "get": {
+        "tags": [
+          "users"
+        ],
+        "summary": "Get My Profile Md Api",
+        "operationId": "get_my_profile_md_api_api_v1_users_me_profile_md_get",
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiResponse_UserProfileMdOut_"
+                }
+              }
+            }
+          }
+        },
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ]
+      },
+      "put": {
+        "tags": [
+          "users"
+        ],
+        "summary": "Update My Profile Md Api",
+        "operationId": "update_my_profile_md_api_api_v1_users_me_profile_md_put",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/UserProfileMdOut"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiResponse_UserProfileMdOut_"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        },
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ]
+      }
+    },
     "/api/v1/groups": {
       "get": {
         "tags": [
@@ -221,6 +361,254 @@
               "application/json": {
                 "schema": {
                   "$ref": "#/components/schemas/ApiResponse_GroupOut_"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        },
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ]
+      }
+    },
+    "/api/v1/groups/{group_id}": {
+      "delete": {
+        "tags": [
+          "groups"
+        ],
+        "summary": "Delete Group Api",
+        "operationId": "delete_group_api_api_v1_groups__group_id__delete",
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ],
+        "parameters": [
+          {
+            "name": "group_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "integer",
+              "title": "Group Id"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiResponse_bool_"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/groups/{group_id}/memory/compressor-status": {
+      "get": {
+        "tags": [
+          "groups"
+        ],
+        "summary": "Get Group Memory Compressor Status Api",
+        "operationId": "get_group_memory_compressor_status_api_api_v1_groups__group_id__memory_compressor_status_get",
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ],
+        "parameters": [
+          {
+            "name": "group_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "integer",
+              "title": "Group Id"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiResponse_ProjectMemoryCompressorStatusOut_"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/groups/{group_id}/memory/compressor-config": {
+      "get": {
+        "tags": [
+          "groups"
+        ],
+        "summary": "Get Group Memory Compressor Config Api",
+        "operationId": "get_group_memory_compressor_config_api_api_v1_groups__group_id__memory_compressor_config_get",
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ],
+        "parameters": [
+          {
+            "name": "group_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "integer",
+              "title": "Group Id"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiResponse_ProjectMemoryCompressorConfigOut_"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      },
+      "put": {
+        "tags": [
+          "groups"
+        ],
+        "summary": "Update Group Memory Compressor Config Api",
+        "operationId": "update_group_memory_compressor_config_api_api_v1_groups__group_id__memory_compressor_config_put",
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ],
+        "parameters": [
+          {
+            "name": "group_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "integer",
+              "title": "Group Id"
+            }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/ProjectMemoryCompressorConfigUpdateRequest"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiResponse_ProjectMemoryCompressorConfigOut_"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/groups/{group_id}/memory/compress": {
+      "post": {
+        "tags": [
+          "groups"
+        ],
+        "summary": "Run Group Memory Compress Api",
+        "operationId": "run_group_memory_compress_api_api_v1_groups__group_id__memory_compress_post",
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ],
+        "parameters": [
+          {
+            "name": "group_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "integer",
+              "title": "Group Id"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiResponse_ProjectMemoryCompressRunOut_"
                 }
               }
             }
@@ -319,41 +707,33 @@
         }
       }
     },
-    "/api/v1/skills": {
-      "get": {
+    "/api/v1/mcps/{mcp_id}": {
+      "put": {
         "tags": [
-          "skills"
+          "mcps"
         ],
-        "summary": "List Skills Api",
-        "operationId": "list_skills_api_api_v1_skills_get",
-        "responses": {
-          "200": {
-            "description": "Successful Response",
-            "content": {
-              "application/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/ApiResponse_list_SkillOut__"
-                }
-              }
+        "summary": "Update Mcp Api",
+        "operationId": "update_mcp_api_api_v1_mcps__mcp_id__put",
+        "parameters": [
+          {
+            "name": "mcp_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "integer",
+              "title": "Mcp Id"
             }
           }
-        }
-      },
-      "post": {
-        "tags": [
-          "skills"
         ],
-        "summary": "Create Skill Api",
-        "operationId": "create_skill_api_api_v1_skills_post",
         "requestBody": {
+          "required": true,
           "content": {
             "application/json": {
               "schema": {
-                "$ref": "#/components/schemas/SkillCreateRequest"
+                "$ref": "#/components/schemas/MCPCreateRequest"
               }
             }
-          },
-          "required": true
+          }
         },
         "responses": {
           "200": {
@@ -361,7 +741,7 @@
             "content": {
               "application/json": {
                 "schema": {
-                  "$ref": "#/components/schemas/ApiResponse_SkillOut_"
+                  "$ref": "#/components/schemas/ApiResponse_MCPOut_"
                 }
               }
             }
@@ -377,51 +757,31 @@
             }
           }
         }
-      }
-    },
-    "/api/v1/acp-providers": {
-      "get": {
+      },
+      "delete": {
         "tags": [
-          "acp-providers"
+          "mcps"
         ],
-        "summary": "List Acp Providers Api",
-        "operationId": "list_acp_providers_api_api_v1_acp_providers_get",
-        "responses": {
-          "200": {
-            "description": "Successful Response",
-            "content": {
-              "application/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/ApiResponse_list_ACPProviderOut__"
-                }
-              }
+        "summary": "Delete Mcp Api",
+        "operationId": "delete_mcp_api_api_v1_mcps__mcp_id__delete",
+        "parameters": [
+          {
+            "name": "mcp_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "integer",
+              "title": "Mcp Id"
             }
           }
-        }
-      },
-      "post": {
-        "tags": [
-          "acp-providers"
         ],
-        "summary": "Create Acp Provider Api",
-        "operationId": "create_acp_provider_api_api_v1_acp_providers_post",
-        "requestBody": {
-          "content": {
-            "application/json": {
-              "schema": {
-                "$ref": "#/components/schemas/ACPProviderCreateRequest"
-              }
-            }
-          },
-          "required": true
-        },
         "responses": {
           "200": {
             "description": "Successful Response",
             "content": {
               "application/json": {
                 "schema": {
-                  "$ref": "#/components/schemas/ApiResponse_ACPProviderOut_"
+                  "$ref": "#/components/schemas/ApiResponse_bool_"
                 }
               }
             }
@@ -457,7 +817,12 @@
               }
             }
           }
-        }
+        },
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ]
       },
       "post": {
         "tags": [
@@ -496,7 +861,12 @@
               }
             }
           }
-        }
+        },
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ]
       }
     },
     "/api/v1/agent-profiles/{profile_id}/files": {
@@ -772,237 +1142,13 @@
         }
       }
     },
-    "/api/v1/agent-profiles/{profile_id}/tools": {
-      "put": {
-        "tags": [
-          "agent-profiles"
-        ],
-        "summary": "Set Profile Tools",
-        "operationId": "set_profile_tools_api_v1_agent_profiles__profile_id__tools_put",
-        "parameters": [
-          {
-            "name": "profile_id",
-            "in": "path",
-            "required": true,
-            "schema": {
-              "type": "integer",
-              "title": "Profile Id"
-            }
-          }
-        ],
-        "requestBody": {
-          "content": {
-            "application/json": {
-              "schema": {
-                "type": "array",
-                "items": {
-                  "type": "integer"
-                },
-                "default": [],
-                "title": "Tool Ids"
-              }
-            }
-          }
-        },
-        "responses": {
-          "200": {
-            "description": "Successful Response",
-            "content": {
-              "application/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/ApiResponse_list_ToolOut__"
-                }
-              }
-            }
-          },
-          "422": {
-            "description": "Validation Error",
-            "content": {
-              "application/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/HTTPValidationError"
-                }
-              }
-            }
-          }
-        }
-      }
-    },
-    "/api/v1/agent-profiles/{profile_id}/mcps": {
-      "put": {
-        "tags": [
-          "agent-profiles"
-        ],
-        "summary": "Set Profile Mcps",
-        "operationId": "set_profile_mcps_api_v1_agent_profiles__profile_id__mcps_put",
-        "parameters": [
-          {
-            "name": "profile_id",
-            "in": "path",
-            "required": true,
-            "schema": {
-              "type": "integer",
-              "title": "Profile Id"
-            }
-          }
-        ],
-        "requestBody": {
-          "content": {
-            "application/json": {
-              "schema": {
-                "type": "array",
-                "items": {
-                  "type": "integer"
-                },
-                "default": [],
-                "title": "Mcp Ids"
-              }
-            }
-          }
-        },
-        "responses": {
-          "200": {
-            "description": "Successful Response",
-            "content": {
-              "application/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/ApiResponse_list_MCPOut__"
-                }
-              }
-            }
-          },
-          "422": {
-            "description": "Validation Error",
-            "content": {
-              "application/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/HTTPValidationError"
-                }
-              }
-            }
-          }
-        }
-      }
-    },
-    "/api/v1/agent-profiles/{profile_id}/skills": {
-      "put": {
-        "tags": [
-          "agent-profiles"
-        ],
-        "summary": "Set Profile Skills",
-        "operationId": "set_profile_skills_api_v1_agent_profiles__profile_id__skills_put",
-        "parameters": [
-          {
-            "name": "profile_id",
-            "in": "path",
-            "required": true,
-            "schema": {
-              "type": "integer",
-              "title": "Profile Id"
-            }
-          }
-        ],
-        "requestBody": {
-          "content": {
-            "application/json": {
-              "schema": {
-                "type": "array",
-                "items": {
-                  "type": "integer"
-                },
-                "default": [],
-                "title": "Skill Ids"
-              }
-            }
-          }
-        },
-        "responses": {
-          "200": {
-            "description": "Successful Response",
-            "content": {
-              "application/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/ApiResponse_list_SkillOut__"
-                }
-              }
-            }
-          },
-          "422": {
-            "description": "Validation Error",
-            "content": {
-              "application/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/HTTPValidationError"
-                }
-              }
-            }
-          }
-        }
-      }
-    },
-    "/api/v1/agent-profiles/{profile_id}/acp-providers": {
-      "put": {
-        "tags": [
-          "agent-profiles"
-        ],
-        "summary": "Set Profile Acps",
-        "operationId": "set_profile_acps_api_v1_agent_profiles__profile_id__acp_providers_put",
-        "parameters": [
-          {
-            "name": "profile_id",
-            "in": "path",
-            "required": true,
-            "schema": {
-              "type": "integer",
-              "title": "Profile Id"
-            }
-          }
-        ],
-        "requestBody": {
-          "content": {
-            "application/json": {
-              "schema": {
-                "type": "array",
-                "items": {
-                  "type": "integer"
-                },
-                "default": [],
-                "title": "Provider Ids"
-              }
-            }
-          }
-        },
-        "responses": {
-          "200": {
-            "description": "Successful Response",
-            "content": {
-              "application/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/ApiResponse_list_ACPProviderOut__"
-                }
-              }
-            }
-          },
-          "422": {
-            "description": "Validation Error",
-            "content": {
-              "application/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/HTTPValidationError"
-                }
-              }
-            }
-          }
-        }
-      }
-    },
-    "/api/v1/agent-instances": {
+    "/api/v1/agents": {
       "get": {
         "tags": [
-          "agent-instances"
+          "agents"
         ],
-        "summary": "List Agent Instances Api",
-        "operationId": "list_agent_instances_api_api_v1_agent_instances_get",
+        "summary": "List Agents Api",
+        "operationId": "list_agents_api_api_v1_agents_get",
         "responses": {
           "200": {
             "description": "Successful Response",
@@ -1014,14 +1160,19 @@
               }
             }
           }
-        }
+        },
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ]
       },
       "post": {
         "tags": [
-          "agent-instances"
+          "agents"
         ],
-        "summary": "Create Agent Instance Api",
-        "operationId": "create_agent_instance_api_api_v1_agent_instances_post",
+        "summary": "Create Agent Api",
+        "operationId": "create_agent_api_api_v1_agents_post",
         "requestBody": {
           "content": {
             "application/json": {
@@ -1053,16 +1204,21 @@
               }
             }
           }
-        }
+        },
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ]
       }
     },
-    "/api/v1/agent-instances/{agent_instance_id}/soul": {
+    "/api/v1/agents/{agent_id}/soul": {
       "get": {
         "tags": [
-          "agent-instances"
+          "agents"
         ],
-        "summary": "Get Agent Instance Soul Api",
-        "operationId": "get_agent_instance_soul_api_api_v1_agent_instances__agent_instance_id__soul_get",
+        "summary": "Get Agent Soul Api",
+        "operationId": "get_agent_soul_api_api_v1_agents__agent_id__soul_get",
         "security": [
           {
             "HTTPBearer": []
@@ -1070,12 +1226,12 @@
         ],
         "parameters": [
           {
-            "name": "agent_instance_id",
+            "name": "agent_id",
             "in": "path",
             "required": true,
             "schema": {
               "type": "integer",
-              "title": "Agent Instance Id"
+              "title": "Agent Id"
             }
           }
         ],
@@ -1104,10 +1260,10 @@
       },
       "put": {
         "tags": [
-          "agent-instances"
+          "agents"
         ],
-        "summary": "Update Agent Instance Soul Api",
-        "operationId": "update_agent_instance_soul_api_api_v1_agent_instances__agent_instance_id__soul_put",
+        "summary": "Update Agent Soul Api",
+        "operationId": "update_agent_soul_api_api_v1_agents__agent_id__soul_put",
         "security": [
           {
             "HTTPBearer": []
@@ -1115,12 +1271,12 @@
         ],
         "parameters": [
           {
-            "name": "agent_instance_id",
+            "name": "agent_id",
             "in": "path",
             "required": true,
             "schema": {
               "type": "integer",
-              "title": "Agent Instance Id"
+              "title": "Agent Id"
             }
           }
         ],
@@ -1129,7 +1285,7 @@
           "content": {
             "application/json": {
               "schema": {
-                "$ref": "#/components/schemas/AgentInstanceSoulUpdateRequest"
+                "$ref": "#/components/schemas/AgentInstanceSoulOut"
               }
             }
           }
@@ -1158,13 +1314,13 @@
         }
       }
     },
-    "/api/v1/agent-instances/{agent_instance_id}/workspace/files": {
+    "/api/v1/agents/{agent_id}/fs": {
       "get": {
         "tags": [
-          "agent-instances"
+          "agents"
         ],
-        "summary": "List Workspace Files Api",
-        "operationId": "list_workspace_files_api_api_v1_agent_instances__agent_instance_id__workspace_files_get",
+        "summary": "List Agent Fs Api",
+        "operationId": "list_agent_fs_api_api_v1_agents__agent_id__fs_get",
         "security": [
           {
             "HTTPBearer": []
@@ -1172,12 +1328,12 @@
         ],
         "parameters": [
           {
-            "name": "agent_instance_id",
+            "name": "agent_id",
             "in": "path",
             "required": true,
             "schema": {
               "type": "integer",
-              "title": "Agent Instance Id"
+              "title": "Agent Id"
             }
           }
         ],
@@ -1187,7 +1343,7 @@
             "content": {
               "application/json": {
                 "schema": {
-                  "$ref": "#/components/schemas/ApiResponse_WorkspaceFileListOut_"
+                  "$ref": "#/components/schemas/ApiResponse_list_FsEntryOut__"
                 }
               }
             }
@@ -1205,13 +1361,13 @@
         }
       }
     },
-    "/api/v1/agent-instances/{agent_instance_id}/workspace/files/{filename}": {
+    "/api/v1/agents/{agent_id}/fs/{path}": {
       "get": {
         "tags": [
-          "agent-instances"
+          "agents"
         ],
-        "summary": "Read Workspace File Api",
-        "operationId": "read_workspace_file_api_api_v1_agent_instances__agent_instance_id__workspace_files__filename__get",
+        "summary": "Read Agent Fs Api",
+        "operationId": "read_agent_fs_api_api_v1_agents__agent_id__fs__path__get",
         "security": [
           {
             "HTTPBearer": []
@@ -1219,21 +1375,21 @@
         ],
         "parameters": [
           {
-            "name": "agent_instance_id",
+            "name": "agent_id",
             "in": "path",
             "required": true,
             "schema": {
               "type": "integer",
-              "title": "Agent Instance Id"
+              "title": "Agent Id"
             }
           },
           {
-            "name": "filename",
+            "name": "path",
             "in": "path",
             "required": true,
             "schema": {
               "type": "string",
-              "title": "Filename"
+              "title": "Path"
             }
           }
         ],
@@ -1243,7 +1399,7 @@
             "content": {
               "application/json": {
                 "schema": {
-                  "$ref": "#/components/schemas/ApiResponse_WorkspaceFileContentOut_"
+                  "$ref": "#/components/schemas/ApiResponse_TextFileOut_"
                 }
               }
             }
@@ -1262,10 +1418,10 @@
       },
       "put": {
         "tags": [
-          "agent-instances"
+          "agents"
         ],
-        "summary": "Write Workspace File Api",
-        "operationId": "write_workspace_file_api_api_v1_agent_instances__agent_instance_id__workspace_files__filename__put",
+        "summary": "Write Agent Fs Api",
+        "operationId": "write_agent_fs_api_api_v1_agents__agent_id__fs__path__put",
         "security": [
           {
             "HTTPBearer": []
@@ -1273,21 +1429,21 @@
         ],
         "parameters": [
           {
-            "name": "agent_instance_id",
+            "name": "agent_id",
             "in": "path",
             "required": true,
             "schema": {
               "type": "integer",
-              "title": "Agent Instance Id"
+              "title": "Agent Id"
             }
           },
           {
-            "name": "filename",
+            "name": "path",
             "in": "path",
             "required": true,
             "schema": {
               "type": "string",
-              "title": "Filename"
+              "title": "Path"
             }
           }
         ],
@@ -1296,7 +1452,7 @@
           "content": {
             "application/json": {
               "schema": {
-                "$ref": "#/components/schemas/WorkspaceFileWriteRequest"
+                "$ref": "#/components/schemas/TextFileWriteRequest"
               }
             }
           }
@@ -1307,7 +1463,61 @@
             "content": {
               "application/json": {
                 "schema": {
-                  "$ref": "#/components/schemas/ApiResponse_WorkspaceFileContentOut_"
+                  "$ref": "#/components/schemas/ApiResponse_TextFileOut_"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      },
+      "delete": {
+        "tags": [
+          "agents"
+        ],
+        "summary": "Delete Agent Fs Api",
+        "operationId": "delete_agent_fs_api_api_v1_agents__agent_id__fs__path__delete",
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ],
+        "parameters": [
+          {
+            "name": "agent_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "integer",
+              "title": "Agent Id"
+            }
+          },
+          {
+            "name": "path",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "title": "Path"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiResponse_bool_"
                 }
               }
             }
@@ -1325,13 +1535,58 @@
         }
       }
     },
-    "/api/v1/agent-instances/{agent_instance_id}/workspace/file-toggles": {
+    "/api/v1/agents/{agent_id}/tools/toggles": {
+      "get": {
+        "tags": [
+          "agents"
+        ],
+        "summary": "Get Agent Tool Toggles Api",
+        "operationId": "get_agent_tool_toggles_api_api_v1_agents__agent_id__tools_toggles_get",
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ],
+        "parameters": [
+          {
+            "name": "agent_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "integer",
+              "title": "Agent Id"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiResponse_AgentToolTogglesOut_"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      },
       "put": {
         "tags": [
-          "agent-instances"
+          "agents"
         ],
-        "summary": "Update Workspace Toggles Api",
-        "operationId": "update_workspace_toggles_api_api_v1_agent_instances__agent_instance_id__workspace_file_toggles_put",
+        "summary": "Update Agent Tool Toggles Api",
+        "operationId": "update_agent_tool_toggles_api_api_v1_agents__agent_id__tools_toggles_put",
         "security": [
           {
             "HTTPBearer": []
@@ -1339,12 +1594,12 @@
         ],
         "parameters": [
           {
-            "name": "agent_instance_id",
+            "name": "agent_id",
             "in": "path",
             "required": true,
             "schema": {
               "type": "integer",
-              "title": "Agent Instance Id"
+              "title": "Agent Id"
             }
           }
         ],
@@ -1353,7 +1608,7 @@
           "content": {
             "application/json": {
               "schema": {
-                "$ref": "#/components/schemas/WorkspaceFileTogglesRequest"
+                "$ref": "#/components/schemas/AgentToolTogglesUpdateRequest"
               }
             }
           }
@@ -1364,7 +1619,7 @@
             "content": {
               "application/json": {
                 "schema": {
-                  "$ref": "#/components/schemas/ApiResponse_WorkspaceFileTogglesOut_"
+                  "$ref": "#/components/schemas/ApiResponse_AgentToolTogglesOut_"
                 }
               }
             }
@@ -1382,13 +1637,39 @@
         }
       }
     },
-    "/api/v1/agent-instances/{agent_instance_id}/workspace/reset/{filename}": {
-      "post": {
+    "/api/v1/agents/skill-pool": {
+      "get": {
         "tags": [
-          "agent-instances"
+          "agents"
         ],
-        "summary": "Reset Workspace File Api",
-        "operationId": "reset_workspace_file_api_api_v1_agent_instances__agent_instance_id__workspace_reset__filename__post",
+        "summary": "List Skill Pool Api",
+        "operationId": "list_skill_pool_api_api_v1_agents_skill_pool_get",
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiResponse_list_SkillPoolItemOut__"
+                }
+              }
+            }
+          }
+        },
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ]
+      }
+    },
+    "/api/v1/agents/{agent_id}/skills/config": {
+      "get": {
+        "tags": [
+          "agents"
+        ],
+        "summary": "Get Agent Skill Config Api",
+        "operationId": "get_agent_skill_config_api_api_v1_agents__agent_id__skills_config_get",
         "security": [
           {
             "HTTPBearer": []
@@ -1396,21 +1677,12 @@
         ],
         "parameters": [
           {
-            "name": "agent_instance_id",
+            "name": "agent_id",
             "in": "path",
             "required": true,
             "schema": {
               "type": "integer",
-              "title": "Agent Instance Id"
-            }
-          },
-          {
-            "name": "filename",
-            "in": "path",
-            "required": true,
-            "schema": {
-              "type": "string",
-              "title": "Filename"
+              "title": "Agent Id"
             }
           }
         ],
@@ -1420,7 +1692,7 @@
             "content": {
               "application/json": {
                 "schema": {
-                  "$ref": "#/components/schemas/ApiResponse_WorkspaceFileContentOut_"
+                  "$ref": "#/components/schemas/ApiResponse_AgentSkillConfigOut_"
                 }
               }
             }
@@ -1436,15 +1708,13 @@
             }
           }
         }
-      }
-    },
-    "/api/v1/agent-instances/{agent_instance_id}/workspace/reset-all": {
-      "post": {
+      },
+      "put": {
         "tags": [
-          "agent-instances"
+          "agents"
         ],
-        "summary": "Reset Workspace All Api",
-        "operationId": "reset_workspace_all_api_api_v1_agent_instances__agent_instance_id__workspace_reset_all_post",
+        "summary": "Update Agent Skill Config Api",
+        "operationId": "update_agent_skill_config_api_api_v1_agents__agent_id__skills_config_put",
         "security": [
           {
             "HTTPBearer": []
@@ -1452,22 +1722,32 @@
         ],
         "parameters": [
           {
-            "name": "agent_instance_id",
+            "name": "agent_id",
             "in": "path",
             "required": true,
             "schema": {
               "type": "integer",
-              "title": "Agent Instance Id"
+              "title": "Agent Id"
             }
           }
         ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/AgentSkillConfigUpdateRequest"
+              }
+            }
+          }
+        },
         "responses": {
           "200": {
             "description": "Successful Response",
             "content": {
               "application/json": {
                 "schema": {
-                  "$ref": "#/components/schemas/ApiResponse_WorkspaceFileTogglesOut_"
+                  "$ref": "#/components/schemas/ApiResponse_AgentSkillConfigOut_"
                 }
               }
             }
@@ -1617,56 +1897,6 @@
       }
     },
     "/api/v1/members/{member_id}": {
-      "put": {
-        "tags": [
-          "members"
-        ],
-        "summary": "Update Member Api",
-        "operationId": "update_member_api_api_v1_members__member_id__put",
-        "parameters": [
-          {
-            "name": "member_id",
-            "in": "path",
-            "required": true,
-            "schema": {
-              "type": "string",
-              "title": "Member Id"
-            }
-          }
-        ],
-        "requestBody": {
-          "required": true,
-          "content": {
-            "application/json": {
-              "schema": {
-                "$ref": "#/components/schemas/MemberUpdateRequest"
-              }
-            }
-          }
-        },
-        "responses": {
-          "200": {
-            "description": "Successful Response",
-            "content": {
-              "application/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/ApiResponse_MemberOut_"
-                }
-              }
-            }
-          },
-          "422": {
-            "description": "Validation Error",
-            "content": {
-              "application/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/HTTPValidationError"
-                }
-              }
-            }
-          }
-        }
-      },
       "delete": {
         "tags": [
           "members"
@@ -1855,6 +2085,252 @@
               }
             }
           }
+        }
+      }
+    },
+    "/api/v1/project-code/{group_id}": {
+      "get": {
+        "tags": [
+          "project-code"
+        ],
+        "summary": "List Project Code Api",
+        "operationId": "list_project_code_api_api_v1_project_code__group_id__get",
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ],
+        "parameters": [
+          {
+            "name": "group_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "integer",
+              "title": "Group Id"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiResponse_list_FsEntryOut__"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/project-code/{group_id}/{path}": {
+      "get": {
+        "tags": [
+          "project-code"
+        ],
+        "summary": "Read Project Code Api",
+        "operationId": "read_project_code_api_api_v1_project_code__group_id___path__get",
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ],
+        "parameters": [
+          {
+            "name": "group_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "integer",
+              "title": "Group Id"
+            }
+          },
+          {
+            "name": "path",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "title": "Path"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiResponse_TextFileOut_"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/group-tasks/groups/{group_id}/assistant": {
+      "get": {
+        "tags": [
+          "group-tasks"
+        ],
+        "summary": "Get Group Assistant Api",
+        "operationId": "get_group_assistant_api_api_v1_group_tasks_groups__group_id__assistant_get",
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ],
+        "parameters": [
+          {
+            "name": "group_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "integer",
+              "title": "Group Id"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiResponse_GroupAssistantConfigOut_"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      },
+      "put": {
+        "tags": [
+          "group-tasks"
+        ],
+        "summary": "Update Group Assistant Api",
+        "operationId": "update_group_assistant_api_api_v1_group_tasks_groups__group_id__assistant_put",
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ],
+        "parameters": [
+          {
+            "name": "group_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "integer",
+              "title": "Group Id"
+            }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/GroupAssistantConfigUpdateRequest"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiResponse_GroupAssistantConfigOut_"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/group-tasks/runs": {
+      "post": {
+        "tags": [
+          "group-tasks"
+        ],
+        "summary": "Create Group Task Run Api",
+        "operationId": "create_group_task_run_api_api_v1_group_tasks_runs_post",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/GroupTaskRunCreateRequest"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiResponse_GroupTaskRunOut_"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
         },
         "security": [
           {
@@ -1862,133 +2338,558 @@
           }
         ]
       }
+    },
+    "/api/v1/group-tasks/groups/{group_id}/runs": {
+      "get": {
+        "tags": [
+          "group-tasks"
+        ],
+        "summary": "List Group Task Runs Api",
+        "operationId": "list_group_task_runs_api_api_v1_group_tasks_groups__group_id__runs_get",
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ],
+        "parameters": [
+          {
+            "name": "group_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "integer",
+              "title": "Group Id"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiResponse_list_GroupTaskRunOut__"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/group-tasks/runs/{run_id}": {
+      "get": {
+        "tags": [
+          "group-tasks"
+        ],
+        "summary": "Get Group Task Run Api",
+        "operationId": "get_group_task_run_api_api_v1_group_tasks_runs__run_id__get",
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ],
+        "parameters": [
+          {
+            "name": "run_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "integer",
+              "title": "Run Id"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiResponse_GroupTaskRunOut_"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/group-tasks/runs/{run_id}/nodes": {
+      "get": {
+        "tags": [
+          "group-tasks"
+        ],
+        "summary": "List Group Task Nodes Api",
+        "operationId": "list_group_task_nodes_api_api_v1_group_tasks_runs__run_id__nodes_get",
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ],
+        "parameters": [
+          {
+            "name": "run_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "integer",
+              "title": "Run Id"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiResponse_list_GroupTaskNodeOut__"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/group-tasks/runs/{run_id}/events": {
+      "get": {
+        "tags": [
+          "group-tasks"
+        ],
+        "summary": "List Group Task Events Api",
+        "operationId": "list_group_task_events_api_api_v1_group_tasks_runs__run_id__events_get",
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ],
+        "parameters": [
+          {
+            "name": "run_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "integer",
+              "title": "Run Id"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiResponse_list_GroupTaskEventOut__"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/group-tasks/runs/{run_id}/dag": {
+      "put": {
+        "tags": [
+          "group-tasks"
+        ],
+        "summary": "Update Group Task Dag Api",
+        "operationId": "update_group_task_dag_api_api_v1_group_tasks_runs__run_id__dag_put",
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ],
+        "parameters": [
+          {
+            "name": "run_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "integer",
+              "title": "Run Id"
+            }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/GroupTaskDagUpdateRequest"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiResponse_GroupTaskRunOut_"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/group-tasks/nodes/{node_id}/claim": {
+      "post": {
+        "tags": [
+          "group-tasks"
+        ],
+        "summary": "Claim Group Task Node Api",
+        "operationId": "claim_group_task_node_api_api_v1_group_tasks_nodes__node_id__claim_post",
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ],
+        "parameters": [
+          {
+            "name": "node_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "integer",
+              "title": "Node Id"
+            }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/GroupTaskClaimRequest"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiResponse_GroupTaskNodeOut_"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/group-tasks/nodes/{node_id}/complete": {
+      "post": {
+        "tags": [
+          "group-tasks"
+        ],
+        "summary": "Complete Group Task Node Api",
+        "operationId": "complete_group_task_node_api_api_v1_group_tasks_nodes__node_id__complete_post",
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ],
+        "parameters": [
+          {
+            "name": "node_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "integer",
+              "title": "Node Id"
+            }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/GroupTaskNodeCompleteRequest"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiResponse_GroupTaskNodeOut_"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/group-tasks/nodes/{node_id}/review": {
+      "post": {
+        "tags": [
+          "group-tasks"
+        ],
+        "summary": "Review Group Task Node Api",
+        "operationId": "review_group_task_node_api_api_v1_group_tasks_nodes__node_id__review_post",
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ],
+        "parameters": [
+          {
+            "name": "node_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "integer",
+              "title": "Node Id"
+            }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/GroupTaskNodeReviewRequest"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiResponse_GroupTaskNodeOut_"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/group-tasks/runs/{run_id}/branches/{role_required}/block": {
+      "post": {
+        "tags": [
+          "group-tasks"
+        ],
+        "summary": "Block Role Branch Api",
+        "operationId": "block_role_branch_api_api_v1_group_tasks_runs__run_id__branches__role_required__block_post",
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ],
+        "parameters": [
+          {
+            "name": "run_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "integer",
+              "title": "Run Id"
+            }
+          },
+          {
+            "name": "role_required",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "title": "Role Required"
+            }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/GroupTaskNodeBlockRequest"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiResponse_int_"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/group-tasks/runs/{run_id}/branches/{role_required}/unblock": {
+      "post": {
+        "tags": [
+          "group-tasks"
+        ],
+        "summary": "Unblock Role Branch Api",
+        "operationId": "unblock_role_branch_api_api_v1_group_tasks_runs__run_id__branches__role_required__unblock_post",
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ],
+        "parameters": [
+          {
+            "name": "run_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "integer",
+              "title": "Run Id"
+            }
+          },
+          {
+            "name": "role_required",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "title": "Role Required"
+            }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/GroupTaskNodeBlockRequest"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiResponse_int_"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
     }
   },
   "components": {
     "schemas": {
-      "ACPProviderCreateRequest": {
-        "properties": {
-          "name": {
-            "type": "string",
-            "maxLength": 120,
-            "minLength": 1,
-            "title": "Name"
-          },
-          "provider_type": {
-            "type": "string",
-            "maxLength": 80,
-            "minLength": 1,
-            "title": "Provider Type"
-          },
-          "transport_type": {
-            "type": "string",
-            "maxLength": 50,
-            "minLength": 1,
-            "title": "Transport Type"
-          },
-          "endpoint": {
-            "anyOf": [
-              {
-                "type": "string",
-                "maxLength": 255
-              },
-              {
-                "type": "null"
-              }
-            ],
-            "title": "Endpoint"
-          },
-          "capability_json": {
-            "type": "string",
-            "title": "Capability Json",
-            "default": "{}"
-          },
-          "auth_config_json": {
-            "type": "string",
-            "title": "Auth Config Json",
-            "default": "{}"
-          },
-          "is_active": {
-            "type": "integer",
-            "title": "Is Active",
-            "default": 1
-          }
-        },
-        "type": "object",
-        "required": [
-          "name",
-          "provider_type",
-          "transport_type"
-        ],
-        "title": "ACPProviderCreateRequest"
-      },
-      "ACPProviderOut": {
-        "properties": {
-          "id": {
-            "type": "integer",
-            "title": "Id"
-          },
-          "name": {
-            "type": "string",
-            "title": "Name"
-          },
-          "provider_type": {
-            "type": "string",
-            "title": "Provider Type"
-          },
-          "transport_type": {
-            "type": "string",
-            "title": "Transport Type"
-          },
-          "endpoint": {
-            "anyOf": [
-              {
-                "type": "string"
-              },
-              {
-                "type": "null"
-              }
-            ],
-            "title": "Endpoint"
-          },
-          "capability_json": {
-            "type": "string",
-            "title": "Capability Json"
-          },
-          "auth_config_json": {
-            "type": "string",
-            "title": "Auth Config Json"
-          },
-          "is_active": {
-            "type": "integer",
-            "title": "Is Active"
-          },
-          "created_at": {
-            "type": "string",
-            "format": "date-time",
-            "title": "Created At"
-          },
-          "updated_at": {
-            "type": "string",
-            "format": "date-time",
-            "title": "Updated At"
-          }
-        },
-        "type": "object",
-        "required": [
-          "id",
-          "name",
-          "provider_type",
-          "transport_type",
-          "endpoint",
-          "capability_json",
-          "auth_config_json",
-          "is_active",
-          "created_at",
-          "updated_at"
-        ],
-        "title": "ACPProviderOut"
-      },
       "AIChatRequest": {
         "properties": {
           "message": {
@@ -2017,6 +2918,18 @@
               }
             ],
             "title": "Agent Instance Id"
+          },
+          "runtime_context": {
+            "anyOf": [
+              {
+                "additionalProperties": true,
+                "type": "object"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Runtime Context"
           }
         },
         "type": "object",
@@ -2081,11 +2994,6 @@
             ],
             "title": "Api Key Ref"
           },
-          "config_json": {
-            "type": "string",
-            "title": "Config Json",
-            "default": "{}"
-          },
           "status": {
             "type": "string",
             "maxLength": 30,
@@ -2096,13 +3004,17 @@
           "template_profile_id": {
             "anyOf": [
               {
+                "type": "string"
+              },
+              {
                 "type": "integer"
               },
               {
                 "type": "null"
               }
             ],
-            "title": "Template Profile Id"
+            "title": "Template Profile Id",
+            "description": "Create-time only: copy from template then detach"
           },
           "soul_md": {
             "anyOf": [
@@ -2125,8 +3037,12 @@
       "AgentInstanceOut": {
         "properties": {
           "id": {
-            "type": "integer",
+            "type": "string",
             "title": "Id"
+          },
+          "creator_user_id": {
+            "type": "string",
+            "title": "Creator User Id"
           },
           "display_name": {
             "type": "string",
@@ -2142,17 +3058,6 @@
               }
             ],
             "title": "Description"
-          },
-          "template_profile_id": {
-            "anyOf": [
-              {
-                "type": "integer"
-              },
-              {
-                "type": "null"
-              }
-            ],
-            "title": "Template Profile Id"
           },
           "base_url": {
             "anyOf": [
@@ -2176,10 +3081,6 @@
             ],
             "title": "Api Key Ref"
           },
-          "config_json": {
-            "type": "string",
-            "title": "Config Json"
-          },
           "status": {
             "type": "string",
             "title": "Status"
@@ -2198,12 +3099,11 @@
         "type": "object",
         "required": [
           "id",
+          "creator_user_id",
           "display_name",
           "description",
-          "template_profile_id",
           "base_url",
           "api_key_ref",
-          "config_json",
           "status",
           "created_at",
           "updated_at"
@@ -2222,18 +3122,6 @@
           "soul_md"
         ],
         "title": "AgentInstanceSoulOut"
-      },
-      "AgentInstanceSoulUpdateRequest": {
-        "properties": {
-          "soul_md": {
-            "type": "string",
-            "maxLength": 200000,
-            "title": "Soul Md",
-            "default": ""
-          }
-        },
-        "type": "object",
-        "title": "AgentInstanceSoulUpdateRequest"
       },
       "AgentMemberCreateRequest": {
         "properties": {
@@ -2366,30 +3254,6 @@
             ],
             "title": "Max Output Tokens"
           },
-          "reasoning_effort": {
-            "anyOf": [
-              {
-                "type": "string",
-                "maxLength": 30
-              },
-              {
-                "type": "null"
-              }
-            ],
-            "title": "Reasoning Effort"
-          },
-          "planning_mode": {
-            "anyOf": [
-              {
-                "type": "string",
-                "maxLength": 50
-              },
-              {
-                "type": "null"
-              }
-            ],
-            "title": "Planning Mode"
-          },
           "is_active": {
             "type": "integer",
             "title": "Is Active",
@@ -2407,8 +3271,12 @@
       "AgentProfileOut": {
         "properties": {
           "id": {
-            "type": "integer",
+            "type": "string",
             "title": "Id"
+          },
+          "creator_user_id": {
+            "type": "string",
+            "title": "Creator User Id"
           },
           "name": {
             "type": "string",
@@ -2480,28 +3348,6 @@
             ],
             "title": "Max Output Tokens"
           },
-          "reasoning_effort": {
-            "anyOf": [
-              {
-                "type": "string"
-              },
-              {
-                "type": "null"
-              }
-            ],
-            "title": "Reasoning Effort"
-          },
-          "planning_mode": {
-            "anyOf": [
-              {
-                "type": "string"
-              },
-              {
-                "type": "null"
-              }
-            ],
-            "title": "Planning Mode"
-          },
           "is_active": {
             "type": "integer",
             "title": "Is Active"
@@ -2520,6 +3366,7 @@
         "type": "object",
         "required": [
           "id",
+          "creator_user_id",
           "name",
           "role",
           "description",
@@ -2534,35 +3381,79 @@
           "temperature",
           "top_p",
           "max_output_tokens",
-          "reasoning_effort",
-          "planning_mode",
           "is_active",
           "created_at",
           "updated_at"
         ],
         "title": "AgentProfileOut"
       },
-      "ApiResponse_ACPProviderOut_": {
+      "AgentSkillConfigOut": {
         "properties": {
-          "code": {
-            "type": "integer",
-            "title": "Code",
-            "default": 0
+          "enable_agent_local_skills": {
+            "type": "boolean",
+            "title": "Enable Agent Local Skills"
           },
-          "message": {
-            "type": "string",
-            "title": "Message",
-            "default": "ok"
-          },
-          "data": {
-            "$ref": "#/components/schemas/ACPProviderOut"
+          "pool_skill_codes": {
+            "items": {
+              "type": "string"
+            },
+            "type": "array",
+            "title": "Pool Skill Codes"
           }
         },
         "type": "object",
         "required": [
-          "data"
+          "enable_agent_local_skills",
+          "pool_skill_codes"
         ],
-        "title": "ApiResponse[ACPProviderOut]"
+        "title": "AgentSkillConfigOut"
+      },
+      "AgentSkillConfigUpdateRequest": {
+        "properties": {
+          "enable_agent_local_skills": {
+            "type": "boolean",
+            "title": "Enable Agent Local Skills",
+            "default": true
+          },
+          "pool_skill_codes": {
+            "items": {
+              "type": "string"
+            },
+            "type": "array",
+            "title": "Pool Skill Codes",
+            "default": []
+          }
+        },
+        "type": "object",
+        "title": "AgentSkillConfigUpdateRequest"
+      },
+      "AgentToolTogglesOut": {
+        "properties": {
+          "enabled": {
+            "additionalProperties": {
+              "type": "boolean"
+            },
+            "type": "object",
+            "title": "Enabled",
+            "description": "tool_code -> enabled"
+          }
+        },
+        "type": "object",
+        "title": "AgentToolTogglesOut"
+      },
+      "AgentToolTogglesUpdateRequest": {
+        "properties": {
+          "enabled": {
+            "additionalProperties": {
+              "type": "boolean"
+            },
+            "type": "object",
+            "title": "Enabled",
+            "description": "tool_code -> enabled"
+          }
+        },
+        "type": "object",
+        "title": "AgentToolTogglesUpdateRequest"
       },
       "ApiResponse_AIChatResponse_": {
         "properties": {
@@ -2652,6 +3543,72 @@
         ],
         "title": "ApiResponse[AgentProfileOut]"
       },
+      "ApiResponse_AgentSkillConfigOut_": {
+        "properties": {
+          "code": {
+            "type": "integer",
+            "title": "Code",
+            "default": 0
+          },
+          "message": {
+            "type": "string",
+            "title": "Message",
+            "default": "ok"
+          },
+          "data": {
+            "$ref": "#/components/schemas/AgentSkillConfigOut"
+          }
+        },
+        "type": "object",
+        "required": [
+          "data"
+        ],
+        "title": "ApiResponse[AgentSkillConfigOut]"
+      },
+      "ApiResponse_AgentToolTogglesOut_": {
+        "properties": {
+          "code": {
+            "type": "integer",
+            "title": "Code",
+            "default": 0
+          },
+          "message": {
+            "type": "string",
+            "title": "Message",
+            "default": "ok"
+          },
+          "data": {
+            "$ref": "#/components/schemas/AgentToolTogglesOut"
+          }
+        },
+        "type": "object",
+        "required": [
+          "data"
+        ],
+        "title": "ApiResponse[AgentToolTogglesOut]"
+      },
+      "ApiResponse_GroupAssistantConfigOut_": {
+        "properties": {
+          "code": {
+            "type": "integer",
+            "title": "Code",
+            "default": 0
+          },
+          "message": {
+            "type": "string",
+            "title": "Message",
+            "default": "ok"
+          },
+          "data": {
+            "$ref": "#/components/schemas/GroupAssistantConfigOut"
+          }
+        },
+        "type": "object",
+        "required": [
+          "data"
+        ],
+        "title": "ApiResponse[GroupAssistantConfigOut]"
+      },
       "ApiResponse_GroupOut_": {
         "properties": {
           "code": {
@@ -2673,6 +3630,50 @@
           "data"
         ],
         "title": "ApiResponse[GroupOut]"
+      },
+      "ApiResponse_GroupTaskNodeOut_": {
+        "properties": {
+          "code": {
+            "type": "integer",
+            "title": "Code",
+            "default": 0
+          },
+          "message": {
+            "type": "string",
+            "title": "Message",
+            "default": "ok"
+          },
+          "data": {
+            "$ref": "#/components/schemas/GroupTaskNodeOut"
+          }
+        },
+        "type": "object",
+        "required": [
+          "data"
+        ],
+        "title": "ApiResponse[GroupTaskNodeOut]"
+      },
+      "ApiResponse_GroupTaskRunOut_": {
+        "properties": {
+          "code": {
+            "type": "integer",
+            "title": "Code",
+            "default": 0
+          },
+          "message": {
+            "type": "string",
+            "title": "Message",
+            "default": "ok"
+          },
+          "data": {
+            "$ref": "#/components/schemas/GroupTaskRunOut"
+          }
+        },
+        "type": "object",
+        "required": [
+          "data"
+        ],
+        "title": "ApiResponse[GroupTaskRunOut]"
       },
       "ApiResponse_LoginOut_": {
         "properties": {
@@ -2762,7 +3763,7 @@
         ],
         "title": "ApiResponse[MessageOut]"
       },
-      "ApiResponse_SkillOut_": {
+      "ApiResponse_ProjectMemoryCompressRunOut_": {
         "properties": {
           "code": {
             "type": "integer",
@@ -2775,14 +3776,80 @@
             "default": "ok"
           },
           "data": {
-            "$ref": "#/components/schemas/SkillOut"
+            "$ref": "#/components/schemas/ProjectMemoryCompressRunOut"
           }
         },
         "type": "object",
         "required": [
           "data"
         ],
-        "title": "ApiResponse[SkillOut]"
+        "title": "ApiResponse[ProjectMemoryCompressRunOut]"
+      },
+      "ApiResponse_ProjectMemoryCompressorConfigOut_": {
+        "properties": {
+          "code": {
+            "type": "integer",
+            "title": "Code",
+            "default": 0
+          },
+          "message": {
+            "type": "string",
+            "title": "Message",
+            "default": "ok"
+          },
+          "data": {
+            "$ref": "#/components/schemas/ProjectMemoryCompressorConfigOut"
+          }
+        },
+        "type": "object",
+        "required": [
+          "data"
+        ],
+        "title": "ApiResponse[ProjectMemoryCompressorConfigOut]"
+      },
+      "ApiResponse_ProjectMemoryCompressorStatusOut_": {
+        "properties": {
+          "code": {
+            "type": "integer",
+            "title": "Code",
+            "default": 0
+          },
+          "message": {
+            "type": "string",
+            "title": "Message",
+            "default": "ok"
+          },
+          "data": {
+            "$ref": "#/components/schemas/ProjectMemoryCompressorStatusOut"
+          }
+        },
+        "type": "object",
+        "required": [
+          "data"
+        ],
+        "title": "ApiResponse[ProjectMemoryCompressorStatusOut]"
+      },
+      "ApiResponse_TextFileOut_": {
+        "properties": {
+          "code": {
+            "type": "integer",
+            "title": "Code",
+            "default": 0
+          },
+          "message": {
+            "type": "string",
+            "title": "Message",
+            "default": "ok"
+          },
+          "data": {
+            "$ref": "#/components/schemas/TextFileOut"
+          }
+        },
+        "type": "object",
+        "required": [
+          "data"
+        ],
+        "title": "ApiResponse[TextFileOut]"
       },
       "ApiResponse_UserOut_": {
         "properties": {
@@ -2806,6 +3873,28 @@
         ],
         "title": "ApiResponse[UserOut]"
       },
+      "ApiResponse_UserProfileMdOut_": {
+        "properties": {
+          "code": {
+            "type": "integer",
+            "title": "Code",
+            "default": 0
+          },
+          "message": {
+            "type": "string",
+            "title": "Message",
+            "default": "ok"
+          },
+          "data": {
+            "$ref": "#/components/schemas/UserProfileMdOut"
+          }
+        },
+        "type": "object",
+        "required": [
+          "data"
+        ],
+        "title": "ApiResponse[UserProfileMdOut]"
+      },
       "ApiResponse_WorkspaceFileContentOut_": {
         "properties": {
           "code": {
@@ -2827,28 +3916,6 @@
           "data"
         ],
         "title": "ApiResponse[WorkspaceFileContentOut]"
-      },
-      "ApiResponse_WorkspaceFileListOut_": {
-        "properties": {
-          "code": {
-            "type": "integer",
-            "title": "Code",
-            "default": 0
-          },
-          "message": {
-            "type": "string",
-            "title": "Message",
-            "default": "ok"
-          },
-          "data": {
-            "$ref": "#/components/schemas/WorkspaceFileListOut"
-          }
-        },
-        "type": "object",
-        "required": [
-          "data"
-        ],
-        "title": "ApiResponse[WorkspaceFileListOut]"
       },
       "ApiResponse_WorkspaceFileTogglesOut_": {
         "properties": {
@@ -2895,7 +3962,7 @@
         ],
         "title": "ApiResponse[bool]"
       },
-      "ApiResponse_list_ACPProviderOut__": {
+      "ApiResponse_int_": {
         "properties": {
           "code": {
             "type": "integer",
@@ -2908,10 +3975,7 @@
             "default": "ok"
           },
           "data": {
-            "items": {
-              "$ref": "#/components/schemas/ACPProviderOut"
-            },
-            "type": "array",
+            "type": "integer",
             "title": "Data"
           }
         },
@@ -2919,7 +3983,7 @@
         "required": [
           "data"
         ],
-        "title": "ApiResponse[list[ACPProviderOut]]"
+        "title": "ApiResponse[int]"
       },
       "ApiResponse_list_AgentInstanceOut__": {
         "properties": {
@@ -2973,6 +4037,32 @@
         ],
         "title": "ApiResponse[list[AgentProfileOut]]"
       },
+      "ApiResponse_list_FsEntryOut__": {
+        "properties": {
+          "code": {
+            "type": "integer",
+            "title": "Code",
+            "default": 0
+          },
+          "message": {
+            "type": "string",
+            "title": "Message",
+            "default": "ok"
+          },
+          "data": {
+            "items": {
+              "$ref": "#/components/schemas/FsEntryOut"
+            },
+            "type": "array",
+            "title": "Data"
+          }
+        },
+        "type": "object",
+        "required": [
+          "data"
+        ],
+        "title": "ApiResponse[list[FsEntryOut]]"
+      },
       "ApiResponse_list_GroupOut__": {
         "properties": {
           "code": {
@@ -2998,6 +4088,84 @@
           "data"
         ],
         "title": "ApiResponse[list[GroupOut]]"
+      },
+      "ApiResponse_list_GroupTaskEventOut__": {
+        "properties": {
+          "code": {
+            "type": "integer",
+            "title": "Code",
+            "default": 0
+          },
+          "message": {
+            "type": "string",
+            "title": "Message",
+            "default": "ok"
+          },
+          "data": {
+            "items": {
+              "$ref": "#/components/schemas/GroupTaskEventOut"
+            },
+            "type": "array",
+            "title": "Data"
+          }
+        },
+        "type": "object",
+        "required": [
+          "data"
+        ],
+        "title": "ApiResponse[list[GroupTaskEventOut]]"
+      },
+      "ApiResponse_list_GroupTaskNodeOut__": {
+        "properties": {
+          "code": {
+            "type": "integer",
+            "title": "Code",
+            "default": 0
+          },
+          "message": {
+            "type": "string",
+            "title": "Message",
+            "default": "ok"
+          },
+          "data": {
+            "items": {
+              "$ref": "#/components/schemas/GroupTaskNodeOut"
+            },
+            "type": "array",
+            "title": "Data"
+          }
+        },
+        "type": "object",
+        "required": [
+          "data"
+        ],
+        "title": "ApiResponse[list[GroupTaskNodeOut]]"
+      },
+      "ApiResponse_list_GroupTaskRunOut__": {
+        "properties": {
+          "code": {
+            "type": "integer",
+            "title": "Code",
+            "default": 0
+          },
+          "message": {
+            "type": "string",
+            "title": "Message",
+            "default": "ok"
+          },
+          "data": {
+            "items": {
+              "$ref": "#/components/schemas/GroupTaskRunOut"
+            },
+            "type": "array",
+            "title": "Data"
+          }
+        },
+        "type": "object",
+        "required": [
+          "data"
+        ],
+        "title": "ApiResponse[list[GroupTaskRunOut]]"
       },
       "ApiResponse_list_MCPOut__": {
         "properties": {
@@ -3077,7 +4245,7 @@
         ],
         "title": "ApiResponse[list[MessageOut]]"
       },
-      "ApiResponse_list_SkillOut__": {
+      "ApiResponse_list_SkillPoolItemOut__": {
         "properties": {
           "code": {
             "type": "integer",
@@ -3091,7 +4259,7 @@
           },
           "data": {
             "items": {
-              "$ref": "#/components/schemas/SkillOut"
+              "$ref": "#/components/schemas/SkillPoolItemOut"
             },
             "type": "array",
             "title": "Data"
@@ -3101,7 +4269,7 @@
         "required": [
           "data"
         ],
-        "title": "ApiResponse[list[SkillOut]]"
+        "title": "ApiResponse[list[SkillPoolItemOut]]"
       },
       "ApiResponse_list_ToolOut__": {
         "properties": {
@@ -3181,6 +4349,77 @@
         ],
         "title": "ApiResponse[list[str]]"
       },
+      "FsEntryOut": {
+        "properties": {
+          "path": {
+            "type": "string",
+            "title": "Path"
+          },
+          "is_dir": {
+            "type": "boolean",
+            "title": "Is Dir"
+          },
+          "size": {
+            "type": "integer",
+            "title": "Size",
+            "default": 0
+          }
+        },
+        "type": "object",
+        "required": [
+          "path",
+          "is_dir"
+        ],
+        "title": "FsEntryOut"
+      },
+      "GroupAssistantConfigOut": {
+        "properties": {
+          "group_id": {
+            "type": "string",
+            "title": "Group Id"
+          },
+          "manager_member_id": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Manager Member Id"
+          },
+          "enabled": {
+            "type": "integer",
+            "title": "Enabled"
+          },
+          "creator_user_id": {
+            "type": "string",
+            "title": "Creator User Id"
+          }
+        },
+        "type": "object",
+        "required": [
+          "group_id",
+          "manager_member_id",
+          "enabled",
+          "creator_user_id"
+        ],
+        "title": "GroupAssistantConfigOut"
+      },
+      "GroupAssistantConfigUpdateRequest": {
+        "properties": {
+          "enabled": {
+            "type": "integer",
+            "maximum": 1.0,
+            "minimum": 0.0,
+            "title": "Enabled",
+            "default": 0
+          }
+        },
+        "type": "object",
+        "title": "GroupAssistantConfigUpdateRequest"
+      },
       "GroupCreateRequest": {
         "properties": {
           "name": {
@@ -3199,6 +4438,26 @@
               }
             ],
             "title": "Description"
+          },
+          "type": {
+            "type": "string",
+            "pattern": "^(project|personal)$",
+            "title": "Type",
+            "default": "project"
+          },
+          "users": {
+            "items": {
+              "$ref": "#/components/schemas/GroupMemberUserIn"
+            },
+            "type": "array",
+            "title": "Users"
+          },
+          "agents": {
+            "items": {
+              "$ref": "#/components/schemas/GroupMemberAgentIn"
+            },
+            "type": "array",
+            "title": "Agents"
           }
         },
         "type": "object",
@@ -3206,6 +4465,84 @@
           "name"
         ],
         "title": "GroupCreateRequest"
+      },
+      "GroupMemberAgentIn": {
+        "properties": {
+          "agent_id": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "integer"
+              }
+            ],
+            "title": "Agent Id"
+          },
+          "display_name": {
+            "type": "string",
+            "maxLength": 120,
+            "minLength": 1,
+            "title": "Display Name"
+          },
+          "title": {
+            "anyOf": [
+              {
+                "type": "string",
+                "maxLength": 120
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Title"
+          }
+        },
+        "type": "object",
+        "required": [
+          "agent_id",
+          "display_name"
+        ],
+        "title": "GroupMemberAgentIn"
+      },
+      "GroupMemberUserIn": {
+        "properties": {
+          "user_id": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "integer"
+              }
+            ],
+            "title": "User Id"
+          },
+          "display_name": {
+            "type": "string",
+            "maxLength": 120,
+            "minLength": 1,
+            "title": "Display Name"
+          },
+          "title": {
+            "anyOf": [
+              {
+                "type": "string",
+                "maxLength": 120
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Title"
+          }
+        },
+        "type": "object",
+        "required": [
+          "user_id",
+          "display_name"
+        ],
+        "title": "GroupMemberUserIn"
       },
       "GroupOut": {
         "properties": {
@@ -3228,6 +4565,10 @@
             ],
             "title": "Description"
           },
+          "type": {
+            "type": "string",
+            "title": "Type"
+          },
           "created_at": {
             "type": "string",
             "format": "date-time",
@@ -3244,10 +4585,426 @@
           "id",
           "name",
           "description",
+          "type",
           "created_at",
           "updated_at"
         ],
         "title": "GroupOut"
+      },
+      "GroupTaskClaimRequest": {
+        "properties": {
+          "member_id": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "integer"
+              }
+            ],
+            "title": "Member Id"
+          }
+        },
+        "type": "object",
+        "required": [
+          "member_id"
+        ],
+        "title": "GroupTaskClaimRequest"
+      },
+      "GroupTaskDagUpdateRequest": {
+        "properties": {
+          "nodes": {
+            "items": {
+              "$ref": "#/components/schemas/GroupTaskNodeIn"
+            },
+            "type": "array",
+            "title": "Nodes"
+          }
+        },
+        "type": "object",
+        "required": [
+          "nodes"
+        ],
+        "title": "GroupTaskDagUpdateRequest"
+      },
+      "GroupTaskEventOut": {
+        "properties": {
+          "id": {
+            "type": "string",
+            "title": "Id"
+          },
+          "run_id": {
+            "type": "string",
+            "title": "Run Id"
+          },
+          "node_id": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Node Id"
+          },
+          "event_type": {
+            "type": "string",
+            "title": "Event Type"
+          },
+          "payload_json": {
+            "type": "string",
+            "title": "Payload Json"
+          },
+          "created_at": {
+            "type": "string",
+            "format": "date-time",
+            "title": "Created At"
+          },
+          "updated_at": {
+            "type": "string",
+            "format": "date-time",
+            "title": "Updated At"
+          }
+        },
+        "type": "object",
+        "required": [
+          "id",
+          "run_id",
+          "node_id",
+          "event_type",
+          "payload_json",
+          "created_at",
+          "updated_at"
+        ],
+        "title": "GroupTaskEventOut"
+      },
+      "GroupTaskNodeBlockRequest": {
+        "properties": {
+          "reason": {
+            "type": "string",
+            "minLength": 1,
+            "title": "Reason"
+          }
+        },
+        "type": "object",
+        "required": [
+          "reason"
+        ],
+        "title": "GroupTaskNodeBlockRequest"
+      },
+      "GroupTaskNodeCompleteRequest": {
+        "properties": {
+          "output_summary": {
+            "type": "string",
+            "minLength": 1,
+            "title": "Output Summary"
+          }
+        },
+        "type": "object",
+        "required": [
+          "output_summary"
+        ],
+        "title": "GroupTaskNodeCompleteRequest"
+      },
+      "GroupTaskNodeIn": {
+        "properties": {
+          "node_key": {
+            "type": "string",
+            "maxLength": 80,
+            "minLength": 1,
+            "title": "Node Key"
+          },
+          "title": {
+            "type": "string",
+            "maxLength": 255,
+            "minLength": 1,
+            "title": "Title"
+          },
+          "detail": {
+            "type": "string",
+            "title": "Detail",
+            "default": ""
+          },
+          "role_required": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Role Required"
+          },
+          "deps": {
+            "items": {
+              "type": "string"
+            },
+            "type": "array",
+            "title": "Deps"
+          }
+        },
+        "type": "object",
+        "required": [
+          "node_key",
+          "title"
+        ],
+        "title": "GroupTaskNodeIn"
+      },
+      "GroupTaskNodeOut": {
+        "properties": {
+          "id": {
+            "type": "string",
+            "title": "Id"
+          },
+          "run_id": {
+            "type": "string",
+            "title": "Run Id"
+          },
+          "node_key": {
+            "type": "string",
+            "title": "Node Key"
+          },
+          "title": {
+            "type": "string",
+            "title": "Title"
+          },
+          "detail": {
+            "type": "string",
+            "title": "Detail"
+          },
+          "role_required": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Role Required"
+          },
+          "deps": {
+            "items": {
+              "type": "string"
+            },
+            "type": "array",
+            "title": "Deps"
+          },
+          "status": {
+            "type": "string",
+            "title": "Status"
+          },
+          "assignee_kind": {
+            "type": "string",
+            "title": "Assignee Kind"
+          },
+          "assignee_member_id": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Assignee Member Id"
+          },
+          "output_summary": {
+            "type": "string",
+            "title": "Output Summary"
+          },
+          "manager_review_status": {
+            "type": "string",
+            "title": "Manager Review Status"
+          },
+          "created_at": {
+            "type": "string",
+            "format": "date-time",
+            "title": "Created At"
+          },
+          "updated_at": {
+            "type": "string",
+            "format": "date-time",
+            "title": "Updated At"
+          }
+        },
+        "type": "object",
+        "required": [
+          "id",
+          "run_id",
+          "node_key",
+          "title",
+          "detail",
+          "role_required",
+          "deps",
+          "status",
+          "assignee_kind",
+          "assignee_member_id",
+          "output_summary",
+          "manager_review_status",
+          "created_at",
+          "updated_at"
+        ],
+        "title": "GroupTaskNodeOut"
+      },
+      "GroupTaskNodeReviewRequest": {
+        "properties": {
+          "manager_review_status": {
+            "type": "string",
+            "pattern": "^(approved|rework)$",
+            "title": "Manager Review Status"
+          },
+          "note": {
+            "type": "string",
+            "title": "Note",
+            "default": ""
+          }
+        },
+        "type": "object",
+        "required": [
+          "manager_review_status"
+        ],
+        "title": "GroupTaskNodeReviewRequest"
+      },
+      "GroupTaskRunCreateRequest": {
+        "properties": {
+          "group_id": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "integer"
+              }
+            ],
+            "title": "Group Id"
+          },
+          "creator_member_id": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "integer"
+              }
+            ],
+            "title": "Creator Member Id"
+          },
+          "title": {
+            "type": "string",
+            "maxLength": 255,
+            "minLength": 1,
+            "title": "Title"
+          },
+          "goal_text": {
+            "type": "string",
+            "minLength": 1,
+            "title": "Goal Text"
+          },
+          "nodes": {
+            "items": {
+              "$ref": "#/components/schemas/GroupTaskNodeIn"
+            },
+            "type": "array",
+            "title": "Nodes"
+          },
+          "trigger_message_id": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Trigger Message Id"
+          }
+        },
+        "type": "object",
+        "required": [
+          "group_id",
+          "creator_member_id",
+          "title",
+          "goal_text"
+        ],
+        "title": "GroupTaskRunCreateRequest"
+      },
+      "GroupTaskRunOut": {
+        "properties": {
+          "id": {
+            "type": "string",
+            "title": "Id"
+          },
+          "group_id": {
+            "type": "string",
+            "title": "Group Id"
+          },
+          "creator_member_id": {
+            "type": "string",
+            "title": "Creator Member Id"
+          },
+          "trigger_message_id": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Trigger Message Id"
+          },
+          "title": {
+            "type": "string",
+            "title": "Title"
+          },
+          "goal_text": {
+            "type": "string",
+            "title": "Goal Text"
+          },
+          "status": {
+            "type": "string",
+            "title": "Status"
+          },
+          "dag_json": {
+            "type": "string",
+            "title": "Dag Json"
+          },
+          "runtime_dir": {
+            "type": "string",
+            "title": "Runtime Dir"
+          },
+          "created_at": {
+            "type": "string",
+            "format": "date-time",
+            "title": "Created At"
+          },
+          "updated_at": {
+            "type": "string",
+            "format": "date-time",
+            "title": "Updated At"
+          }
+        },
+        "type": "object",
+        "required": [
+          "id",
+          "group_id",
+          "creator_member_id",
+          "trigger_message_id",
+          "title",
+          "goal_text",
+          "status",
+          "dag_json",
+          "runtime_dir",
+          "created_at",
+          "updated_at"
+        ],
+        "title": "GroupTaskRunOut"
       },
       "HTTPValidationError": {
         "properties": {
@@ -3330,7 +5087,7 @@
       "MCPOut": {
         "properties": {
           "id": {
-            "type": "integer",
+            "type": "string",
             "title": "Id"
           },
           "name": {
@@ -3465,33 +5222,6 @@
         ],
         "title": "MemberOut"
       },
-      "MemberUpdateRequest": {
-        "properties": {
-          "display_name": {
-            "type": "string",
-            "maxLength": 120,
-            "minLength": 1,
-            "title": "Display Name"
-          },
-          "title": {
-            "anyOf": [
-              {
-                "type": "string",
-                "maxLength": 120
-              },
-              {
-                "type": "null"
-              }
-            ],
-            "title": "Title"
-          }
-        },
-        "type": "object",
-        "required": [
-          "display_name"
-        ],
-        "title": "MemberUpdateRequest"
-      },
       "MessageCreateRequest": {
         "properties": {
           "group_id": {
@@ -3578,21 +5308,13 @@
         ],
         "title": "MessageOut"
       },
-      "SkillCreateRequest": {
+      "ProjectMemoryCompressRunOut": {
         "properties": {
-          "name": {
-            "type": "string",
-            "maxLength": 120,
-            "minLength": 1,
-            "title": "Name"
+          "compressed": {
+            "type": "boolean",
+            "title": "Compressed"
           },
-          "code": {
-            "type": "string",
-            "maxLength": 120,
-            "minLength": 1,
-            "title": "Code"
-          },
-          "description": {
+          "reason": {
             "anyOf": [
               {
                 "type": "string"
@@ -3601,100 +5323,208 @@
                 "type": "null"
               }
             ],
-            "title": "Description"
+            "title": "Reason"
           },
-          "content": {
-            "type": "string",
-            "minLength": 1,
-            "title": "Content"
+          "compressed_count": {
+            "anyOf": [
+              {
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Compressed Count"
           },
-          "version": {
-            "type": "string",
-            "maxLength": 50,
-            "minLength": 1,
-            "title": "Version",
-            "default": "1.0.0"
-          },
-          "is_active": {
-            "type": "integer",
-            "title": "Is Active",
-            "default": 1
+          "last_message_id": {
+            "anyOf": [
+              {
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Last Message Id"
           }
         },
         "type": "object",
         "required": [
-          "name",
+          "compressed"
+        ],
+        "title": "ProjectMemoryCompressRunOut"
+      },
+      "ProjectMemoryCompressorConfigOut": {
+        "properties": {
+          "enabled": {
+            "type": "boolean",
+            "title": "Enabled"
+          },
+          "trigger_tokens": {
+            "type": "integer",
+            "title": "Trigger Tokens"
+          },
+          "keep_recent_messages": {
+            "type": "integer",
+            "title": "Keep Recent Messages"
+          },
+          "min_interval_seconds": {
+            "type": "integer",
+            "title": "Min Interval Seconds"
+          }
+        },
+        "type": "object",
+        "required": [
+          "enabled",
+          "trigger_tokens",
+          "keep_recent_messages",
+          "min_interval_seconds"
+        ],
+        "title": "ProjectMemoryCompressorConfigOut"
+      },
+      "ProjectMemoryCompressorConfigUpdateRequest": {
+        "properties": {
+          "enabled": {
+            "type": "boolean",
+            "title": "Enabled"
+          },
+          "trigger_tokens": {
+            "type": "integer",
+            "title": "Trigger Tokens"
+          },
+          "keep_recent_messages": {
+            "type": "integer",
+            "title": "Keep Recent Messages"
+          },
+          "min_interval_seconds": {
+            "type": "integer",
+            "title": "Min Interval Seconds"
+          }
+        },
+        "type": "object",
+        "required": [
+          "enabled",
+          "trigger_tokens",
+          "keep_recent_messages",
+          "min_interval_seconds"
+        ],
+        "title": "ProjectMemoryCompressorConfigUpdateRequest"
+      },
+      "ProjectMemoryCompressorStatusOut": {
+        "properties": {
+          "project_id": {
+            "type": "integer",
+            "title": "Project Id"
+          },
+          "last_message_id": {
+            "type": "integer",
+            "title": "Last Message Id"
+          },
+          "pending_message_count": {
+            "type": "integer",
+            "title": "Pending Message Count"
+          },
+          "pending_tokens": {
+            "type": "integer",
+            "title": "Pending Tokens"
+          },
+          "trigger_tokens": {
+            "type": "integer",
+            "title": "Trigger Tokens"
+          },
+          "keep_recent_messages": {
+            "type": "integer",
+            "title": "Keep Recent Messages"
+          },
+          "will_trigger": {
+            "type": "boolean",
+            "title": "Will Trigger"
+          },
+          "state_file": {
+            "type": "string",
+            "title": "State File"
+          },
+          "memory_file": {
+            "type": "string",
+            "title": "Memory File"
+          }
+        },
+        "type": "object",
+        "required": [
+          "project_id",
+          "last_message_id",
+          "pending_message_count",
+          "pending_tokens",
+          "trigger_tokens",
+          "keep_recent_messages",
+          "will_trigger",
+          "state_file",
+          "memory_file"
+        ],
+        "title": "ProjectMemoryCompressorStatusOut"
+      },
+      "SkillPoolItemOut": {
+        "properties": {
+          "code": {
+            "type": "string",
+            "title": "Code"
+          },
+          "name": {
+            "type": "string",
+            "title": "Name"
+          },
+          "description": {
+            "type": "string",
+            "title": "Description"
+          },
+          "dir": {
+            "type": "string",
+            "title": "Dir"
+          }
+        },
+        "type": "object",
+        "required": [
           "code",
+          "name",
+          "description",
+          "dir"
+        ],
+        "title": "SkillPoolItemOut"
+      },
+      "TextFileOut": {
+        "properties": {
+          "path": {
+            "type": "string",
+            "title": "Path"
+          },
+          "content": {
+            "type": "string",
+            "title": "Content"
+          }
+        },
+        "type": "object",
+        "required": [
+          "path",
           "content"
         ],
-        "title": "SkillCreateRequest"
+        "title": "TextFileOut"
       },
-      "SkillOut": {
+      "TextFileWriteRequest": {
         "properties": {
-          "id": {
-            "type": "integer",
-            "title": "Id"
-          },
-          "name": {
-            "type": "string",
-            "title": "Name"
-          },
-          "code": {
-            "type": "string",
-            "title": "Code"
-          },
-          "description": {
-            "anyOf": [
-              {
-                "type": "string"
-              },
-              {
-                "type": "null"
-              }
-            ],
-            "title": "Description"
-          },
           "content": {
             "type": "string",
-            "title": "Content"
-          },
-          "version": {
-            "type": "string",
-            "title": "Version"
-          },
-          "is_active": {
-            "type": "integer",
-            "title": "Is Active"
-          },
-          "created_at": {
-            "type": "string",
-            "format": "date-time",
-            "title": "Created At"
-          },
-          "updated_at": {
-            "type": "string",
-            "format": "date-time",
-            "title": "Updated At"
+            "maxLength": 2000000,
+            "title": "Content",
+            "default": ""
           }
         },
         "type": "object",
-        "required": [
-          "id",
-          "name",
-          "code",
-          "description",
-          "content",
-          "version",
-          "is_active",
-          "created_at",
-          "updated_at"
-        ],
-        "title": "SkillOut"
+        "title": "TextFileWriteRequest"
       },
       "ToolOut": {
         "properties": {
           "id": {
-            "type": "integer",
+            "type": "string",
             "title": "Id"
           },
           "name": {
@@ -3932,6 +5762,47 @@
         ],
         "title": "UserOut"
       },
+      "UserProfileMdOut": {
+        "properties": {
+          "content": {
+            "type": "string",
+            "title": "Content"
+          }
+        },
+        "type": "object",
+        "required": [
+          "content"
+        ],
+        "title": "UserProfileMdOut"
+      },
+      "UserSelfUpdateRequest": {
+        "properties": {
+          "display_name": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Display Name"
+          },
+          "bio": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Bio"
+          }
+        },
+        "type": "object",
+        "title": "UserSelfUpdateRequest"
+      },
       "ValidationError": {
         "properties": {
           "loc": {
@@ -3990,50 +5861,6 @@
         ],
         "title": "WorkspaceFileContentOut"
       },
-      "WorkspaceFileInfo": {
-        "properties": {
-          "name": {
-            "type": "string",
-            "title": "Name"
-          },
-          "exists": {
-            "type": "boolean",
-            "title": "Exists"
-          },
-          "size": {
-            "type": "integer",
-            "title": "Size"
-          },
-          "enabled": {
-            "type": "boolean",
-            "title": "Enabled"
-          }
-        },
-        "type": "object",
-        "required": [
-          "name",
-          "exists",
-          "size",
-          "enabled"
-        ],
-        "title": "WorkspaceFileInfo"
-      },
-      "WorkspaceFileListOut": {
-        "properties": {
-          "files": {
-            "items": {
-              "$ref": "#/components/schemas/WorkspaceFileInfo"
-            },
-            "type": "array",
-            "title": "Files"
-          }
-        },
-        "type": "object",
-        "required": [
-          "files"
-        ],
-        "title": "WorkspaceFileListOut"
-      },
       "WorkspaceFileTogglesOut": {
         "properties": {
           "enabled_files": {
@@ -4049,19 +5876,6 @@
           "enabled_files"
         ],
         "title": "WorkspaceFileTogglesOut"
-      },
-      "WorkspaceFileTogglesRequest": {
-        "properties": {
-          "toggles": {
-            "additionalProperties": {
-              "type": "boolean"
-            },
-            "type": "object",
-            "title": "Toggles"
-          }
-        },
-        "type": "object",
-        "title": "WorkspaceFileTogglesRequest"
       },
       "WorkspaceFileWriteRequest": {
         "properties": {
