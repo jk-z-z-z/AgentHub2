@@ -15,8 +15,13 @@ def list_members(db: Session, group_id: int | None = None) -> list[type[Member]]
 
 
 def create_user_member(db: Session, group_id: str,display_name: str,user_ref: str,title: str|None) -> Member:
-    if not db.query(Group).filter(Group.id == group_id).first():
+    group = db.query(Group).filter(Group.id == group_id).first()
+    if not group:
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Group not found")
+    if group.type == "personal":
+        existing_count = db.query(Member).filter(Member.group_id == group_id).count()
+        if existing_count >= 2:
+            raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail="Personal group can only have 2 members")
     item = Member(
         group_id=group_id,
         kind="user",
@@ -31,10 +36,15 @@ def create_user_member(db: Session, group_id: str,display_name: str,user_ref: st
 
 
 def create_agent_member(db: Session, group_id: str,display_name: str,agent_instance_id: str,title: str|None) -> Member:
-    if not db.query(Group).filter(Group.id == group_id).first():
+    group = db.query(Group).filter(Group.id == group_id).first()
+    if not group:
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Group not found")
     if not db.query(AgentInstance).filter(AgentInstance.id == agent_instance_id).first():
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Agent instance not found")
+    if group.type == "personal":
+        existing_count = db.query(Member).filter(Member.group_id == group_id).count()
+        if existing_count >= 2:
+            raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail="Personal group can only have 2 members")
     item = Member(
         group_id=group_id,
         kind="agent",

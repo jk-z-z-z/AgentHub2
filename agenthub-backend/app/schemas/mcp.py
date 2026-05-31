@@ -15,7 +15,7 @@ class MCPCreateRequest(ORMBaseModel):
 
 
 class MCPOut(ORMBaseModel):
-    id: int
+    id: str
     name: str
     server_code: str
     description: str | None

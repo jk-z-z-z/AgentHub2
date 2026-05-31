@@ -15,7 +15,7 @@ class ToolCreateRequest(ORMBaseModel):
 
 
 class ToolOut(ORMBaseModel):
-    id: int
+    id: str
     name: str
     code: str
     description: str | None

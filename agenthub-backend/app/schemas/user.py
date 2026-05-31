@@ -34,3 +34,12 @@ class UserCreateRequest(ORMBaseModel):
     role: str
     status: str
     bio: str
+
+
+class UserSelfUpdateRequest(ORMBaseModel):
+    display_name: str | None = None
+    bio: str | None = None
+
+
+class UserProfileMdOut(ORMBaseModel):
+    content: str

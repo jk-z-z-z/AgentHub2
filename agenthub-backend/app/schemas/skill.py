@@ -15,7 +15,7 @@ class SkillCreateRequest(ORMBaseModel):
 
 
 class SkillOut(ORMBaseModel):
-    id: int
+    id: str
     name: str
     code: str
     description: str | None

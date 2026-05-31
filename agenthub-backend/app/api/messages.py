@@ -4,7 +4,7 @@ from sqlalchemy.orm import Session
 from app.db.session import get_db
 from app.schemas.common import ApiResponse
 from app.schemas.message import MessageCreateRequest, MessageOut
-from app.services.message_service import create_message, list_messages
+from app.services.message_service import create_message_and_trigger_ai, list_messages
 
 
 router = APIRouter(prefix="/messages", tags=["messages"])
@@ -30,9 +30,12 @@ def list_messages_api(
 async def create_message_api(payload: MessageCreateRequest, db: Session = Depends(get_db)):
 
 
-    row = await create_message(db, int(payload.group_id),
-                                    int(payload.sender_member_id),
-                                    payload.message_type,
-                                    payload.content,
-                                    payload.metadata_json)
+    row = await create_message_and_trigger_ai(
+        db,
+        group_id=int(payload.group_id),
+        sender_member_id=int(payload.sender_member_id),
+        message_type=payload.message_type,
+        content=payload.content,
+        meta_json=payload.metadata_json,
+    )
     return ApiResponse(data=MessageOut.model_validate(row))

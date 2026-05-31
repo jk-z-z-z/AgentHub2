@@ -1,4 +1,4 @@
-from sqlalchemy import Integer, String, Text
+from sqlalchemy import Float, Integer, String, Text
 from sqlalchemy.orm import Mapped, mapped_column
 
 from app.db.base import Base, SnowflakeMixin, TimestampMixin
@@ -7,10 +7,19 @@ from app.db.base import Base, SnowflakeMixin, TimestampMixin
 class AgentProfile(SnowflakeMixin, TimestampMixin, Base):
     __tablename__ = "agent_profiles"
 
+    creator_user_id: Mapped[int] = mapped_column(Integer, nullable=False, index=True)
     name: Mapped[str] = mapped_column(String(120), nullable=False, unique=True)
     role: Mapped[str] = mapped_column(String(120), nullable=False)
     description: Mapped[str | None] = mapped_column(Text)
-    system_prompt: Mapped[str] = mapped_column(Text, nullable=False)
-    default_model_json: Mapped[str] = mapped_column(Text, default="{}", nullable=False)
-    planning_mode: Mapped[str | None] = mapped_column(String(50))
+    soul_md: Mapped[str] = mapped_column(Text, nullable=False)
+    agents_md: Mapped[str] = mapped_column(Text, default="", nullable=False)
+    profile_md: Mapped[str] = mapped_column(Text, default="", nullable=False)
+    bootstrap_md: Mapped[str] = mapped_column(Text, default="", nullable=False)
+    memory_md: Mapped[str] = mapped_column(Text, default="", nullable=False)
+    heartbeat_md: Mapped[str] = mapped_column(Text, default="", nullable=False)
+    enabled_files_json: Mapped[str] = mapped_column(Text, default="{}", nullable=False)
+    model_name: Mapped[str] = mapped_column(String(120), default="gpt-4.1-mini", nullable=False)
+    temperature: Mapped[float] = mapped_column(Float, default=0.7, nullable=False)
+    top_p: Mapped[float] = mapped_column(Float, default=1.0, nullable=False)
+    max_output_tokens: Mapped[int | None] = mapped_column(Integer)
     is_active: Mapped[int] = mapped_column(Integer, default=1, nullable=False)

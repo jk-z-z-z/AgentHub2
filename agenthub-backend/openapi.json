@@ -88,6 +88,96 @@
         ]
       }
     },
+    "/api/v1/users": {
+      "get": {
+        "tags": [
+          "users"
+        ],
+        "summary": "List Users Api",
+        "operationId": "list_users_api_api_v1_users_get",
+        "parameters": [
+          {
+            "name": "q",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "description": "Search by email/username/display_name",
+              "title": "Q"
+            },
+            "description": "Search by email/username/display_name"
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiResponse_list_UserOut__"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      },
+      "post": {
+        "tags": [
+          "users"
+        ],
+        "summary": "Create User Api",
+        "operationId": "create_user_api_api_v1_users_post",
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/UserCreateRequest"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiResponse_UserOut_"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
     "/api/v1/groups": {
       "get": {
         "tags": [
@@ -162,45 +252,6 @@
               "application/json": {
                 "schema": {
                   "$ref": "#/components/schemas/ApiResponse_list_ToolOut__"
-                }
-              }
-            }
-          }
-        }
-      },
-      "post": {
-        "tags": [
-          "tools"
-        ],
-        "summary": "Create Tool Api",
-        "operationId": "create_tool_api_api_v1_tools_post",
-        "requestBody": {
-          "content": {
-            "application/json": {
-              "schema": {
-                "$ref": "#/components/schemas/ToolCreateRequest"
-              }
-            }
-          },
-          "required": true
-        },
-        "responses": {
-          "200": {
-            "description": "Successful Response",
-            "content": {
-              "application/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/ApiResponse_ToolOut_"
-                }
-              }
-            }
-          },
-          "422": {
-            "description": "Validation Error",
-            "content": {
-              "application/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/HTTPValidationError"
                 }
               }
             }
@@ -431,6 +482,279 @@
               "application/json": {
                 "schema": {
                   "$ref": "#/components/schemas/ApiResponse_AgentProfileOut_"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/agent-profiles/{profile_id}/files": {
+      "get": {
+        "tags": [
+          "agent-profiles"
+        ],
+        "summary": "List Profile Files Api",
+        "operationId": "list_profile_files_api_api_v1_agent_profiles__profile_id__files_get",
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ],
+        "parameters": [
+          {
+            "name": "profile_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "integer",
+              "title": "Profile Id"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiResponse_list_str__"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/agent-profiles/{profile_id}/files/{filename}": {
+      "get": {
+        "tags": [
+          "agent-profiles"
+        ],
+        "summary": "Get Profile File Api",
+        "operationId": "get_profile_file_api_api_v1_agent_profiles__profile_id__files__filename__get",
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ],
+        "parameters": [
+          {
+            "name": "profile_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "integer",
+              "title": "Profile Id"
+            }
+          },
+          {
+            "name": "filename",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "title": "Filename"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiResponse_WorkspaceFileContentOut_"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      },
+      "put": {
+        "tags": [
+          "agent-profiles"
+        ],
+        "summary": "Update Profile File Api",
+        "operationId": "update_profile_file_api_api_v1_agent_profiles__profile_id__files__filename__put",
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ],
+        "parameters": [
+          {
+            "name": "profile_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "integer",
+              "title": "Profile Id"
+            }
+          },
+          {
+            "name": "filename",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "title": "Filename"
+            }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/WorkspaceFileWriteRequest"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiResponse_WorkspaceFileContentOut_"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/agent-profiles/{profile_id}/file-toggles": {
+      "get": {
+        "tags": [
+          "agent-profiles"
+        ],
+        "summary": "Get Profile Toggles Api",
+        "operationId": "get_profile_toggles_api_api_v1_agent_profiles__profile_id__file_toggles_get",
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ],
+        "parameters": [
+          {
+            "name": "profile_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "integer",
+              "title": "Profile Id"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiResponse_WorkspaceFileTogglesOut_"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      },
+      "put": {
+        "tags": [
+          "agent-profiles"
+        ],
+        "summary": "Update Profile Toggles Api",
+        "operationId": "update_profile_toggles_api_api_v1_agent_profiles__profile_id__file_toggles_put",
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ],
+        "parameters": [
+          {
+            "name": "profile_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "integer",
+              "title": "Profile Id"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "additionalProperties": {
+                  "type": "boolean"
+                },
+                "default": {},
+                "title": "Payload"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiResponse_WorkspaceFileTogglesOut_"
                 }
               }
             }
@@ -732,6 +1056,435 @@
         }
       }
     },
+    "/api/v1/agent-instances/{agent_instance_id}/soul": {
+      "get": {
+        "tags": [
+          "agent-instances"
+        ],
+        "summary": "Get Agent Instance Soul Api",
+        "operationId": "get_agent_instance_soul_api_api_v1_agent_instances__agent_instance_id__soul_get",
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ],
+        "parameters": [
+          {
+            "name": "agent_instance_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "integer",
+              "title": "Agent Instance Id"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiResponse_AgentInstanceSoulOut_"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      },
+      "put": {
+        "tags": [
+          "agent-instances"
+        ],
+        "summary": "Update Agent Instance Soul Api",
+        "operationId": "update_agent_instance_soul_api_api_v1_agent_instances__agent_instance_id__soul_put",
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ],
+        "parameters": [
+          {
+            "name": "agent_instance_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "integer",
+              "title": "Agent Instance Id"
+            }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/AgentInstanceSoulUpdateRequest"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiResponse_AgentInstanceSoulOut_"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/agent-instances/{agent_instance_id}/workspace/files": {
+      "get": {
+        "tags": [
+          "agent-instances"
+        ],
+        "summary": "List Workspace Files Api",
+        "operationId": "list_workspace_files_api_api_v1_agent_instances__agent_instance_id__workspace_files_get",
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ],
+        "parameters": [
+          {
+            "name": "agent_instance_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "integer",
+              "title": "Agent Instance Id"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiResponse_WorkspaceFileListOut_"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/agent-instances/{agent_instance_id}/workspace/files/{filename}": {
+      "get": {
+        "tags": [
+          "agent-instances"
+        ],
+        "summary": "Read Workspace File Api",
+        "operationId": "read_workspace_file_api_api_v1_agent_instances__agent_instance_id__workspace_files__filename__get",
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ],
+        "parameters": [
+          {
+            "name": "agent_instance_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "integer",
+              "title": "Agent Instance Id"
+            }
+          },
+          {
+            "name": "filename",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "title": "Filename"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiResponse_WorkspaceFileContentOut_"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      },
+      "put": {
+        "tags": [
+          "agent-instances"
+        ],
+        "summary": "Write Workspace File Api",
+        "operationId": "write_workspace_file_api_api_v1_agent_instances__agent_instance_id__workspace_files__filename__put",
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ],
+        "parameters": [
+          {
+            "name": "agent_instance_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "integer",
+              "title": "Agent Instance Id"
+            }
+          },
+          {
+            "name": "filename",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "title": "Filename"
+            }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/WorkspaceFileWriteRequest"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiResponse_WorkspaceFileContentOut_"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/agent-instances/{agent_instance_id}/workspace/file-toggles": {
+      "put": {
+        "tags": [
+          "agent-instances"
+        ],
+        "summary": "Update Workspace Toggles Api",
+        "operationId": "update_workspace_toggles_api_api_v1_agent_instances__agent_instance_id__workspace_file_toggles_put",
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ],
+        "parameters": [
+          {
+            "name": "agent_instance_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "integer",
+              "title": "Agent Instance Id"
+            }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/WorkspaceFileTogglesRequest"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiResponse_WorkspaceFileTogglesOut_"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/agent-instances/{agent_instance_id}/workspace/reset/{filename}": {
+      "post": {
+        "tags": [
+          "agent-instances"
+        ],
+        "summary": "Reset Workspace File Api",
+        "operationId": "reset_workspace_file_api_api_v1_agent_instances__agent_instance_id__workspace_reset__filename__post",
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ],
+        "parameters": [
+          {
+            "name": "agent_instance_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "integer",
+              "title": "Agent Instance Id"
+            }
+          },
+          {
+            "name": "filename",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "title": "Filename"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiResponse_WorkspaceFileContentOut_"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/agent-instances/{agent_instance_id}/workspace/reset-all": {
+      "post": {
+        "tags": [
+          "agent-instances"
+        ],
+        "summary": "Reset Workspace All Api",
+        "operationId": "reset_workspace_all_api_api_v1_agent_instances__agent_instance_id__workspace_reset_all_post",
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ],
+        "parameters": [
+          {
+            "name": "agent_instance_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "integer",
+              "title": "Agent Instance Id"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiResponse_WorkspaceFileTogglesOut_"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
     "/api/v1/members": {
       "get": {
         "tags": [
@@ -863,6 +1616,98 @@
         }
       }
     },
+    "/api/v1/members/{member_id}": {
+      "put": {
+        "tags": [
+          "members"
+        ],
+        "summary": "Update Member Api",
+        "operationId": "update_member_api_api_v1_members__member_id__put",
+        "parameters": [
+          {
+            "name": "member_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "title": "Member Id"
+            }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/MemberUpdateRequest"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiResponse_MemberOut_"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      },
+      "delete": {
+        "tags": [
+          "members"
+        ],
+        "summary": "Delete Member Api",
+        "operationId": "delete_member_api_api_v1_members__member_id__delete",
+        "parameters": [
+          {
+            "name": "member_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "title": "Member Id"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiResponse_bool_"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
     "/api/v1/messages": {
       "get": {
         "tags": [
@@ -904,7 +1749,7 @@
               "type": "integer",
               "maximum": 200,
               "minimum": 1,
-              "default": 50,
+              "default": 20,
               "title": "Limit"
             }
           }
@@ -970,6 +1815,52 @@
             }
           }
         }
+      }
+    },
+    "/api/v1/ai/chat": {
+      "post": {
+        "tags": [
+          "ai"
+        ],
+        "summary": "Ai Chat Api",
+        "operationId": "ai_chat_api_api_v1_ai_chat_post",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/AIChatRequest"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiResponse_AIChatResponse_"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        },
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ]
       }
     }
   },
@@ -1098,16 +1989,57 @@
         ],
         "title": "ACPProviderOut"
       },
+      "AIChatRequest": {
+        "properties": {
+          "message": {
+            "type": "string",
+            "minLength": 1,
+            "title": "Message"
+          },
+          "system_prompt": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "System Prompt"
+          },
+          "agent_instance_id": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Agent Instance Id"
+          }
+        },
+        "type": "object",
+        "required": [
+          "message"
+        ],
+        "title": "AIChatRequest"
+      },
+      "AIChatResponse": {
+        "properties": {
+          "reply": {
+            "type": "string",
+            "title": "Reply"
+          }
+        },
+        "type": "object",
+        "required": [
+          "reply"
+        ],
+        "title": "AIChatResponse"
+      },
       "AgentInstanceCreateRequest": {
         "properties": {
-          "group_id": {
-            "type": "integer",
-            "title": "Group Id"
-          },
-          "profile_id": {
-            "type": "integer",
-            "title": "Profile Id"
-          },
           "display_name": {
             "type": "string",
             "maxLength": 120,
@@ -1160,12 +2092,32 @@
             "minLength": 1,
             "title": "Status",
             "default": "active"
+          },
+          "template_profile_id": {
+            "anyOf": [
+              {
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Template Profile Id"
+          },
+          "soul_md": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Soul Md"
           }
         },
         "type": "object",
         "required": [
-          "group_id",
-          "profile_id",
           "display_name"
         ],
         "title": "AgentInstanceCreateRequest"
@@ -1175,14 +2127,6 @@
           "id": {
             "type": "integer",
             "title": "Id"
-          },
-          "group_id": {
-            "type": "integer",
-            "title": "Group Id"
-          },
-          "profile_id": {
-            "type": "integer",
-            "title": "Profile Id"
           },
           "display_name": {
             "type": "string",
@@ -1198,6 +2142,17 @@
               }
             ],
             "title": "Description"
+          },
+          "template_profile_id": {
+            "anyOf": [
+              {
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Template Profile Id"
           },
           "base_url": {
             "anyOf": [
@@ -1243,10 +2198,9 @@
         "type": "object",
         "required": [
           "id",
-          "group_id",
-          "profile_id",
           "display_name",
           "description",
+          "template_profile_id",
           "base_url",
           "api_key_ref",
           "config_json",
@@ -1255,6 +2209,31 @@
           "updated_at"
         ],
         "title": "AgentInstanceOut"
+      },
+      "AgentInstanceSoulOut": {
+        "properties": {
+          "soul_md": {
+            "type": "string",
+            "title": "Soul Md"
+          }
+        },
+        "type": "object",
+        "required": [
+          "soul_md"
+        ],
+        "title": "AgentInstanceSoulOut"
+      },
+      "AgentInstanceSoulUpdateRequest": {
+        "properties": {
+          "soul_md": {
+            "type": "string",
+            "maxLength": 200000,
+            "title": "Soul Md",
+            "default": ""
+          }
+        },
+        "type": "object",
+        "title": "AgentInstanceSoulUpdateRequest"
       },
       "AgentMemberCreateRequest": {
         "properties": {
@@ -1318,15 +2297,86 @@
             ],
             "title": "Description"
           },
-          "system_prompt": {
+          "soul_md": {
             "type": "string",
             "minLength": 1,
-            "title": "System Prompt"
+            "title": "Soul Md"
           },
-          "default_model_json": {
+          "agents_md": {
             "type": "string",
-            "title": "Default Model Json",
+            "title": "Agents Md",
+            "default": ""
+          },
+          "profile_md": {
+            "type": "string",
+            "title": "Profile Md",
+            "default": ""
+          },
+          "bootstrap_md": {
+            "type": "string",
+            "title": "Bootstrap Md",
+            "default": ""
+          },
+          "memory_md": {
+            "type": "string",
+            "title": "Memory Md",
+            "default": ""
+          },
+          "heartbeat_md": {
+            "type": "string",
+            "title": "Heartbeat Md",
+            "default": ""
+          },
+          "enabled_files_json": {
+            "type": "string",
+            "title": "Enabled Files Json",
             "default": "{}"
+          },
+          "model_name": {
+            "type": "string",
+            "maxLength": 120,
+            "minLength": 1,
+            "title": "Model Name",
+            "default": "gpt-4.1-mini"
+          },
+          "temperature": {
+            "type": "number",
+            "maximum": 2.0,
+            "minimum": 0.0,
+            "title": "Temperature",
+            "default": 0.7
+          },
+          "top_p": {
+            "type": "number",
+            "maximum": 1.0,
+            "minimum": 0.0,
+            "title": "Top P",
+            "default": 1.0
+          },
+          "max_output_tokens": {
+            "anyOf": [
+              {
+                "type": "integer",
+                "maximum": 200000.0,
+                "minimum": 1.0
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Max Output Tokens"
+          },
+          "reasoning_effort": {
+            "anyOf": [
+              {
+                "type": "string",
+                "maxLength": 30
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Reasoning Effort"
           },
           "planning_mode": {
             "anyOf": [
@@ -1350,7 +2400,7 @@
         "required": [
           "name",
           "role",
-          "system_prompt"
+          "soul_md"
         ],
         "title": "AgentProfileCreateRequest"
       },
@@ -1379,13 +2429,67 @@
             ],
             "title": "Description"
           },
-          "system_prompt": {
+          "soul_md": {
             "type": "string",
-            "title": "System Prompt"
+            "title": "Soul Md"
           },
-          "default_model_json": {
+          "agents_md": {
             "type": "string",
-            "title": "Default Model Json"
+            "title": "Agents Md"
+          },
+          "profile_md": {
+            "type": "string",
+            "title": "Profile Md"
+          },
+          "bootstrap_md": {
+            "type": "string",
+            "title": "Bootstrap Md"
+          },
+          "memory_md": {
+            "type": "string",
+            "title": "Memory Md"
+          },
+          "heartbeat_md": {
+            "type": "string",
+            "title": "Heartbeat Md"
+          },
+          "enabled_files_json": {
+            "type": "string",
+            "title": "Enabled Files Json"
+          },
+          "model_name": {
+            "type": "string",
+            "title": "Model Name"
+          },
+          "temperature": {
+            "type": "number",
+            "title": "Temperature"
+          },
+          "top_p": {
+            "type": "number",
+            "title": "Top P"
+          },
+          "max_output_tokens": {
+            "anyOf": [
+              {
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Max Output Tokens"
+          },
+          "reasoning_effort": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Reasoning Effort"
           },
           "planning_mode": {
             "anyOf": [
@@ -1419,8 +2523,18 @@
           "name",
           "role",
           "description",
-          "system_prompt",
-          "default_model_json",
+          "soul_md",
+          "agents_md",
+          "profile_md",
+          "bootstrap_md",
+          "memory_md",
+          "heartbeat_md",
+          "enabled_files_json",
+          "model_name",
+          "temperature",
+          "top_p",
+          "max_output_tokens",
+          "reasoning_effort",
           "planning_mode",
           "is_active",
           "created_at",
@@ -1450,6 +2564,28 @@
         ],
         "title": "ApiResponse[ACPProviderOut]"
       },
+      "ApiResponse_AIChatResponse_": {
+        "properties": {
+          "code": {
+            "type": "integer",
+            "title": "Code",
+            "default": 0
+          },
+          "message": {
+            "type": "string",
+            "title": "Message",
+            "default": "ok"
+          },
+          "data": {
+            "$ref": "#/components/schemas/AIChatResponse"
+          }
+        },
+        "type": "object",
+        "required": [
+          "data"
+        ],
+        "title": "ApiResponse[AIChatResponse]"
+      },
       "ApiResponse_AgentInstanceOut_": {
         "properties": {
           "code": {
@@ -1471,6 +2607,28 @@
           "data"
         ],
         "title": "ApiResponse[AgentInstanceOut]"
+      },
+      "ApiResponse_AgentInstanceSoulOut_": {
+        "properties": {
+          "code": {
+            "type": "integer",
+            "title": "Code",
+            "default": 0
+          },
+          "message": {
+            "type": "string",
+            "title": "Message",
+            "default": "ok"
+          },
+          "data": {
+            "$ref": "#/components/schemas/AgentInstanceSoulOut"
+          }
+        },
+        "type": "object",
+        "required": [
+          "data"
+        ],
+        "title": "ApiResponse[AgentInstanceSoulOut]"
       },
       "ApiResponse_AgentProfileOut_": {
         "properties": {
@@ -1626,28 +2784,6 @@
         ],
         "title": "ApiResponse[SkillOut]"
       },
-      "ApiResponse_ToolOut_": {
-        "properties": {
-          "code": {
-            "type": "integer",
-            "title": "Code",
-            "default": 0
-          },
-          "message": {
-            "type": "string",
-            "title": "Message",
-            "default": "ok"
-          },
-          "data": {
-            "$ref": "#/components/schemas/ToolOut"
-          }
-        },
-        "type": "object",
-        "required": [
-          "data"
-        ],
-        "title": "ApiResponse[ToolOut]"
-      },
       "ApiResponse_UserOut_": {
         "properties": {
           "code": {
@@ -1669,6 +2805,95 @@
           "data"
         ],
         "title": "ApiResponse[UserOut]"
+      },
+      "ApiResponse_WorkspaceFileContentOut_": {
+        "properties": {
+          "code": {
+            "type": "integer",
+            "title": "Code",
+            "default": 0
+          },
+          "message": {
+            "type": "string",
+            "title": "Message",
+            "default": "ok"
+          },
+          "data": {
+            "$ref": "#/components/schemas/WorkspaceFileContentOut"
+          }
+        },
+        "type": "object",
+        "required": [
+          "data"
+        ],
+        "title": "ApiResponse[WorkspaceFileContentOut]"
+      },
+      "ApiResponse_WorkspaceFileListOut_": {
+        "properties": {
+          "code": {
+            "type": "integer",
+            "title": "Code",
+            "default": 0
+          },
+          "message": {
+            "type": "string",
+            "title": "Message",
+            "default": "ok"
+          },
+          "data": {
+            "$ref": "#/components/schemas/WorkspaceFileListOut"
+          }
+        },
+        "type": "object",
+        "required": [
+          "data"
+        ],
+        "title": "ApiResponse[WorkspaceFileListOut]"
+      },
+      "ApiResponse_WorkspaceFileTogglesOut_": {
+        "properties": {
+          "code": {
+            "type": "integer",
+            "title": "Code",
+            "default": 0
+          },
+          "message": {
+            "type": "string",
+            "title": "Message",
+            "default": "ok"
+          },
+          "data": {
+            "$ref": "#/components/schemas/WorkspaceFileTogglesOut"
+          }
+        },
+        "type": "object",
+        "required": [
+          "data"
+        ],
+        "title": "ApiResponse[WorkspaceFileTogglesOut]"
+      },
+      "ApiResponse_bool_": {
+        "properties": {
+          "code": {
+            "type": "integer",
+            "title": "Code",
+            "default": 0
+          },
+          "message": {
+            "type": "string",
+            "title": "Message",
+            "default": "ok"
+          },
+          "data": {
+            "type": "boolean",
+            "title": "Data"
+          }
+        },
+        "type": "object",
+        "required": [
+          "data"
+        ],
+        "title": "ApiResponse[bool]"
       },
       "ApiResponse_list_ACPProviderOut__": {
         "properties": {
@@ -1903,6 +3128,58 @@
           "data"
         ],
         "title": "ApiResponse[list[ToolOut]]"
+      },
+      "ApiResponse_list_UserOut__": {
+        "properties": {
+          "code": {
+            "type": "integer",
+            "title": "Code",
+            "default": 0
+          },
+          "message": {
+            "type": "string",
+            "title": "Message",
+            "default": "ok"
+          },
+          "data": {
+            "items": {
+              "$ref": "#/components/schemas/UserOut"
+            },
+            "type": "array",
+            "title": "Data"
+          }
+        },
+        "type": "object",
+        "required": [
+          "data"
+        ],
+        "title": "ApiResponse[list[UserOut]]"
+      },
+      "ApiResponse_list_str__": {
+        "properties": {
+          "code": {
+            "type": "integer",
+            "title": "Code",
+            "default": 0
+          },
+          "message": {
+            "type": "string",
+            "title": "Message",
+            "default": "ok"
+          },
+          "data": {
+            "items": {
+              "type": "string"
+            },
+            "type": "array",
+            "title": "Data"
+          }
+        },
+        "type": "object",
+        "required": [
+          "data"
+        ],
+        "title": "ApiResponse[list[str]]"
       },
       "GroupCreateRequest": {
         "properties": {
@@ -2188,6 +3465,33 @@
         ],
         "title": "MemberOut"
       },
+      "MemberUpdateRequest": {
+        "properties": {
+          "display_name": {
+            "type": "string",
+            "maxLength": 120,
+            "minLength": 1,
+            "title": "Display Name"
+          },
+          "title": {
+            "anyOf": [
+              {
+                "type": "string",
+                "maxLength": 120
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Title"
+          }
+        },
+        "type": "object",
+        "required": [
+          "display_name"
+        ],
+        "title": "MemberUpdateRequest"
+      },
       "MessageCreateRequest": {
         "properties": {
           "group_id": {
@@ -2209,17 +3513,6 @@
             "type": "string",
             "minLength": 1,
             "title": "Content"
-          },
-          "reply_to_message_id": {
-            "anyOf": [
-              {
-                "type": "string"
-              },
-              {
-                "type": "null"
-              }
-            ],
-            "title": "Reply To Message Id"
           },
           "metadata_json": {
             "type": "string",
@@ -2257,17 +3550,6 @@
             "type": "string",
             "title": "Content"
           },
-          "reply_to_message_id": {
-            "anyOf": [
-              {
-                "type": "string"
-              },
-              {
-                "type": "null"
-              }
-            ],
-            "title": "Reply To Message Id"
-          },
           "metadata_json": {
             "type": "string",
             "title": "Metadata Json"
@@ -2290,7 +3572,6 @@
           "sender_member_id",
           "message_type",
           "content",
-          "reply_to_message_id",
           "metadata_json",
           "created_at",
           "updated_at"
@@ -2410,56 +3691,6 @@
         ],
         "title": "SkillOut"
       },
-      "ToolCreateRequest": {
-        "properties": {
-          "name": {
-            "type": "string",
-            "maxLength": 120,
-            "minLength": 1,
-            "title": "Name"
-          },
-          "code": {
-            "type": "string",
-            "maxLength": 120,
-            "minLength": 1,
-            "title": "Code"
-          },
-          "description": {
-            "anyOf": [
-              {
-                "type": "string"
-              },
-              {
-                "type": "null"
-              }
-            ],
-            "title": "Description"
-          },
-          "source_type": {
-            "type": "string",
-            "maxLength": 50,
-            "minLength": 1,
-            "title": "Source Type"
-          },
-          "schema_json": {
-            "type": "string",
-            "title": "Schema Json",
-            "default": "{}"
-          },
-          "is_active": {
-            "type": "integer",
-            "title": "Is Active",
-            "default": 1
-          }
-        },
-        "type": "object",
-        "required": [
-          "name",
-          "code",
-          "source_type"
-        ],
-        "title": "ToolCreateRequest"
-      },
       "ToolOut": {
         "properties": {
           "id": {
@@ -2521,6 +3752,56 @@
           "updated_at"
         ],
         "title": "ToolOut"
+      },
+      "UserCreateRequest": {
+        "properties": {
+          "email": {
+            "type": "string",
+            "title": "Email"
+          },
+          "username": {
+            "type": "string",
+            "title": "Username"
+          },
+          "display_name": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Display Name"
+          },
+          "password": {
+            "type": "string",
+            "title": "Password"
+          },
+          "role": {
+            "type": "string",
+            "title": "Role"
+          },
+          "status": {
+            "type": "string",
+            "title": "Status"
+          },
+          "bio": {
+            "type": "string",
+            "title": "Bio"
+          }
+        },
+        "type": "object",
+        "required": [
+          "email",
+          "username",
+          "display_name",
+          "password",
+          "role",
+          "status",
+          "bio"
+        ],
+        "title": "UserCreateRequest"
       },
       "UserLoginRequest": {
         "properties": {
@@ -2690,6 +3971,109 @@
           "type"
         ],
         "title": "ValidationError"
+      },
+      "WorkspaceFileContentOut": {
+        "properties": {
+          "name": {
+            "type": "string",
+            "title": "Name"
+          },
+          "content": {
+            "type": "string",
+            "title": "Content"
+          }
+        },
+        "type": "object",
+        "required": [
+          "name",
+          "content"
+        ],
+        "title": "WorkspaceFileContentOut"
+      },
+      "WorkspaceFileInfo": {
+        "properties": {
+          "name": {
+            "type": "string",
+            "title": "Name"
+          },
+          "exists": {
+            "type": "boolean",
+            "title": "Exists"
+          },
+          "size": {
+            "type": "integer",
+            "title": "Size"
+          },
+          "enabled": {
+            "type": "boolean",
+            "title": "Enabled"
+          }
+        },
+        "type": "object",
+        "required": [
+          "name",
+          "exists",
+          "size",
+          "enabled"
+        ],
+        "title": "WorkspaceFileInfo"
+      },
+      "WorkspaceFileListOut": {
+        "properties": {
+          "files": {
+            "items": {
+              "$ref": "#/components/schemas/WorkspaceFileInfo"
+            },
+            "type": "array",
+            "title": "Files"
+          }
+        },
+        "type": "object",
+        "required": [
+          "files"
+        ],
+        "title": "WorkspaceFileListOut"
+      },
+      "WorkspaceFileTogglesOut": {
+        "properties": {
+          "enabled_files": {
+            "additionalProperties": {
+              "type": "boolean"
+            },
+            "type": "object",
+            "title": "Enabled Files"
+          }
+        },
+        "type": "object",
+        "required": [
+          "enabled_files"
+        ],
+        "title": "WorkspaceFileTogglesOut"
+      },
+      "WorkspaceFileTogglesRequest": {
+        "properties": {
+          "toggles": {
+            "additionalProperties": {
+              "type": "boolean"
+            },
+            "type": "object",
+            "title": "Toggles"
+          }
+        },
+        "type": "object",
+        "title": "WorkspaceFileTogglesRequest"
+      },
+      "WorkspaceFileWriteRequest": {
+        "properties": {
+          "content": {
+            "type": "string",
+            "maxLength": 500000,
+            "title": "Content",
+            "default": ""
+          }
+        },
+        "type": "object",
+        "title": "WorkspaceFileWriteRequest"
       }
     },
     "securitySchemes": {

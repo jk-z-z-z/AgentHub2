@@ -1,12 +1,7 @@
 from datetime import datetime
 
-from sqlalchemy import DateTime
+from sqlalchemy import DateTime, Integer
 from sqlalchemy.orm import DeclarativeBase, Mapped, mapped_column
-
-from app.common.snowflake import SnowflakeConfig, SnowflakeGenerator
-
-
-snowflake = SnowflakeGenerator(SnowflakeConfig())
 
 
 class Base(DeclarativeBase):
@@ -24,4 +19,5 @@ class TimestampMixin:
 
 
 class SnowflakeMixin:
-    id: Mapped[int] = mapped_column(primary_key=True, default=snowflake.next_id)
+    # Backward-compatible mixin name; now uses DB auto-increment IDs instead of Snowflake.
+    id: Mapped[int] = mapped_column(Integer, primary_key=True, autoincrement=True)

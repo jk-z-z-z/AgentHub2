@@ -11,6 +11,7 @@ def ensure_default_admin(db: Session) -> None:
     if existing:
         return
     user = User(
+        id=1,
         email="admin@example.com",
         username="admin",
         display_name="管理员",

@@ -34,6 +34,21 @@ uv sync
 uv run uvicorn app.main:app --reload
 ```
 
+## Configure AI Chat (AgentScope)
+
+Create `agenthub-backend/.env`:
+
+```bash
+AGENTHUB_OPENAI_API_KEY=your_key
+# optional
+AGENTHUB_OPENAI_BASE_URL=https://api.openai.com/v1
+AGENTHUB_OPENAI_MODEL=gpt-4.1-mini
+```
+
+Then call:
+
+- `POST /api/v1/ai/chat` (requires `Authorization: Bearer <token>`)
+
 ## Seed Demo Data
 
 Start backend first, then run:

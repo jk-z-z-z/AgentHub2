@@ -1,9 +1,10 @@
+from contextlib import asynccontextmanager
+
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 
 from app.api.auth import router as auth_router
-from app.api.acp_providers import router as acp_providers_router
-from app.api.agent_instances import router as agent_instances_router
+from app.api.agents import router as agents_router
 from app.api.agent_profiles import router as agent_profiles_router
 from app.api.groups import router as groups_router
 from app.api.mcps import router as mcps_router
@@ -13,12 +14,40 @@ from app.api.skills import router as skills_router
 from app.api.tools import router as tools_router
 from app.api.users import router as users_router
 from app.api.ws_groups import router as ws_groups_router
+from app.api.ai import router as ai_router
+from app.api.project_code import router as project_code_router
+from app.api.group_tasks import router as group_tasks_router
 from app.core.config import settings
 from app.db.base import Base
 from app.db.session import SessionLocal, engine
 from app.services.auth_service import ensure_default_admin
+from app.services.storage_init_service import ensure_user_space
+from app.services.tool_registry import ensure_builtin_tools_seeded
 
-app = FastAPI(title=settings.app_name)
+
+@asynccontextmanager
+async def lifespan(_: FastAPI):
+    # In dev, allow resetting schema on startup only when explicitly requested.
+    if settings.env.lower() in {"local", "dev"} and str(getattr(settings, "db_reset", False)).lower() in {
+        "1",
+        "true",
+        "yes",
+    }:
+        Base.metadata.drop_all(bind=engine)
+        Base.metadata.create_all(bind=engine)
+        db = SessionLocal()
+        try:
+            ensure_default_admin(db)
+        finally:
+            db.close()
+        ensure_builtin_tools_seeded()
+
+    # Always ensure storage dirs exist; safe in production and idempotent.
+    ensure_user_space(1)
+    yield
+
+
+app = FastAPI(title=settings.app_name, lifespan=lifespan)
 
 app.add_middleware(
     CORSMiddleware,
@@ -27,16 +56,6 @@ app.add_middleware(
     allow_methods=["*"],
     allow_headers=["*"],
 )
-
-
-@app.on_event("startup")
-def on_startup() -> None:
-    Base.metadata.create_all(bind=engine)
-    db = SessionLocal()
-    try:
-        ensure_default_admin(db)
-    finally:
-        db.close()
 
 
 @app.get("/health")
@@ -50,9 +69,11 @@ app.include_router(groups_router, prefix=settings.api_prefix)
 app.include_router(tools_router, prefix=settings.api_prefix)
 app.include_router(mcps_router, prefix=settings.api_prefix)
 app.include_router(skills_router, prefix=settings.api_prefix)
-app.include_router(acp_providers_router, prefix=settings.api_prefix)
 app.include_router(agent_profiles_router, prefix=settings.api_prefix)
-app.include_router(agent_instances_router, prefix=settings.api_prefix)
+app.include_router(agents_router, prefix=settings.api_prefix)
 app.include_router(members_router, prefix=settings.api_prefix)
 app.include_router(messages_router, prefix=settings.api_prefix)
+app.include_router(ai_router, prefix=settings.api_prefix)
+app.include_router(project_code_router, prefix=settings.api_prefix)
+app.include_router(group_tasks_router, prefix=settings.api_prefix)
 app.include_router(ws_groups_router)
