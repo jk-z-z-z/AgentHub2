@@ -35,6 +35,12 @@ class GroupTaskNodeOut(ORMBaseModel):
     status: str
     assignee_kind: str
     assignee_member_id: str | None
+    attempt: int = 0
+    input_json: str = "{}"
+    result_json: str = "{}"
+    error: str = ""
+    receipt_message_id: str | None = None
+    agent_run_id: str | None = None
     output_summary: str
     manager_review_status: str
     created_at: datetime
@@ -55,6 +61,7 @@ class GroupTaskRunOut(ORMBaseModel):
     group_id: str
     creator_member_id: str
     trigger_message_id: str | None
+    final_message_id: str | None = None
     title: str
     goal_text: str
     status: str
@@ -89,7 +96,14 @@ class GroupTaskEventOut(ORMBaseModel):
     id: str
     run_id: str
     node_id: str | None
+    seq: int = 0
     event_type: str
     payload_json: str
     created_at: datetime
     updated_at: datetime
+
+
+class GroupTaskGraphOut(ORMBaseModel):
+    run_id: str
+    version: int
+    snapshot_json: str

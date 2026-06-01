@@ -16,16 +16,24 @@ from app.api.ws_groups import router as ws_groups_router
 from app.api.ai import router as ai_router
 from app.api.project_code import router as project_code_router
 from app.api.group_tasks import router as group_tasks_router
+from app.api.acp_providers import router as acp_providers_router
+from app.api.agent_runs import router as agent_runs_router
 from app.core.config import settings
 from app.db.base import Base
 from app.db.session import SessionLocal, engine
 from app.services.auth_service import ensure_default_admin
+from app.services.db_migrate_service import migrate_sqlite_schema_if_needed
 from app.services.storage_init_service import ensure_user_space
-from app.services.tool_registry import ensure_builtin_tools_seeded
+from app.agent_runtime.tools.registry import ensure_builtin_tools_seeded
 
 
 @asynccontextmanager
 async def lifespan(_: FastAPI):
+    migrate_sqlite_schema_if_needed(settings.db_url)
+    # Always create missing tables. This is safe in sqlite for incremental dev,
+    # and avoids requiring "drop & recreate" to add new features.
+    Base.metadata.create_all(bind=engine)
+
     # In dev, allow resetting schema on startup only when explicitly requested.
     if settings.env.lower() in {"local", "dev"} and str(getattr(settings, "db_reset", False)).lower() in {
         "1",
@@ -74,4 +82,6 @@ app.include_router(messages_router, prefix=settings.api_prefix)
 app.include_router(ai_router, prefix=settings.api_prefix)
 app.include_router(project_code_router, prefix=settings.api_prefix)
 app.include_router(group_tasks_router, prefix=settings.api_prefix)
+app.include_router(acp_providers_router, prefix=settings.api_prefix)
+app.include_router(agent_runs_router, prefix=settings.api_prefix)
 app.include_router(ws_groups_router)

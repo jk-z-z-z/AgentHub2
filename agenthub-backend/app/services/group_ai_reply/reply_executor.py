@@ -2,6 +2,7 @@ from __future__ import annotations
 
 from fastapi.encoders import jsonable_encoder
 
+from app.common.event_types import WsEventType
 from app.services.group_ai_reply.agent_factory import AgentFactory
 from app.services.group_ai_reply.context import ReplyContext
 from app.services.group_ai_reply.engine import GroupAiReplyEngine
@@ -21,7 +22,7 @@ class ReplyExecutor:
                 int(ctx.group.id),
                 jsonable_encoder(
                     {
-                        "event": "reply.failed",
+                        "event": WsEventType.REPLY_FAILED,
                         "data": {
                             "group_id": int(ctx.group.id),
                             "message_id": int(ctx.user_message.id),

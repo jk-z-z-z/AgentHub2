@@ -6,6 +6,8 @@ from fastapi import HTTPException, status
 from fastapi.encoders import jsonable_encoder
 from sqlalchemy.orm import Session
 
+from app.common.event_types import WsEventType
+from app.db.session import SessionLocal
 from app.models.group import Group
 from app.models.member import Member
 from app.models.message import Message
@@ -49,7 +51,7 @@ async def create_message(db: Session, group_id: int, sender_member_id: int, mess
         group_id,
         jsonable_encoder(
             {
-                "event": "message.created",
+                "event": WsEventType.MESSAGE_CREATED,
                 "data": {
                     "id": item.id,
                     "group_id": item.group_id,
@@ -77,6 +79,23 @@ async def create_message_and_trigger_ai(
 ) -> Message:
     user_message = await create_message(db, group_id, sender_member_id, message_type, content, meta_json)
 
+    # UX: acknowledge immediately so the frontend can show "sent" even if AI reply is slow.
+    try:
+        await ws_manager.broadcast(
+            int(group_id),
+            jsonable_encoder(
+                {
+                    "event": WsEventType.MESSAGE_ACCEPTED,
+                    "data": {
+                        "group_id": int(group_id),
+                        "message_id": int(user_message.id),
+                    },
+                }
+            ),
+        )
+    except Exception:
+        pass
+
     sender = db.query(Member).filter(Member.id == sender_member_id).first()
     if not sender or sender.kind != "user":
         return user_message
@@ -87,15 +106,37 @@ async def create_message_and_trigger_ai(
     if not group:
         return user_message
     executor = ReplyExecutor()
-    await executor.execute(
-        ReplyContext(
-            db=db,
-            group=group,
-            sender=sender,
-            user_message=user_message,
-            content=content,
-            meta_json=meta_json,
-            emit_message=create_message,
-        )
-    )
+    # Fire-and-forget: avoid blocking HTTP response on slow LLM/tooling.
+    import asyncio
+
+    async def _run_reply():
+        local_db = SessionLocal()
+        try:
+            local_sender = local_db.query(Member).filter(Member.id == int(sender_member_id)).first()
+            local_group = local_db.query(Group).filter(Group.id == int(group_id)).first()
+            local_user_message = local_db.query(Message).filter(Message.id == int(user_message.id)).first()
+            if not local_sender or not local_group or not local_user_message:
+                return
+            await executor.execute(
+                ReplyContext(
+                    db=local_db,
+                    group=local_group,
+                    sender=local_sender,
+                    user_message=local_user_message,
+                    content=content,
+                    meta_json=meta_json,
+                    emit_message=create_message,
+                )
+            )
+        except Exception:
+            # errors are already broadcast as reply.failed by executor
+            return
+        finally:
+            local_db.close()
+
+    try:
+        asyncio.create_task(_run_reply())
+    except RuntimeError:
+        # If no running loop (shouldn't happen in FastAPI async endpoint), fall back to await.
+        await _run_reply()
     return user_message

@@ -6,12 +6,11 @@ from app.models.agent_profile import AgentProfile
 
 
 PROFILE_FILE_MAP: dict[str, str] = {
-    "AGENTS.md": "agents_md",
     "PROFILE.md": "profile_md",
     "SOUL.md": "soul_md",
     "BOOTSTRAP.md": "bootstrap_md",
-    "MEMORY.md": "memory_md",
-    "HEARTBEAT.md": "heartbeat_md",
+    "tools.json": "tools_json",
+    "skills.json": "skills_json",
 }
 
 
@@ -39,4 +38,3 @@ def set_profile_file_content(profile: AgentProfile, filename: str, content: str)
     if filename not in PROFILE_FILE_MAP:
         raise ValueError(f"Unsupported filename: {filename}")
     setattr(profile, PROFILE_FILE_MAP[filename], content or "")
-

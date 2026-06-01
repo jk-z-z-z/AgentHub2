@@ -21,7 +21,6 @@ def ensure_project_space(project_id: int) -> None:
     (root / "memory").mkdir(parents=True, exist_ok=True)
     (root / "knowledge").mkdir(parents=True, exist_ok=True)
     (root / "shared" / "code").mkdir(parents=True, exist_ok=True)
-    (root / "AGENTS.md").touch(exist_ok=True)
     (root / "PROFILE.md").touch(exist_ok=True)
     (root / "MEMORY.md").touch(exist_ok=True)
 
@@ -35,12 +34,11 @@ def ensure_personal_group_space(group_id: int) -> None:
     root.mkdir(parents=True, exist_ok=True)
     (root / "memory").mkdir(parents=True, exist_ok=True)
     (root / "knowledge").mkdir(parents=True, exist_ok=True)
-    (root / "AGENTS.md").touch(exist_ok=True)
     (root / "PROFILE.md").touch(exist_ok=True)
     (root / "MEMORY.md").touch(exist_ok=True)
 
 
-def ensure_agent_space(agent_id: int, soul_md: str | None = None, agents_md: str | None = None) -> None:
+def ensure_agent_space(agent_id: int, soul_md: str | None = None, profile_md: str | None = None) -> None:
     root = sp.agent_dir(agent_id)
     root.mkdir(parents=True, exist_ok=True)
     (root / "skills").mkdir(parents=True, exist_ok=True)
@@ -49,13 +47,11 @@ def ensure_agent_space(agent_id: int, soul_md: str | None = None, agents_md: str
     soul_path = root / "SOUL.md"
     if not soul_path.exists():
         soul_path.write_text(soul_md or "", encoding="utf-8")
-    agents_path = root / "AGENTS.md"
-    if not agents_path.exists():
-        agents_path.write_text(agents_md or "", encoding="utf-8")
-    (root / "PROFILE.md").touch(exist_ok=True)
+    profile_path = root / "PROFILE.md"
+    if not profile_path.exists():
+        profile_path.write_text(profile_md or "", encoding="utf-8")
     (root / "BOOTSTRAP.md").touch(exist_ok=True)
     (root / "MEMORY.md").touch(exist_ok=True)
-    (root / "HEARTBEAT.md").touch(exist_ok=True)
     (root / "tools.json").touch(exist_ok=True)
     (root / "skills.json").touch(exist_ok=True)
 

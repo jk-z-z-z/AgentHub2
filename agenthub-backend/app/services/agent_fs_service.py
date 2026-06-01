@@ -8,11 +8,9 @@ from app.services.storage_paths import agent_dir
 
 ALLOWED_AGENT_TEXT_FILES: set[str] = {
     "SOUL.md",
-    "AGENTS.md",
     "PROFILE.md",
     "BOOTSTRAP.md",
     "MEMORY.md",
-    "HEARTBEAT.md",
     "tools.json",
     "skills.json",
     "profile.enabled_files.json",

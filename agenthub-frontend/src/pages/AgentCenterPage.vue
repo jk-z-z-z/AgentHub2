@@ -222,14 +222,29 @@
     </main>
   </div>
 
-  <el-dialog v-model="createProfileOpen" title="新建智能体模版" width="520px">
+  <el-dialog v-model="createProfileOpen" title="新建智能体模版" width="860px">
     <div class="formGrid">
       <el-input v-model="profileForm.name" placeholder="name" />
       <el-input v-model="profileForm.role" placeholder="role" />
       <el-input v-model="profileForm.model_name" placeholder="model_name" />
     </div>
-    <div style="margin-top: 10px; font-weight: 800">SOUL.md</div>
-    <el-input v-model="profileForm.soul_md" type="textarea" :rows="10" placeholder="模版 SOUL.md" />
+    <el-tabs style="margin-top: 10px" type="border-card">
+      <el-tab-pane label="SOUL.md">
+        <el-input v-model="profileForm.soul_md" type="textarea" :rows="12" placeholder="模版 SOUL.md（最高优先级规则/边界）" />
+      </el-tab-pane>
+      <el-tab-pane label="PROFILE.md">
+        <el-input v-model="profileForm.profile_md" type="textarea" :rows="12" placeholder="模版 PROFILE.md（角色说明/协作约定/输出规范等）" />
+      </el-tab-pane>
+      <el-tab-pane label="BOOTSTRAP.md">
+        <el-input v-model="profileForm.bootstrap_md" type="textarea" :rows="12" placeholder="模版 BOOTSTRAP.md（创建实例时的引导提问规范）" />
+      </el-tab-pane>
+      <el-tab-pane label="tools.json">
+        <el-input v-model="profileForm.tools_json" type="textarea" :rows="12" placeholder='{"enabled": {"builtin.xxx": true}}' />
+      </el-tab-pane>
+      <el-tab-pane label="skills.json">
+        <el-input v-model="profileForm.skills_json" type="textarea" :rows="12" placeholder='{"enable_agent_local_skills": true, "pool_skill_codes": []}' />
+      </el-tab-pane>
+    </el-tabs>
     <div v-if="profileCreateErr" class="err" style="margin-top: 10px">{{ profileCreateErr }}</div>
     <template #footer>
       <el-button @click="createProfileOpen = false">取消</el-button>
@@ -397,7 +412,17 @@ const filteredMcps = computed(() => {
 const createProfileOpen = ref(false)
 const creatingProfile = ref(false)
 const profileCreateErr = ref('')
-const profileForm = ref({ name: '', role: 'assistant', model_name: 'gpt-4.1-mini', soul_md: '' })
+const defaultProfileForm = () => ({
+  name: '',
+  role: 'assistant',
+  model_name: 'gpt-4.1-mini',
+  soul_md: '',
+  profile_md: '',
+  bootstrap_md: '',
+  tools_json: JSON.stringify({ enabled: {} }, null, 2),
+  skills_json: JSON.stringify({ enable_agent_local_skills: true, pool_skill_codes: [] }, null, 2),
+})
+const profileForm = ref(defaultProfileForm())
 
 async function loadAgents() {
   loadingAgents.value = true
@@ -507,10 +532,20 @@ async function createProfile() {
   }
   creatingProfile.value = true
   try {
-    await apiCreateAgentProfile({ name, role, soul_md, model_name: profileForm.value.model_name })
+    const res = await apiCreateAgentProfile({
+      name,
+      role,
+      soul_md,
+      model_name: profileForm.value.model_name,
+      profile_md: profileForm.value.profile_md || '',
+      bootstrap_md: profileForm.value.bootstrap_md || '',
+      tools_json: profileForm.value.tools_json || '',
+      skills_json: profileForm.value.skills_json || '',
+    })
     createProfileOpen.value = false
-    profileForm.value = { name: '', role: 'assistant', model_name: 'gpt-4.1-mini', soul_md: '' }
+    profileForm.value = defaultProfileForm()
     await loadProfiles()
+    if (res?.data?.id) router.push(`/agent-profiles/${res.data.id}`)
   } catch (e) {
     profileCreateErr.value = e instanceof Error ? e.message : String(e)
   } finally {

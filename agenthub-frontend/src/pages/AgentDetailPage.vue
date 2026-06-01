@@ -218,11 +218,9 @@ function buildTree(entries: FsEntry[]): FileTreeNode[] {
     const isDir = e.is_dir || raw.endsWith('/')
     if (
       raw === 'SOUL.md' ||
-      raw === 'AGENTS.md' ||
       raw === 'PROFILE.md' ||
       raw === 'BOOTSTRAP.md' ||
       raw === 'MEMORY.md' ||
-      raw === 'HEARTBEAT.md' ||
       raw === 'tools.json' ||
       raw === 'skills.json' ||
       raw === 'profile.enabled_files.json'
@@ -302,7 +300,7 @@ async function reloadAll() {
     const res = await apiListAgentFs(agentId.value)
     files.value = res.data.filter((x) => !x.path.endsWith('/'))
     if (!activeFilePath.value) {
-      const prefer = ['SOUL.md', 'AGENTS.md']
+      const prefer = ['SOUL.md', 'PROFILE.md']
       const first = prefer.find((p) => files.value.some((f) => f.path === p)) || files.value[0]?.path
       if (first) await openFile(first)
     } else {
@@ -384,7 +382,7 @@ const canDeleteActive = computed(() => {
   const p = activeFilePath.value
   if (!p) return false
   const actual = p.startsWith('core/') ? p.replace(/^core\//, '') : p
-  if (actual === 'SOUL.md' || actual === 'AGENTS.md') return false
+  if (actual === 'SOUL.md' || actual === 'PROFILE.md') return false
   return (
     actual.startsWith('skills/') ||
     actual.startsWith('knowledge/') ||

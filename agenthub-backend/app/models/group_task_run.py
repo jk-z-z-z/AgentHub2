@@ -19,4 +19,4 @@ class GroupTaskRun(SnowflakeMixin, TimestampMixin, Base):
     status: Mapped[str] = mapped_column(String(32), default="planning", nullable=False)
     dag_json: Mapped[str] = mapped_column(Text, default="{}", nullable=False)
     runtime_dir: Mapped[str] = mapped_column(String(500), nullable=False)
-
+    final_message_id: Mapped[int | None] = mapped_column(ForeignKey("messages.id"))

@@ -21,6 +21,11 @@ class GroupTaskNode(SnowflakeMixin, TimestampMixin, Base):
     status: Mapped[str] = mapped_column(String(32), default="pending", nullable=False)
     assignee_kind: Mapped[str] = mapped_column(String(16), default="unclaimed", nullable=False)
     assignee_member_id: Mapped[int | None] = mapped_column(ForeignKey("members.id"))
+    attempt: Mapped[int] = mapped_column(default=0, nullable=False)
+    input_json: Mapped[str] = mapped_column(Text, default="{}", nullable=False)
+    result_json: Mapped[str] = mapped_column(Text, default="{}", nullable=False)
+    error: Mapped[str] = mapped_column(Text, default="", nullable=False)
+    receipt_message_id: Mapped[int | None] = mapped_column(ForeignKey("messages.id"))
+    agent_run_id: Mapped[int | None] = mapped_column(ForeignKey("agent_runs.id"))
     output_summary: Mapped[str] = mapped_column(Text, default="", nullable=False)
     manager_review_status: Mapped[str] = mapped_column(String(32), default="pending", nullable=False)
-

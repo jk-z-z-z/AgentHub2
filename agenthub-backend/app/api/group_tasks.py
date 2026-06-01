@@ -1,7 +1,5 @@
 from __future__ import annotations
 
-import json
-
 from fastapi import APIRouter, Depends, HTTPException, status
 from sqlalchemy.orm import Session
 
@@ -17,6 +15,7 @@ from app.schemas.group_tasks import (
     GroupTaskClaimRequest,
     GroupTaskDagUpdateRequest,
     GroupTaskEventOut,
+    GroupTaskGraphOut,
     GroupTaskNodeBlockRequest,
     GroupTaskNodeCompleteRequest,
     GroupTaskNodeOut,
@@ -41,7 +40,9 @@ from app.services.group_task.manager_service import (
     get_or_create_manager_member,
     update_group_assistant_config,
 )
+from app.services.group_task.dto import to_group_task_node_out
 from app.services.group_task.orchestration.node_orchestration import complete_node_with_auto_review
+from app.services.group_orchestrator.graph_service import get_latest_graph_snapshot
 
 
 router = APIRouter(prefix="/group-tasks", tags=["group-tasks"])
@@ -164,25 +165,7 @@ def list_group_task_nodes_api(
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Run not found")
     _assert_group_user_member(db, group_id=int(run.group_id), user_id=int(user.id))
     rows = list_group_task_nodes(db, run_id=int(run.id))
-    out = [
-        GroupTaskNodeOut(
-            id=str(row.id),
-            run_id=str(row.run_id),
-            node_key=row.node_key,
-            title=row.title,
-            detail=row.detail,
-            role_required=row.role_required,
-            deps=json.loads(row.deps_json or "[]"),
-            status=row.status,
-            assignee_kind=row.assignee_kind,
-            assignee_member_id=str(row.assignee_member_id) if row.assignee_member_id is not None else None,
-            output_summary=row.output_summary,
-            manager_review_status=row.manager_review_status,
-            created_at=row.created_at,
-            updated_at=row.updated_at,
-        )
-        for row in rows
-    ]
+    out = [to_group_task_node_out(row) for row in rows]
     return ApiResponse(data=out)
 
 
@@ -198,6 +181,22 @@ def list_group_task_events_api(
     _assert_group_user_member(db, group_id=int(run.group_id), user_id=int(user.id))
     rows = list_group_task_events(db, run_id=int(run.id))
     return ApiResponse(data=[GroupTaskEventOut.model_validate(r) for r in rows])
+
+
+@router.get("/runs/{run_id}/graph", response_model=ApiResponse[GroupTaskGraphOut])
+def get_group_task_graph_api(
+    run_id: int,
+    db: Session = Depends(get_db),
+    user=Depends(get_current_user),
+):
+    run = get_group_task_run(db, run_id=int(run_id))
+    if not run:
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Run not found")
+    _assert_group_user_member(db, group_id=int(run.group_id), user_id=int(user.id))
+    row = get_latest_graph_snapshot(db, run_id=int(run.id))
+    if not row:
+        return ApiResponse(data=GroupTaskGraphOut(run_id=str(run.id), version=0, snapshot_json="{}"))
+    return ApiResponse(data=GroupTaskGraphOut(run_id=str(run.id), version=int(row.version), snapshot_json=row.snapshot_json))
 
 
 @router.put("/runs/{run_id}/dag", response_model=ApiResponse[GroupTaskRunOut])
@@ -227,12 +226,7 @@ def claim_group_task_node_api(
     if not run:
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Run not found")
     _assert_group_user_member(db, group_id=int(run.group_id), user_id=int(user.id))
-    out = GroupTaskNodeOut(
-        **{
-            **GroupTaskNodeOut.model_validate(node).model_dump(),
-            "deps": json.loads(node.deps_json or "[]"),
-        }
-    )
+    out = to_group_task_node_out(node)
     return ApiResponse(data=out)
 
 
@@ -252,12 +246,7 @@ async def complete_group_task_node_api(
     if err:
         raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail=err)
 
-    out = GroupTaskNodeOut(
-        **{
-            **GroupTaskNodeOut.model_validate(node).model_dump(),
-            "deps": json.loads(node.deps_json or "[]"),
-        }
-    )
+    out = to_group_task_node_out(node)
     return ApiResponse(data=out)
 
 
@@ -275,12 +264,7 @@ def review_group_task_node_api(
         manager_review_status=payload.manager_review_status,
         note=payload.note,
     )
-    out = GroupTaskNodeOut(
-        **{
-            **GroupTaskNodeOut.model_validate(node).model_dump(),
-            "deps": json.loads(node.deps_json or "[]"),
-        }
-    )
+    out = to_group_task_node_out(node)
     return ApiResponse(data=out)
 
 

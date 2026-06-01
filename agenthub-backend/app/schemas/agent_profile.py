@@ -10,11 +10,10 @@ class AgentProfileCreateRequest(ORMBaseModel):
     role: str = Field(min_length=1, max_length=120)
     description: str | None = None
     soul_md: str = Field(min_length=1)
-    agents_md: str = ""
     profile_md: str = ""
     bootstrap_md: str = ""
-    memory_md: str = ""
-    heartbeat_md: str = ""
+    tools_json: str = ""
+    skills_json: str = ""
     enabled_files_json: str = "{}"
     model_name: str = Field(default="gpt-4.1-mini", min_length=1, max_length=120)
     temperature: float = Field(default=0.7, ge=0.0, le=2.0)
@@ -30,11 +29,10 @@ class AgentProfileOut(ORMBaseModel):
     role: str
     description: str | None
     soul_md: str
-    agents_md: str
     profile_md: str
     bootstrap_md: str
-    memory_md: str
-    heartbeat_md: str
+    tools_json: str
+    skills_json: str
     enabled_files_json: str
     model_name: str
     temperature: float

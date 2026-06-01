@@ -6,7 +6,10 @@ from datetime import datetime, timezone
 from sqlalchemy.orm import Session
 
 from app.models.group_task_run import GroupTaskRun
-from app.services.ai_service import ai_chat
+from app.agent_runtime.internal_llm import internal_llm_chat
+
+# NOTE: Manager (group capability) is fixed to internal LLM path.
+# It must NOT be delegated to ACP / external runners.
 from app.services.group_task.node_service import create_group_task_run, list_group_task_runs, update_group_task_dag
 from app.services.storage_paths import project_dir
 
@@ -132,7 +135,7 @@ def _is_off_topic_plan(plan: dict, *, goal_text: str) -> bool:
     return hit >= 2
 
 
-async def manager_tool_build_plan_with_llm(*, goal_text: str, context: dict | None = None) -> dict:
+async def manager_tool_build_plan_with_llm(*, db: Session | None = None, goal_text: str, context: dict | None = None) -> dict:
     goal = str(goal_text or "").strip() or "请补充目标交付物定义"
     memory_preview = ""
     if context and isinstance(context, dict):
@@ -148,6 +151,7 @@ async def manager_tool_build_plan_with_llm(*, goal_text: str, context: dict | No
         "你是群聊中的管家Agent，只做任务规划，不执行任务。\n"
         "必须严格围绕“用户当前目标”规划，不要被历史错误日志/排障信息带偏。\n"
         "请根据用户目标和群聊长期记忆，输出一个可执行的DAG计划。\n"
+        "你必须给出贴合具体领域的节点（避免通用模板：需求/设计/开发/测试 这种空泛拆分），节点要能落到“学评教”场景。\n"
         "必须仅返回JSON对象，不要返回markdown，不要解释。\n"
         "JSON Schema:\n"
         '{\n'
@@ -166,7 +170,40 @@ async def manager_tool_build_plan_with_llm(*, goal_text: str, context: dict | No
         f"群聊长期记忆(MEMORY.md摘要):\n{memory_preview[:4000]}\n\n"
         f"项目文档摘要:\n{docs_preview[:4000]}"
     )
-    reply = await ai_chat(prompt, system_prompt="你是严谨的任务规划助手，只输出合法JSON。")
+    # Observability: record that we are going to use LLM for planning (to avoid "looks like template").
+    try:
+        if db is not None and isinstance(context, dict) and int(context.get("group_id") or 0) > 0:
+            from app.services.group_task.event_service import log_group_task_event
+            from app.common.event_types import GroupTaskEventType
+
+            # For single-project policy, planning refers to the active/latest run if any; otherwise run_id=0.
+            group_id = int(context.get("group_id") or 0)
+            active = manager_tool_get_active_run(db, group_id=group_id) if group_id else None
+            if active:
+                log_group_task_event(
+                    db,
+                    run_id=int(active.id),
+                    node_id=None,
+                    event_type=GroupTaskEventType.MANAGER_PLANNING_LLM_STARTED,
+                    payload={"goal_preview": goal[:200]},
+                    run=None,
+                )
+    except Exception:
+        pass
+    # Manager (group capability) must use internal LLM; prefer ReAct loop to enforce tool-first planning.
+    if db is not None and isinstance(context, dict) and int(context.get("group_id") or 0) > 0:
+        try:
+            from app.agent_runtime.manager_runtime import build_plan_with_react_agent
+
+            reply = await build_plan_with_react_agent(
+                db=db,
+                group_id=int(context.get("group_id") or 0),
+                goal_text=goal,
+            )
+        except Exception:
+            reply = await internal_llm_chat(prompt, system_prompt="你是严谨的任务规划助手，只输出合法JSON。")
+    else:
+        reply = await internal_llm_chat(prompt, system_prompt="你是严谨的任务规划助手，只输出合法JSON。")
     parsed = _extract_json_object(reply)
     if isinstance(parsed, dict):
         plan = _normalize_plan(parsed, fallback_goal=goal)
@@ -178,7 +215,7 @@ async def manager_tool_build_plan_with_llm(*, goal_text: str, context: dict | No
         "输出JSON对象，字段同前。\n"
         f"用户目标：{goal}\n"
     )
-    reply2 = await ai_chat(retry_prompt, system_prompt="只输出与用户目标直接相关的DAG JSON。")
+    reply2 = await internal_llm_chat(retry_prompt, system_prompt="只输出与用户目标直接相关的DAG JSON。")
     parsed2 = _extract_json_object(reply2)
     if isinstance(parsed2, dict):
         plan2 = _normalize_plan(parsed2, fallback_goal=goal)
@@ -244,38 +281,43 @@ def manager_tool_upsert_plan(
     return "updated", updated
 
 
-def _pending_plan_path(group_id: int):
-    root = project_dir(int(group_id))
-    return root / "runs" / "pending_plan.json"
-
-
-def save_pending_plan(*, group_id: int, creator_member_id: int, plan: dict) -> None:
-    path = _pending_plan_path(int(group_id))
-    path.parent.mkdir(parents=True, exist_ok=True)
-    now = datetime.now(timezone.utc)
-    payload = {
-        "group_id": int(group_id),
-        "creator_member_id": int(creator_member_id),
-        "plan": plan,
-        "created_at": now.isoformat(),
-    }
-    path.write_text(json.dumps(payload, ensure_ascii=False, indent=2), encoding="utf-8")
-
-
-def load_pending_plan(*, group_id: int) -> dict | None:
-    path = _pending_plan_path(int(group_id))
-    if not path.exists():
-        return None
+async def manager_tool_build_clarify_questions_with_llm(*, goal_text: str, context: dict | None = None) -> list[str]:
+    """
+    Ask clarifying questions before planning when domain constraints are missing.
+    """
+    goal = str(goal_text or "").strip()
+    memory_preview = ""
+    docs_preview = ""
+    if isinstance(context, dict):
+        memory_preview = str(context.get("memory_preview") or "")
+        docs = context.get("docs_preview") or []
+        if isinstance(docs, list):
+            docs_preview = "\n".join(
+                [f"- {str(d.get('path') or '')}: {str(d.get('preview') or '')}" for d in docs if isinstance(d, dict)]
+            )
+    prompt = (
+        "你是群聊项目的管家Agent。用户提出了一个目标，但缺少具体约束。\n"
+        "请先提出澄清问题（最多6个），帮助你后续画出DAG计划。\n"
+        "要求：问题必须具体、可回答、与目标强相关；不要问泛泛的“还有什么需求”。\n"
+        "只输出JSON数组字符串列表，例如：[\"问题1\",\"问题2\"]。\n\n"
+        f"目标：{goal}\n\n"
+        f"长期记忆摘要：{memory_preview[:2000]}\n\n"
+        f"项目文档摘要：{docs_preview[:2000]}\n"
+    )
+    reply = await internal_llm_chat(prompt, system_prompt="只输出JSON数组。")
     try:
-        raw = json.loads(path.read_text(encoding="utf-8") or "{}")
+        arr = json.loads(reply)
+        if isinstance(arr, list):
+            out = [str(x).strip() for x in arr if str(x).strip()]
+            return out[:6]
     except Exception:
-        return None
-    if not isinstance(raw, dict):
-        return None
-    return raw
-
-
-def clear_pending_plan(*, group_id: int) -> None:
-    path = _pending_plan_path(int(group_id))
-    if path.exists():
-        path.unlink()
+        pass
+    # fallback
+    return [
+        "目标用户与角色有哪些（学生/教师/管理员/督导）？各自权限是什么？",
+        "评教对象与范围是什么（课程/教师/学期/班级）？是否需要匿名？",
+        "评价维度与题型需要哪些（量表/选择/文本）？是否支持问卷模板？",
+        "流程约束是什么（开放时间/一人一评/必评/补评）？",
+        "结果呈现要哪些报表与导出（按教师/课程/学院）？是否要预警/整改闭环？",
+        "合规与安全要求有哪些（数据留存、脱敏、审计、权限）？",
+    ]

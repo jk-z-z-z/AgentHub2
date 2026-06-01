@@ -29,7 +29,8 @@ async def ws_group(websocket: WebSocket, group_id: int, token: str):
 
         await ws_manager.connect(group_id, websocket)
         while True:
-            await websocket.receive_text()
+            # Keep the connection alive and allow client pings; ignore payload.
+            _ = await websocket.receive_text()
     except WebSocketDisconnect:
         ws_manager.disconnect(group_id, websocket)
     finally:

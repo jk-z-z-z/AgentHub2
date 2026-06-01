@@ -5,7 +5,9 @@ from sqlalchemy.orm import Session
 from app.models.member import Member
 from app.services.group_task.manager_service import get_or_create_manager_member
 from app.services.group_task.node_service import auto_review_completed_node, complete_task_node, get_group_task_run
-from app.services.message_service import create_message
+from app.services.message_writer_service import create_message
+from app.services.group_orchestrator.finalizer_service import maybe_finalize_run
+from app.services.group_orchestrator.replanner_service import maybe_replan_unstarted_nodes
 
 
 async def complete_node_with_auto_review(
@@ -52,6 +54,27 @@ async def complete_node_with_auto_review(
                     content,
                     '{"trigger":"manager_auto_review"}',
                 )
+    except Exception:
+        pass
+
+    # If completion/review indicates problems or suggested ops, trigger one replan for unstarted nodes.
+    try:
+        run = get_group_task_run(db, run_id=int(node.run_id))
+        if run:
+            await maybe_replan_unstarted_nodes(
+                db,
+                run_id=int(run.id),
+                trigger="node.completed",
+                reason=f"node_key={node.node_key} review={node.manager_review_status}",
+            )
+    except Exception:
+        pass
+
+    # If the run becomes closable after this completion/review, finalize with ONE manager summary message.
+    try:
+        run = get_group_task_run(db, run_id=int(node.run_id))
+        if run:
+            await maybe_finalize_run(db, run_id=int(run.id))
     except Exception:
         pass
     return node, None

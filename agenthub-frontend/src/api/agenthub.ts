@@ -41,6 +41,8 @@ export type Agent = {
   description: string | null
   base_url: string | null
   api_key_ref: string | null
+  engine_type: string
+  engine_config_json: string
   status: string
   created_at: string
   updated_at: string
@@ -53,11 +55,10 @@ export type AgentProfile = {
   role: string
   description: string | null
   soul_md: string
-  agents_md: string
   profile_md: string
   bootstrap_md: string
-  memory_md: string
-  heartbeat_md: string
+  tools_json: string
+  skills_json: string
   enabled_files_json: string
   model_name: string
   temperature: number
@@ -141,6 +142,7 @@ export type GroupTaskRun = {
   group_id: string
   creator_member_id: string
   trigger_message_id: string | null
+  final_message_id?: string | null
   title: string
   goal_text: string
   status: string
@@ -161,6 +163,12 @@ export type GroupTaskNode = {
   status: string
   assignee_kind: string
   assignee_member_id: string | null
+  attempt: number
+  input_json: string
+  result_json: string
+  error: string
+  receipt_message_id: string | null
+  agent_run_id?: string | null
   output_summary: string
   manager_review_status: string
   created_at: string
@@ -171,10 +179,51 @@ export type GroupTaskEvent = {
   id: string
   run_id: string
   node_id: string | null
+  seq: number
   event_type: string
   payload_json: string
   created_at: string
   updated_at: string
+}
+
+export type GroupTaskGraph = {
+  run_id: string
+  version: number
+  snapshot_json: string
+}
+
+export type AgentRun = {
+  id: string
+  group_id: string
+  agent_instance_id: string
+  trigger_message_id: string | null
+  group_task_run_id: string | null
+  group_task_node_id: string | null
+  mode: string
+  status: string
+  runtime_dir: string
+  result_json: string
+  final_message_id: string | null
+  created_at: string
+  updated_at: string
+}
+
+export type AgentRunEvent = {
+  id: string
+  agent_run_id: string
+  seq: number
+  event_type: string
+  payload_json: string
+  created_at: string
+  updated_at: string
+}
+
+export async function apiGetAgentRun(runId: string): Promise<ApiResult<AgentRun>> {
+  return httpGet<AgentRun>(`/api/v1/agent-runs/${runId}`)
+}
+
+export async function apiListAgentRunEvents(runId: string): Promise<ApiResult<AgentRunEvent[]>> {
+  return httpGet<AgentRunEvent[]>(`/api/v1/agent-runs/${runId}/events`)
 }
 
 export async function apiGetGroupAssistantConfig(groupId: string): Promise<ApiResult<GroupAssistantConfig>> {
@@ -209,6 +258,10 @@ export async function apiListGroupTaskNodes(runId: string): Promise<ApiResult<Gr
 
 export async function apiListGroupTaskEvents(runId: string): Promise<ApiResult<GroupTaskEvent[]>> {
   return httpGet<GroupTaskEvent[]>(`/api/v1/group-tasks/runs/${runId}/events`)
+}
+
+export async function apiGetGroupTaskGraph(runId: string): Promise<ApiResult<GroupTaskGraph>> {
+  return httpGet<GroupTaskGraph>(`/api/v1/group-tasks/runs/${runId}/graph`)
 }
 
 export async function apiUpdateGroupTaskDag(runId: string, nodes: GroupTaskNodeIn[]): Promise<ApiResult<GroupTaskRun>> {
@@ -327,6 +380,8 @@ export async function apiCreateAgent(body: {
   description: string | null
   base_url?: string | null
   api_key_ref?: string | null
+  engine_type?: string
+  engine_config_json?: string
   status?: string
   template_profile_id?: Id | null
   soul_md?: string | null
@@ -334,6 +389,8 @@ export async function apiCreateAgent(body: {
   return httpPost<Agent, typeof body>('/api/v1/agents', {
     base_url: null,
     api_key_ref: null,
+    engine_type: 'internal_llm',
+    engine_config_json: '{}',
     status: 'active',
     template_profile_id: null,
     soul_md: null,
@@ -382,11 +439,10 @@ export async function apiCreateAgentProfile(body: {
   role: string
   description?: string | null
   soul_md: string
-  agents_md?: string
   profile_md?: string
   bootstrap_md?: string
-  memory_md?: string
-  heartbeat_md?: string
+  tools_json?: string
+  skills_json?: string
   enabled_files_json?: string
   model_name?: string
   temperature?: number
@@ -397,11 +453,10 @@ export async function apiCreateAgentProfile(body: {
   is_active?: number
 }): Promise<ApiResult<AgentProfile>> {
   return httpPost<AgentProfile, typeof body>('/api/v1/agent-profiles', {
-    agents_md: '',
     profile_md: '',
     bootstrap_md: '',
-    memory_md: '',
-    heartbeat_md: '',
+    tools_json: '',
+    skills_json: '',
     enabled_files_json: '{}',
     model_name: 'gpt-4.1-mini',
     temperature: 0.7,

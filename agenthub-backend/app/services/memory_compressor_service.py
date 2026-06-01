@@ -9,7 +9,7 @@ from sqlalchemy.orm import Session
 from app.core.config import settings
 from app.models.member import Member
 from app.models.message import Message
-from app.services.ai_service import ai_chat
+from app.agent_runtime.internal_llm import internal_llm_chat
 from app.services.storage_init_service import ensure_project_space
 from app.services.storage_paths import project_dir
 from app.services.token_estimator import estimate_tokens
@@ -261,7 +261,7 @@ async def maybe_compress_project_memory(
         "4) 每条尽量简短具体。\n\n"
         f"历史对话：\n{summary_input}"
     )
-    summary_md = await ai_chat(
+    summary_md = await internal_llm_chat(
         summary_prompt,
         system_prompt="You are a precise memory compression assistant.",
         agent_instance_id=int(agent_id),

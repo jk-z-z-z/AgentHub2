@@ -12,11 +12,12 @@ class AgentProfile(SnowflakeMixin, TimestampMixin, Base):
     role: Mapped[str] = mapped_column(String(120), nullable=False)
     description: Mapped[str | None] = mapped_column(Text)
     soul_md: Mapped[str] = mapped_column(Text, nullable=False)
-    agents_md: Mapped[str] = mapped_column(Text, default="", nullable=False)
     profile_md: Mapped[str] = mapped_column(Text, default="", nullable=False)
     bootstrap_md: Mapped[str] = mapped_column(Text, default="", nullable=False)
-    memory_md: Mapped[str] = mapped_column(Text, default="", nullable=False)
-    heartbeat_md: Mapped[str] = mapped_column(Text, default="", nullable=False)
+    # Template configs copied into agent workspace on instance creation.
+    # tools.json controls builtin tool toggles; skills.json controls skill loading (pool + local folder).
+    tools_json: Mapped[str] = mapped_column(Text, default="", nullable=False)
+    skills_json: Mapped[str] = mapped_column(Text, default="", nullable=False)
     enabled_files_json: Mapped[str] = mapped_column(Text, default="{}", nullable=False)
     model_name: Mapped[str] = mapped_column(String(120), default="gpt-4.1-mini", nullable=False)
     temperature: Mapped[float] = mapped_column(Float, default=0.7, nullable=False)

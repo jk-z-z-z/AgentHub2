@@ -42,18 +42,19 @@ def create_agent_instance(db: Session, payload: dict, creator_user_id: int) -> A
     ensure_agent_space(
         int(instance.id),
         soul_md=soul_md if soul_md is not None else template_soul,
-        agents_md=(profile.agents_md if profile else None),
+        profile_md=(profile.profile_md if profile else None),
     )
 
     if template_profile_id_int is not None and profile:
         root = agent_dir(int(instance.id))
         enabled = get_profile_enabled_files(profile)
         # Copy enabled profile files into the agent workspace root.
-        # Note: agent workspace uses SOUL.md + AGENTS.md as core; other files are still useful
+        # Note: agent workspace uses SOUL.md + PROFILE.md as core; other files are still useful
         # for future context assembly but are stored alongside for now.
         for filename in PROFILE_FILE_MAP.keys():
             # If enabled_files_json provided, respect it; otherwise default to copy all.
-            if enabled and not bool(enabled.get(filename, False)):
+            # Missing keys should default to "enabled" to avoid silently skipping newly-added template files.
+            if enabled and filename in enabled and not bool(enabled.get(filename, True)):
                 continue
             content = get_profile_file_content(profile, filename)
             (root / filename).write_text(content or "", encoding="utf-8")

@@ -540,6 +540,20 @@
           <div v-if="nodeExecEvents.length === 0" style="opacity:0.6; padding: 8px 2px">暂无执行进度事件</div>
         </div>
       </div>
+
+      <div class="drawerSection">
+        <div class="secTitle">Agent Run Trace（{{ agentRunTraceEvents.length }}）</div>
+        <div class="eventList">
+          <div v-for="e in agentRunTraceEvents" :key="`ar-${e.id}`" class="eventRow">
+            <div class="eventHead">
+              <div class="eType">#{{ e.seq }} · {{ e.event_type }}</div>
+              <div class="eTime">{{ new Date(e.created_at).toLocaleString() }}</div>
+            </div>
+            <pre class="payloadBox">{{ prettyEventPayload(e.payload_json) }}</pre>
+          </div>
+          <div v-if="agentRunTraceEvents.length === 0" style="opacity:0.6; padding: 8px 2px">该节点暂无 AgentRun trace</div>
+        </div>
+      </div>
     </div>
   </el-drawer>
 
@@ -598,7 +612,10 @@ import {
   apiListGroupTaskRuns,
   apiListGroupTaskNodes,
   apiListGroupTaskEvents,
+  apiGetGroupTaskGraph,
   apiUpdateGroupTaskDag,
+  apiListAgentRunEvents,
+  type AgentRunEvent,
   apiClaimGroupTaskNode,
   apiCompleteGroupTaskNode,
   apiReviewGroupTaskNode,
@@ -617,6 +634,7 @@ import {
   type GroupAssistantConfig,
   type Group,
   type GroupTaskEvent,
+  type GroupTaskGraph,
   type GroupTaskNode,
   type GroupTaskRun,
   type MemoryCompressorConfig,
@@ -709,6 +727,7 @@ const activeRunId = ref('')
 const taskNodesLoading = ref(false)
 const taskNodes = ref<GroupTaskNode[]>([])
 const taskEvents = ref<GroupTaskEvent[]>([])
+const taskGraph = ref<GroupTaskGraph | null>(null)
 const taskCreateOpen = ref(false)
 const taskCreateTitle = ref('')
 const taskCreateGoal = ref('')
@@ -722,6 +741,7 @@ const taskDepsDraft = ref<Array<{ node_key: string; title: string; role_required
 const expandedEventIds = ref<Set<string>>(new Set())
 const nodeAuditOpen = ref(false)
 const auditNode = ref<GroupTaskNode | null>(null)
+const agentRunEvents = ref<AgentRunEvent[]>([])
 const replayOpen = ref(false)
 const replayIndex = ref(0)
 const branchReasonByRole = computed(() => {
@@ -828,6 +848,28 @@ function connectWs(groupId: string) {
   if (!token) return
   const url = `${location.protocol === 'https:' ? 'wss' : 'ws'}://${location.host}/ws/groups/${groupId}?token=${encodeURIComponent(token)}`
   const socket = new WebSocket(url)
+  const pingTimer = window.setInterval(() => {
+    try {
+      if (socket.readyState === WebSocket.OPEN) socket.send('ping')
+    } catch {}
+  }, 15000)
+  socket.onopen = () => {
+    if (seq !== wsSeq || ws.value !== socket) return
+    // Keep the connection alive by sending a tiny ping periodically.
+    // Server's ws endpoint currently blocks on receive_text().
+    try { socket.send('ping') } catch {}
+  }
+  socket.onerror = () => {
+    // ignore; UI will still work via refresh/load
+  }
+  socket.onclose = () => {
+    if (seq !== wsSeq || ws.value !== socket) return
+    try { window.clearInterval(pingTimer) } catch {}
+    // Best-effort auto-reconnect
+    setTimeout(() => {
+      if (String(activeGroupId.value) === String(groupId)) connectWs(groupId)
+    }, 800)
+  }
   socket.onmessage = (evt) => {
     if (seq !== wsSeq || ws.value !== socket) return
     try {
@@ -1034,12 +1076,14 @@ async function loadTaskRunDetails(runId: string) {
   if (!runId) return
   taskNodesLoading.value = true
   try {
-    const [nodesRes, eventsRes] = await Promise.all([
+    const [nodesRes, eventsRes, graphRes] = await Promise.all([
       apiListGroupTaskNodes(runId),
       apiListGroupTaskEvents(runId),
+      apiGetGroupTaskGraph(runId),
     ])
     taskNodes.value = nodesRes.data
     taskEvents.value = eventsRes.data
+    taskGraph.value = graphRes.data
   } finally {
     taskNodesLoading.value = false
   }
@@ -1268,9 +1312,25 @@ const nodeExecEvents = computed(() => {
   return auditEvents.value.filter((e) => prefixes.some((p) => String(e.event_type || '').startsWith(p)))
 })
 
+const agentRunTraceEvents = computed(() => {
+  return agentRunEvents.value
+})
+
 function openNodeAudit(node: GroupTaskNode) {
   auditNode.value = node
   nodeAuditOpen.value = true
+  agentRunEvents.value = []
+  const rid = String((node as any).agent_run_id || '').trim()
+  if (rid) {
+    void (async () => {
+      try {
+        const res = await apiListAgentRunEvents(rid)
+        agentRunEvents.value = res.data
+      } catch {
+        agentRunEvents.value = []
+      }
+    })()
+  }
 }
 
 function openRunReplay() {
@@ -1330,24 +1390,49 @@ const replayNodes = computed(() => {
 })
 
 const dagGraph = computed(() => {
+  const rawSnapshot = taskGraph.value?.snapshot_json || '{}'
+  let snapshot: any = {}
+  try {
+    snapshot = JSON.parse(rawSnapshot)
+  } catch {
+    snapshot = {}
+  }
+  const snapNodes = Array.isArray(snapshot?.nodes) ? snapshot.nodes : []
+  const snapEdges = Array.isArray(snapshot?.edges) ? snapshot.edges : []
+
   const nodes = taskNodes.value
   if (!nodes.length) return { width: 640, height: 120, nodes: [] as any[], edges: [] as any[] }
-  const byKey = new Map(nodes.map((n) => [String(n.node_key), n]))
+
+  const nodesByKey = new Map(nodes.map((n) => [String(n.node_key), n]))
+  const byKey = new Map<string, any>()
+  for (const sn of snapNodes) {
+    const key = String(sn?.node_key || '').trim()
+    if (!key) continue
+    const full = nodesByKey.get(key)
+    byKey.set(key, full || sn)
+  }
+  for (const n of nodes) {
+    const key = String(n.node_key)
+    if (!byKey.has(key)) byKey.set(key, n)
+  }
+
   const indegree = new Map<string, number>()
   const outs = new Map<string, string[]>()
-  for (const n of nodes) {
-    indegree.set(String(n.node_key), 0)
-    outs.set(String(n.node_key), [])
+  for (const [k] of byKey.entries()) {
+    indegree.set(String(k), 0)
+    outs.set(String(k), [])
   }
-  for (const n of nodes) {
-    for (const dep of n.deps || []) {
-      const from = String(dep)
-      const to = String(n.node_key)
-      if (!byKey.has(from) || !byKey.has(to)) continue
-      outs.get(from)?.push(to)
-      indegree.set(to, (indegree.get(to) || 0) + 1)
-    }
+  const edgesInput: Array<{ from: string; to: string }> = []
+  for (const e of snapEdges) {
+    const from = String(e?.from || '').trim()
+    const to = String(e?.to || '').trim()
+    if (!from || !to) continue
+    if (!byKey.has(from) || !byKey.has(to)) continue
+    edgesInput.push({ from, to })
+    outs.get(from)?.push(to)
+    indegree.set(to, (indegree.get(to) || 0) + 1)
   }
+
   const queue: string[] = []
   for (const [k, v] of indegree.entries()) if (v === 0) queue.push(k)
   const level = new Map<string, number>()
@@ -1362,10 +1447,10 @@ const dagGraph = computed(() => {
       if (left === 0) queue.push(to)
     }
   }
-  for (const n of nodes) if (!level.has(String(n.node_key))) level.set(String(n.node_key), 0)
-  const columns = new Map<number, GroupTaskNode[]>()
-  for (const n of nodes) {
-    const lv = level.get(String(n.node_key)) || 0
+  for (const k of byKey.keys()) if (!level.has(String(k))) level.set(String(k), 0)
+  const columns = new Map<number, any[]>()
+  for (const [k, n] of byKey.entries()) {
+    const lv = level.get(String(k)) || 0
     const arr = columns.get(lv) || []
     arr.push(n)
     columns.set(lv, arr)
@@ -1376,13 +1461,13 @@ const dagGraph = computed(() => {
     arr.sort((a, b) => String(a.node_key).localeCompare(String(b.node_key)))
     columns.set(k, arr)
   }
-  const NODE_W = 220
-  const NODE_H = 108
+  const NODE_W = 196
+  const NODE_H = 92
   const COL_GAP = 120
-  const ROW_GAP = 34
+  const ROW_GAP = 28
   const PAD_X = 18
   const PAD_Y = 18
-  const visualNodes: Array<GroupTaskNode & { left: number; top: number }> = []
+  const visualNodes: Array<any & { left: number; top: number }> = []
   let maxRows = 1
   for (const k of colKeys) maxRows = Math.max(maxRows, (columns.get(k) || []).length)
   for (const k of colKeys) {
@@ -1393,21 +1478,19 @@ const dagGraph = computed(() => {
   }
   const pos = new Map(visualNodes.map((n) => [String(n.node_key), n]))
   const edges: Array<{ id: string; from: string; to: string; x1: number; y1: number; x2: number; y2: number }> = []
-  for (const n of nodes) {
-    for (const dep of n.deps || []) {
-      const from = pos.get(String(dep))
-      const to = pos.get(String(n.node_key))
-      if (!from || !to) continue
-      edges.push({
-        id: `${dep}->${n.node_key}`,
-        from: String(dep),
-        to: String(n.node_key),
-        x1: from.left + NODE_W,
-        y1: from.top + NODE_H / 2,
-        x2: to.left,
-        y2: to.top + NODE_H / 2,
-      })
-    }
+  for (const e of edgesInput) {
+    const from = pos.get(String(e.from))
+    const to = pos.get(String(e.to))
+    if (!from || !to) continue
+    edges.push({
+      id: `${e.from}->${e.to}`,
+      from: String(e.from),
+      to: String(e.to),
+      x1: from.left + NODE_W,
+      y1: from.top + NODE_H / 2,
+      x2: to.left,
+      y2: to.top + NODE_H / 2,
+    })
   }
   const width = PAD_X * 2 + Math.max(1, colKeys.length) * NODE_W + Math.max(0, colKeys.length - 1) * COL_GAP
   const height = PAD_Y * 2 + maxRows * NODE_H + Math.max(0, maxRows - 1) * ROW_GAP
@@ -1443,8 +1526,17 @@ watch(
 const dagReachability = computed(() => {
   const forward = new Map<string, Set<string>>()
   const reverse = new Map<string, Set<string>>()
-  for (const n of taskNodes.value) {
-    const key = String(n.node_key)
+  const rawSnapshot = taskGraph.value?.snapshot_json || '{}'
+  let snapshot: any = {}
+  try {
+    snapshot = JSON.parse(rawSnapshot)
+  } catch {
+    snapshot = {}
+  }
+  const snapNodes = Array.isArray(snapshot?.nodes) ? snapshot.nodes : []
+  for (const sn of snapNodes) {
+    const key = String(sn?.node_key || '').trim()
+    if (!key) continue
     if (!forward.has(key)) forward.set(key, new Set())
     if (!reverse.has(key)) reverse.set(key, new Set())
   }

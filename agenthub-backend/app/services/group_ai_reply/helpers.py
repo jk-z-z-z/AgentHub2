@@ -34,7 +34,17 @@ def extract_agent_mentions(meta_json: str) -> list[int]:
 def build_short_term_history_msgs(db: Session, *, group_id: int, exclude_message_id: int | None = None) -> list:
     from agentscope.message import Msg
 
-    raw = db.query(Message).filter(Message.group_id == int(group_id)).order_by(Message.id.asc()).all()
+    # Performance: do NOT load entire group history.
+    # Keep a bounded tail window for short-term memory.
+    limit = 80
+    raw = (
+        db.query(Message)
+        .filter(Message.group_id == int(group_id))
+        .order_by(Message.id.desc())
+        .limit(limit + 10)
+        .all()
+    )
+    raw.reverse()
     out = []
     for item in raw:
         if exclude_message_id is not None and int(item.id) == int(exclude_message_id):
