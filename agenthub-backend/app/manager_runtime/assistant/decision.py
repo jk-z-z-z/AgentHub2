@@ -8,7 +8,7 @@ from app.services._zero_deps_ai_helpers import simple_internal_llm_chat as inter
 
 @dataclass(frozen=True)
 class ManagerDecision:
-    action: str  # CHAT | ASK_CLARIFY | DRAFT_PLAN | APPLY_PLAN
+    action: str
     reason: str
     reply_text: str
     questions: list[str]
@@ -111,10 +111,6 @@ async def compose_reply_after_tool_calls(
     previous_reply_text: str,
     tool_results: list[dict],
 ) -> str:
-    """
-    Ask LLM to produce final user-facing reply based on tool call results.
-    This keeps user-visible text AI-authored while avoiding 'fake success' when tools fail.
-    """
     prompt = (
         "你是群聊项目的管家（Master）。你刚刚请求并执行了一些工具调用。\n"
         "请基于工具调用结果，输出给用户的最终回复文本（自然语言）。\n"
@@ -148,6 +144,9 @@ async def decide_manager_action(
         "你还可以选择运行技能（skills），让模型在后续步骤里自行判断是否需要更新项目文档：\n"
         "- DOC_UPDATE：用于把项目规范、接口契约、关键决策等沉淀到 README/MEMORY/knowledge/*.md（由模型自行把握写入粒度）。\n"
         "说明：优先使用 skills，而不是在这里直接输出大量 tool_calls。\n"
+        "你还可以调用工具（tool_calls）：\n"
+        "- manager.project_md：读写项目文档。\n"
+        "- manager.delegate_node：把一个已就绪的节点直接委派给其对应的数字员工执行。\n"
         "你必须只输出一个JSON对象，不要markdown。\n"
         "schema:\n"
         '{\n'
@@ -155,7 +154,7 @@ async def decide_manager_action(
         '  "reason": "string",\n'
         '  "reply_text": "string",\n'
         '  "skills": ["DOC_UPDATE"],\n'
-        '  "tool_calls": [{"tool_code":"manager.project_md","args":{"op":"read","path":"README.md"}}],\n'
+        '  "tool_calls": [{"tool_code":"manager.project_md","args":{"op":"read","path":"README.md"}}, {"tool_code":"manager.delegate_node","args":{"node_id":123}}],\n'
         '  "questions": ["..."],\n'
         '  "plan": {"plan_title":"...","goal":"...","nodes":[{"node_key":"N1","title":"...","detail":"...","role_required":null,"deps":[]}]} \n'
         "}\n"

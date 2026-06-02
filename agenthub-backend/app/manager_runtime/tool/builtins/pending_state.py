@@ -1,6 +1,7 @@
 from __future__ import annotations
 
-from app.services.manager_assistant.state_store import (
+from app.manager_runtime.tool.base import ManagerTool, ToolCallResult
+from app.manager_runtime.assistant.state_store import (
     clear_pending_clarify,
     clear_pending_plan,
     load_pending_clarify,
@@ -8,7 +9,6 @@ from app.services.manager_assistant.state_store import (
     save_pending_clarify,
     save_pending_plan,
 )
-from app.services.manager_assistant.tools.base import ManagerTool, ToolCallResult
 
 
 class PendingStateTool(ManagerTool):
@@ -47,4 +47,3 @@ class PendingStateTool(ManagerTool):
             clear_pending_plan(group_id=group_id)
             return ToolCallResult(ok=True, result={"cleared": True})
         return ToolCallResult(ok=False, result={}, error="Unsupported op")
-

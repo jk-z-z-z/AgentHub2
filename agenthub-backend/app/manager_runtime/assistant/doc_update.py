@@ -78,12 +78,6 @@ async def run_doc_update_skill(
     docs_preview: str,
     short_term_preview: str,
 ) -> DocUpdateSkillResult:
-    """
-    LLM skill that decides *whether* and *how much* to write into project docs.
-    It may:
-    - read existing docs (README/MEMORY/knowledge/*.md)
-    - write/append structured content (API contracts, conventions, decisions, etc.)
-    """
     prompt = (
         "你是群聊项目的管家（Master），你正在执行技能 DOC_UPDATE，用于将项目关键内容沉淀为MD文档。\n"
         "你必须自行把握写入粒度：\n"
@@ -112,4 +106,3 @@ async def run_doc_update_skill(
     reply_text = str(obj.get("reply_text") or "").strip()
     tool_calls = _normalize_tool_calls(obj.get("tool_calls"))
     return DocUpdateSkillResult(reply_text=reply_text, tool_calls=tool_calls)
-

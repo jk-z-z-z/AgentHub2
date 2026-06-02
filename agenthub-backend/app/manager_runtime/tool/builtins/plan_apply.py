@@ -2,9 +2,9 @@ from __future__ import annotations
 
 from sqlalchemy.orm import Session
 
+from app.manager_runtime.tool.base import ManagerTool, ToolCallResult
 from app.services.group_orchestrator.orchestrator_service import apply_plan_and_schedule
-from app.services.manager_planning_service import manager_tool_upsert_plan
-from app.services.manager_assistant.tools.base import ManagerTool, ToolCallResult
+from app.manager_runtime.assistant.planning import manager_tool_upsert_plan
 
 
 class PlanApplyTool(ManagerTool):
@@ -39,4 +39,3 @@ class PlanApplyTool(ManagerTool):
                 "scheduled_count": int(result.scheduled_count),
             },
         )
-

@@ -15,4 +15,3 @@ class ManagerTool:
 
     async def __call__(self, **kwargs) -> ToolCallResult:  # pragma: no cover
         raise NotImplementedError
-

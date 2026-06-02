@@ -79,4 +79,3 @@ def clear_pending_clarify(*, group_id: int) -> None:
     path = _pending_clarify_path(int(group_id))
     if path.exists():
         path.unlink()
-

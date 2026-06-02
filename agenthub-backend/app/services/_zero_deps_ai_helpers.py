@@ -22,6 +22,18 @@ def _text_content(text: Any) -> list[Any]:
     return [{"type": "text", "text": str(text or "")}]
 
 
+def _message_role(message: Any) -> str:
+    if isinstance(message, dict):
+        return str(message.get("role", "user"))
+    return str(getattr(message, "role", "user"))
+
+
+def _message_content(message: Any) -> Any:
+    if isinstance(message, dict):
+        return message.get("content", "")
+    return getattr(message, "content", "")
+
+
 def _extract_response_text(response: Any) -> str:
     parts = getattr(response, "content", None) or []
     texts: list[str] = []
@@ -53,9 +65,9 @@ async def simple_internal_llm_chat(
     for m in (short_term_messages or []):
         messages.append(
             Msg(
-                role=str(m.get("role", "user")),
-                content=_text_content(m.get("content", "")),
-                name=str(m.get("role", "user")),
+                role=_message_role(m),
+                content=_text_content(_message_content(m)),
+                name=_message_role(m),
             )
         )
     messages.append(Msg(role="user", content=_text_content(user_prompt), name="user"))
