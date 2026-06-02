@@ -6,6 +6,8 @@ from sqlalchemy.orm import Session
 
 from app.agent_runtime.agentbuilder._builder import build_complete_agent
 from app.agent_runtime.engine.factory import create_engine
+from app.agent_runtime.trace import AgentRuntimeTrace
+from app.agent_runtime.tool._executor import execute_builtin_tool
 from app.agent_runtime.schemas import AgentInvokeResult
 
 
@@ -20,6 +22,7 @@ class _StrictAgentRunRequest:
         runtime_context: dict[str, Any],
         short_term_memory: list[dict[str, Any]],
         toolkit,
+        trace,
     ):
         self.agent_id = agent_id
         self.input_text = input_text
@@ -27,6 +30,26 @@ class _StrictAgentRunRequest:
         self.runtime_context = runtime_context
         self.short_term_memory = short_term_memory
         self._toolkit = toolkit
+        self.trace = trace
+
+
+def _normalize_short_term_memory(short_term_memory: list[dict[str, Any]] | list[Any]) -> list[dict[str, Any]]:
+    normalized: list[dict[str, Any]] = []
+    for item in short_term_memory or []:
+        if isinstance(item, dict):
+            normalized.append(
+                {
+                    "role": str(item.get("role", "user")),
+                    "content": item.get("content", ""),
+                    "name": item.get("name"),
+                }
+            )
+            continue
+        role = str(getattr(item, "role", "user"))
+        content = getattr(item, "content", "")
+        name = getattr(item, "name", None)
+        normalized.append({"role": role, "content": content, "name": name})
+    return normalized
 
 
 async def invoke_agent(
@@ -35,6 +58,9 @@ async def invoke_agent(
     agent_id: int,
     short_term_memory: list[dict[str, Any]],
     extra_context: dict[str, Any],
+    system_prompt: str | None = None,
+    trace_message_id: int | None = None,
+    tool_executor: Any | None = None,
 ) -> AgentInvokeResult:
     """
     数字员工统一极简入口函数。外部系统仅允许调用此函数，禁止访问任何内部模块。
@@ -58,11 +84,23 @@ async def invoke_agent(
     保留在原有项目位置，无需进入本包。
     ==========================================
     """
+    runtime_context = dict(extra_context or {})
+    trace_id = trace_message_id
+    if trace_id is None:
+        maybe_trace_id = runtime_context.get("trace_message_id")
+        try:
+            trace_id = int(maybe_trace_id) if maybe_trace_id not in (None, "") else None
+        except (TypeError, ValueError):
+            trace_id = None
+
+    trace = AgentRuntimeTrace(db=db, message_id=int(trace_id) if trace_id else None)
+
     built_agent = build_complete_agent(
         db,
         agent_id=int(agent_id),
-        extra_context=extra_context,
-        runtime_context={"extra": extra_context},
+        extra_context=runtime_context,
+        runtime_context=runtime_context,
+        trace=trace,
     )
 
     engine = create_engine(built_agent.engine_ctx.engine_type)
@@ -70,21 +108,55 @@ async def invoke_agent(
     wrapped_req = _StrictAgentRunRequest(
         agent_id=int(agent_id),
         input_text=str(extra_context.get("input_text", "")),
-        system_prompt=built_agent.system_prompt,
-        runtime_context={"extra": extra_context},
-        short_term_memory=short_term_memory,
+        system_prompt=system_prompt if system_prompt is not None else built_agent.system_prompt,
+        runtime_context=runtime_context,
+        short_term_memory=_normalize_short_term_memory(short_term_memory),
         toolkit=built_agent.toolkit,
+        trace=trace,
     )
 
-    text, meta = await engine.run(
-        ctx=built_agent.engine_ctx,
-        req=wrapped_req,
-        tool_executor=None,
-    )
+    def _trace_tool_executor(tool_code: str, args: dict[str, Any]) -> dict[str, Any]:
+        payload_args = args or {}
+        trace.emit("tool.call", {"tool_code": str(tool_code), "args": payload_args})
+        try:
+            executor = tool_executor
+            if executor is None:
+                result = execute_builtin_tool(
+                    agent_id=int(agent_id),
+                    tool_code=str(tool_code),
+                    args=payload_args,
+                    runtime_context=runtime_context,
+                )
+            else:
+                result = executor(str(tool_code), payload_args)
+            trace.emit("tool.result", {"tool_code": str(tool_code), "result": result})
+            return result
+        except Exception as exc:
+            trace.emit("tool.result", {"tool_code": str(tool_code), "error": str(exc)})
+            raise
 
-    return AgentInvokeResult(
-        text=text,
-        engine_type=built_agent.engine_ctx.engine_type,
-        meta=meta,
-        system_prompt_used=built_agent.system_prompt,
+    trace.emit(
+        "run.started",
+        {
+            "agent_id": int(agent_id),
+            "engine_type": built_agent.engine_ctx.engine_type,
+            "has_toolkit": bool(getattr(built_agent, "toolkit", None)),
+        },
     )
+    try:
+        text, meta = await engine.run(
+            ctx=built_agent.engine_ctx,
+            req=wrapped_req,
+            tool_executor=_trace_tool_executor,
+        )
+        trace.emit("run.finished", {"status": "succeeded", "engine_type": built_agent.engine_ctx.engine_type})
+        return AgentInvokeResult(
+            text=text,
+            engine_type=built_agent.engine_ctx.engine_type,
+            meta=meta,
+            system_prompt_used=wrapped_req.system_prompt,
+        )
+    except Exception as exc:
+        trace.emit("error", {"error": str(exc), "engine_type": built_agent.engine_ctx.engine_type})
+        trace.emit("run.finished", {"status": "failed", "engine_type": built_agent.engine_ctx.engine_type})
+        raise

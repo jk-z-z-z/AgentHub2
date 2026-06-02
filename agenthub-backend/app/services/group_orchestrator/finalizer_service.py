@@ -10,7 +10,7 @@ from app.models.group_task_run import GroupTaskRun
 from app.services.group_task.event_service import log_group_task_event
 from app.services.group_task.node_service import list_group_task_nodes
 from app.services.group_task.manager_service import get_or_create_manager_member
-from app.services.message_writer_service import create_message
+from app.agent_runtime.message_store import create_message
 
 
 def _can_finalize(run: GroupTaskRun, nodes: list) -> bool:
@@ -110,4 +110,3 @@ async def maybe_finalize_run(db: Session, *, run_id: int) -> int | None:
         payload={"final_message_id": int(msg.id)},
     )
     return int(msg.id)
-

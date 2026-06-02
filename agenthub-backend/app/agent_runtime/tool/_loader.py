@@ -26,10 +26,12 @@ class _TracedBuiltinTool(ToolBase):
         description: str | None,
         schema_json: str | None,
         runtime_context: dict[str, Any] | None = None,
+        trace: Any | None = None,
     ):
         self._agent_id = int(agent_id)
         self._code = str(code)
         self._runtime_context = runtime_context or {}
+        self._trace = trace
         self.name = str(code)
         self.description = description or f"Builtin tool: {code}"
         self.input_schema = self._safe_schema(schema_json)
@@ -50,6 +52,11 @@ class _TracedBuiltinTool(ToolBase):
 
     async def __call__(self, **kwargs: Any) -> ToolChunk:
         start_time = time.perf_counter()
+        if self._trace:
+            try:
+                self._trace.emit("tool.call", {"tool_code": self._code, "args": kwargs or {}})
+            except Exception:
+                pass
         trace_record: dict[str, Any] = {
             "tool_code": self._code,
             "agent_id": self._agent_id,
@@ -68,6 +75,11 @@ class _TracedBuiltinTool(ToolBase):
             duration_ms = round((time.perf_counter() - start_time) * 1000, 2)
             trace_record.update({"status": "success", "duration_ms": duration_ms, "result_preview": str(result)[:200]})
             self._call_traces.append(trace_record)
+            if self._trace:
+                try:
+                    self._trace.emit("tool.result", {"tool_code": self._code, "result": result})
+                except Exception:
+                    pass
             return ToolChunk(
                 content=[TextBlock(text=json.dumps(result, ensure_ascii=False))],
                 state=ToolResultState.SUCCESS,
@@ -76,6 +88,11 @@ class _TracedBuiltinTool(ToolBase):
             duration_ms = round((time.perf_counter() - start_time) * 1000, 2)
             trace_record.update({"status": "failed", "duration_ms": duration_ms, "error": str(e)})
             self._call_traces.append(trace_record)
+            if self._trace:
+                try:
+                    self._trace.emit("tool.result", {"tool_code": self._code, "error": str(e)})
+                except Exception:
+                    pass
             return ToolChunk(
                 content=[TextBlock(text=json.dumps({"error": str(e)}, ensure_ascii=False))],
                 state=ToolResultState.ERROR,
@@ -97,7 +114,11 @@ def _normalize_toggles(enabled: dict[str, bool], allowed_codes: list[str]) -> di
     return normalized
 
 
-def load_toolkit_for_agent(agent_id: int, runtime_context: dict[str, Any] | None = None) -> Toolkit:
+def load_toolkit_for_agent(
+    agent_id: int,
+    runtime_context: dict[str, Any] | None = None,
+    trace: Any | None = None,
+) -> Toolkit:
     allowed_codes = [str(k) for k in sorted(BUILTIN_TOOL_DEFS.keys())]
     tools_json_path = _get_tools_json_path(int(agent_id))
 
@@ -125,6 +146,7 @@ def load_toolkit_for_agent(agent_id: int, runtime_context: dict[str, Any] | None
                 description=spec.spec.get("description"),
                 schema_json=json.dumps(spec.spec.get("input_schema", {}), ensure_ascii=False),
                 runtime_context=runtime_context,
+                trace=trace,
             )
         )
     return Toolkit(tools=tools)

@@ -21,3 +21,4 @@ class ReplyContext:
     content: str
     meta_json: str
     emit_message: EmitMessage
+    ai_message: Message | None = None

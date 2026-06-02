@@ -10,7 +10,7 @@ from app.models.group_task_run import GroupTaskRun
 from app.models.member import Member
 from app.services.group_orchestrator.node_protocol import format_receipt_message, parse_node_result
 from app.services.group_task.event_service import log_group_task_event
-from app.services.message_writer_service import create_message
+from app.agent_runtime.message_store import create_message
 
 
 async def post_node_receipt_message(
@@ -61,4 +61,3 @@ async def post_node_receipt_message(
         payload={"message_id": int(msg.id)},
     )
     return int(msg.id)
-

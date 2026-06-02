@@ -25,6 +25,7 @@ class AgentScopeReactEngine(BaseAgentEngine):
         req: Any,
         tool_executor: Any = None,
     ) -> tuple[str, dict[str, Any]]:
+        trace = getattr(req, "trace", None)
         cred = OpenAICredential(
             api_key=settings.openai_api_key,
             base_url=settings.openai_base_url,
@@ -58,6 +59,8 @@ class AgentScopeReactEngine(BaseAgentEngine):
         input_text = str(getattr(req, "input_text", ""))
         messages.append(Msg(role="user", content=_text_content(input_text), name="user"))
 
+        if trace:
+            trace.emit("llm.request", {"input_preview": input_text[:500], "system_preview": str(getattr(req, "system_prompt", "") or "")[:300]})
         reply = await agent.reply(messages)
         parts: list[str] = []
         for part in reply.content:
@@ -68,4 +71,7 @@ class AgentScopeReactEngine(BaseAgentEngine):
             elif isinstance(part, str):
                 parts.append(part)
 
-        return "".join(parts).strip(), {"engine": "agentscope_react"}
+        text = "".join(parts).strip()
+        if trace:
+            trace.emit("llm.response", {"text_preview": text[:800]})
+        return text, {"engine": "agentscope_react"}

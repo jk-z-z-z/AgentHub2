@@ -6,7 +6,6 @@ from typing import Any
 
 from sqlalchemy.orm import Session
 
-from app.manager_runtime.engine.base import ManagerEngineContext
 from app.models.group import Group
 from app.services.storage_paths import project_dir
 
@@ -143,7 +142,6 @@ class BuiltManager:
     group: Group | None
     system_prompt: str
     runtime_context: dict[str, Any]
-    engine_ctx: ManagerEngineContext
 
 
 def build_complete_manager(
@@ -167,14 +165,8 @@ def build_complete_manager(
     group = db.query(Group).filter(Group.id == int(group_id)).first()
     runtime_context = dict(context)
     runtime_context["purpose"] = str(extra_context.get("purpose") or "chat")
-    engine_ctx = ManagerEngineContext(
-        group_id=int(group_id),
-        engine_type="internal_llm",
-        engine_config_json="{}",
-    )
     return BuiltManager(
         group=group,
         system_prompt=system_prompt,
         runtime_context=runtime_context,
-        engine_ctx=engine_ctx,
     )

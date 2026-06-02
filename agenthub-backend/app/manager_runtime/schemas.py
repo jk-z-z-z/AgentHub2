@@ -10,6 +10,7 @@ class ManagerInvokeRequest(BaseModel):
     group_id: int = Field(..., description="群聊/项目ID")
     short_term_memory: list[dict[str, Any]] = Field(default_factory=list, description="短期对话历史消息列表")
     extra_context: dict[str, Any] = Field(default_factory=dict, description="附加上下文")
+    trace_message_id: int | None = Field(default=None, description="过程事件绑定的消息ID")
 
 
 class ManagerInvokeResult(BaseModel):

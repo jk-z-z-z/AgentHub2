@@ -12,7 +12,7 @@ from app.models.group_task_node import GroupTaskNode
 from app.models.group_task_run import GroupTaskRun
 from app.models.member import Member
 from app.services._zero_deps_ai_helpers import build_project_system_prompt
-from app.services.agent_runtime_legacy_compat import execute_agent_run
+from app.agent_runtime import invoke_agent
 from app.services.group_task.event_service import list_group_task_events, log_group_task_event
 from app.services.group_task.helpers import assistant_is_enabled, ensure_group_member, runtime_dir_for_run, validate_dag_nodes, write_run_files
 from app.services.group_task.manager_service import get_or_create_manager_member
@@ -534,29 +534,22 @@ async def run_agent_for_node(db: Session, *, node_id: int) -> GroupTaskNode | No
             },
         )
 
-    exec_res = await execute_agent_run(
+    exec_res = await invoke_agent(
         db,
-        group_id=int(run.group_id),
-        agent_instance_id=int(agent_id),
-        input_text=prompt,
-        system_prompt=system_prompt,
-        runtime_context={
+        agent_id=int(agent_id),
+        short_term_memory=[],
+        extra_context={
             "group_type": "project",
             "group_id": int(run.group_id),
+            "project_id": int(run.group_id),
             "run_id": int(run.id),
             "node_id": int(node.id),
-            "project_code_cwd": str(project_dir(int(run.group_id)) / "shared" / "code"),
+            "input_text": prompt,
         },
-        trigger_message_id=int(run.trigger_message_id) if run.trigger_message_id else None,
-        mode="dag_node",
-        group_task_run_id=int(run.id),
-        group_task_node_id=int(node.id),
+        system_prompt=system_prompt,
         tool_executor=_tool_exec,
     )
-    summary = exec_res.result.text or "节点执行完成"
-    node.agent_run_id = int(exec_res.run.id)
-    db.add(node)
-    db.commit()
+    summary = exec_res.text or "节点执行完成"
     # Validate deliverables that claim files: they must actually exist in project shared code root.
     try:
         from app.services.group_orchestrator.node_protocol import parse_node_result

@@ -36,6 +36,8 @@ class InternalLLMEngine(BaseAgentEngine):
         tool_executor: Any = None,
     ) -> tuple[str, dict[str, Any]]:
         _ = tool_executor
+        trace = getattr(req, "trace", None)
+        system_prompt = str(getattr(req, "system_prompt", "") or "")
         cred = OpenAICredential(
             api_key=settings.openai_api_key,
             base_url=settings.openai_base_url,
@@ -47,11 +49,11 @@ class InternalLLMEngine(BaseAgentEngine):
         )
 
         messages: list[Msg] = []
-        if str(getattr(req, "system_prompt", "")):
+        if system_prompt:
             messages.append(
                 Msg(
                     role="system",
-                    content=_text_content(str(getattr(req, "system_prompt", ""))),
+                    content=_text_content(system_prompt),
                     name="system",
                 )
             )
@@ -65,5 +67,10 @@ class InternalLLMEngine(BaseAgentEngine):
         input_text = str(getattr(req, "input_text", ""))
         messages.append(Msg(role="user", content=_text_content(input_text), name="user"))
 
+        if trace:
+            trace.emit("llm.request", {"input_preview": input_text[:500], "system_preview": system_prompt[:300]})
         response = await model(messages)
-        return _extract_response_text(response), {"engine": "internal_llm"}
+        text = _extract_response_text(response)
+        if trace:
+            trace.emit("llm.response", {"text_preview": text[:800]})
+        return text, {"engine": "internal_llm"}

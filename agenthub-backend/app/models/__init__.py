@@ -12,6 +12,7 @@ from app.models.group_task_run import GroupTaskRun
 from app.models.mcp import MCP
 from app.models.member import Member
 from app.models.message import Message
+from app.models.message_event import MessageEvent
 from app.models.tool import Tool
 from app.models.user import User
 
@@ -28,6 +29,7 @@ __all__ = [
     "MCP",
     "Member",
     "Message",
+    "MessageEvent",
     "Tool",
     "User",
 ]

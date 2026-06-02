@@ -12,11 +12,14 @@ result = await invoke_agent(
     db,
     agent_id=123,
     short_term_memory=[{"role": "user", "content": "你好"}],
-    extra_context={"user_id": 1, "input_text": "帮我分析需求"}
+    extra_context={"user_id": 1, "input_text": "帮我分析需求"},
+    trace_message_id=456,
 )
 ```
 
-仅需三个核心参数，即可完成完整的数字员工执行，完全隐藏所有内部实现细节。
+仅需三个核心参数即可完成完整执行；如果你还想记录过程事件，再额外传 `trace_message_id` 即可，完全隐藏所有内部实现细节。
+
+如果传入 `trace_message_id`，本次执行会把 `run.started`、`llm.request`、`tool.call`、`tool.result`、`llm.response`、`run.finished` 等过程事件写入对应的 `message_events`。
 
 ---
 
