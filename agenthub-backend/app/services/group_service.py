@@ -28,7 +28,7 @@ def create_group(db: Session, name: str, description: str | None, group_type: st
         db.commit()
     db.refresh(item)
     # init dirs after id generated
-    if group_type == "personal":
+    if group_type in {"personal", "bootstrap"}:
         ensure_personal_group_space(int(item.id))
     else:
         ensure_project_space(int(item.id))

@@ -1,10 +1,10 @@
 from sqlalchemy import ForeignKey, Index, String, UniqueConstraint
 from sqlalchemy.orm import Mapped, mapped_column
 
-from app.db.base import Base, SnowflakeMixin, TimestampMixin
+from app.db.base import AutoIncrementIdMixin, Base, TimestampMixin
 
 
-class Member(SnowflakeMixin, TimestampMixin, Base):
+class Member(AutoIncrementIdMixin, TimestampMixin, Base):
     __tablename__ = "members"
     __table_args__ = (
         UniqueConstraint("group_id", "display_name", name="uq_member_group_display_name"),

@@ -598,7 +598,7 @@
 
 <script setup lang="ts">
 import { computed, nextTick, onBeforeUnmount, onMounted, ref, watch } from 'vue'
-import { useRouter } from 'vue-router'
+import { useRoute, useRouter } from 'vue-router'
 import {
   apiCreateGroup,
   apiCreateMessage,
@@ -646,6 +646,7 @@ import {
 import { ElMessage, ElMessageBox } from 'element-plus'
 
 const router = useRouter()
+const route = useRoute()
 const draft = ref('')
 const groups = ref<Group[]>([])
 const loadingGroups = ref(false)
@@ -809,8 +810,11 @@ async function loadGroups() {
   try {
     const res = await apiListGroups()
     groups.value = res.data
-    if (!activeGroupId.value && groups.value.length > 0 && groups.value[0]) {
-      await selectGroup(groups.value[0].id)
+    const qid = String(route.query.groupId || '').trim()
+    const preferred = qid ? groups.value.find((g) => String(g.id) === qid) : null
+    if (!activeGroupId.value) {
+      if (preferred) await selectGroup(preferred.id)
+      else if (groups.value.length > 0 && groups.value[0]) await selectGroup(groups.value[0].id)
     }
   } finally {
     loadingGroups.value = false

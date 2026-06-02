@@ -1,10 +1,10 @@
 from sqlalchemy import String, Text
 from sqlalchemy.orm import Mapped, mapped_column
 
-from app.db.base import Base, SnowflakeMixin, TimestampMixin
+from app.db.base import AutoIncrementIdMixin, Base, TimestampMixin
 
 
-class Group(SnowflakeMixin, TimestampMixin, Base):
+class Group(AutoIncrementIdMixin, TimestampMixin, Base):
     __tablename__ = "groups"
 
     # Group names are not unique (DingTalk-like); use id as stable identity.

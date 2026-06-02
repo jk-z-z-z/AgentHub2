@@ -18,6 +18,5 @@ class TimestampMixin:
     )
 
 
-class SnowflakeMixin:
-    # Backward-compatible mixin name; now uses DB auto-increment IDs instead of Snowflake.
+class AutoIncrementIdMixin:
     id: Mapped[int] = mapped_column(Integer, primary_key=True, autoincrement=True)

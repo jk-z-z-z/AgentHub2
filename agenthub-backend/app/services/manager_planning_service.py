@@ -6,10 +6,12 @@ from datetime import datetime, timezone
 from sqlalchemy.orm import Session
 
 from app.models.group_task_run import GroupTaskRun
-from app.agent_runtime.internal_llm import internal_llm_chat
-
-# NOTE: Manager (group capability) is fixed to internal LLM path.
-# It must NOT be delegated to ACP / external runners.
+from app.services._zero_deps_ai_helpers import (
+    simple_internal_llm_chat,
+    build_personal_system_prompt,
+    build_project_system_prompt,
+    build_bootstrap_system_prompt,
+)
 from app.services.group_task.node_service import create_group_task_run, list_group_task_runs, update_group_task_dag
 from app.services.storage_paths import project_dir
 
@@ -126,7 +128,6 @@ def _is_off_topic_plan(plan: dict, *, goal_text: str) -> bool:
     goal = str(goal_text or "").strip().lower()
     if not goal:
         return False
-    # 当用户目标不是系统排障时，过滤明显偏到“报错排查/落库失败”的规划
     trouble_words = ["落库失败", "排查", "重试", "告警", "诊断", "异常", "ops", "system_admin"]
     if any(w in goal for w in ["报错", "排查", "故障", "异常", "重试"]):
         return False
@@ -151,7 +152,7 @@ async def manager_tool_build_plan_with_llm(*, db: Session | None = None, goal_te
         "你是群聊中的管家Agent，只做任务规划，不执行任务。\n"
         "必须严格围绕“用户当前目标”规划，不要被历史错误日志/排障信息带偏。\n"
         "请根据用户目标和群聊长期记忆，输出一个可执行的DAG计划。\n"
-        "你必须给出贴合具体领域的节点（避免通用模板：需求/设计/开发/测试 这种空泛拆分），节点要能落到“学评教”场景。\n"
+        "你必须给出贴合具体领域的节点（避免通用模板：需求/设计/开发/测试 这种空泛拆分），节点要能落到实际场景。\n"
         "必须仅返回JSON对象，不要返回markdown，不要解释。\n"
         "JSON Schema:\n"
         '{\n'
@@ -170,52 +171,18 @@ async def manager_tool_build_plan_with_llm(*, db: Session | None = None, goal_te
         f"群聊长期记忆(MEMORY.md摘要):\n{memory_preview[:4000]}\n\n"
         f"项目文档摘要:\n{docs_preview[:4000]}"
     )
-    # Observability: record that we are going to use LLM for planning (to avoid "looks like template").
-    try:
-        if db is not None and isinstance(context, dict) and int(context.get("group_id") or 0) > 0:
-            from app.services.group_task.event_service import log_group_task_event
-            from app.common.event_types import GroupTaskEventType
-
-            # For single-project policy, planning refers to the active/latest run if any; otherwise run_id=0.
-            group_id = int(context.get("group_id") or 0)
-            active = manager_tool_get_active_run(db, group_id=group_id) if group_id else None
-            if active:
-                log_group_task_event(
-                    db,
-                    run_id=int(active.id),
-                    node_id=None,
-                    event_type=GroupTaskEventType.MANAGER_PLANNING_LLM_STARTED,
-                    payload={"goal_preview": goal[:200]},
-                    run=None,
-                )
-    except Exception:
-        pass
-    # Manager (group capability) must use internal LLM; prefer ReAct loop to enforce tool-first planning.
-    if db is not None and isinstance(context, dict) and int(context.get("group_id") or 0) > 0:
-        try:
-            from app.agent_runtime.manager_runtime import build_plan_with_react_agent
-
-            reply = await build_plan_with_react_agent(
-                db=db,
-                group_id=int(context.get("group_id") or 0),
-                goal_text=goal,
-            )
-        except Exception:
-            reply = await internal_llm_chat(prompt, system_prompt="你是严谨的任务规划助手，只输出合法JSON。")
-    else:
-        reply = await internal_llm_chat(prompt, system_prompt="你是严谨的任务规划助手，只输出合法JSON。")
+    reply = await simple_internal_llm_chat(prompt, system_prompt="你是严谨的任务规划助手，只输出合法JSON。")
     parsed = _extract_json_object(reply)
     if isinstance(parsed, dict):
         plan = _normalize_plan(parsed, fallback_goal=goal)
         if not _is_off_topic_plan(plan, goal_text=goal):
             return plan
-    # off-topic 或首次失败，进行一次更强约束重试
     retry_prompt = (
         "仅基于下面用户目标做产品/研发规划，禁止输出任何运维排障/落库失败处理内容。\n"
         "输出JSON对象，字段同前。\n"
         f"用户目标：{goal}\n"
     )
-    reply2 = await internal_llm_chat(retry_prompt, system_prompt="只输出与用户目标直接相关的DAG JSON。")
+    reply2 = await simple_internal_llm_chat(retry_prompt, system_prompt="只输出与用户目标直接相关的DAG JSON。")
     parsed2 = _extract_json_object(reply2)
     if isinstance(parsed2, dict):
         plan2 = _normalize_plan(parsed2, fallback_goal=goal)
@@ -250,7 +217,6 @@ def manager_tool_get_active_run(db: Session, *, group_id: int) -> GroupTaskRun |
     runs = list_group_task_runs(db, group_id=int(group_id))
     if not runs:
         return None
-    # single project graph policy: always reuse the latest run
     return runs[0]
 
 
@@ -282,9 +248,6 @@ def manager_tool_upsert_plan(
 
 
 async def manager_tool_build_clarify_questions_with_llm(*, goal_text: str, context: dict | None = None) -> list[str]:
-    """
-    Ask clarifying questions before planning when domain constraints are missing.
-    """
     goal = str(goal_text or "").strip()
     memory_preview = ""
     docs_preview = ""
@@ -304,7 +267,7 @@ async def manager_tool_build_clarify_questions_with_llm(*, goal_text: str, conte
         f"长期记忆摘要：{memory_preview[:2000]}\n\n"
         f"项目文档摘要：{docs_preview[:2000]}\n"
     )
-    reply = await internal_llm_chat(prompt, system_prompt="只输出JSON数组。")
+    reply = await simple_internal_llm_chat(prompt, system_prompt="只输出JSON数组。")
     try:
         arr = json.loads(reply)
         if isinstance(arr, list):
@@ -312,7 +275,6 @@ async def manager_tool_build_clarify_questions_with_llm(*, goal_text: str, conte
             return out[:6]
     except Exception:
         pass
-    # fallback
     return [
         "目标用户与角色有哪些（学生/教师/管理员/督导）？各自权限是什么？",
         "评教对象与范围是什么（课程/教师/学期/班级）？是否需要匿名？",

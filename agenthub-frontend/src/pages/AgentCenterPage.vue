@@ -329,6 +329,8 @@ import {
   apiCreateAgentProfile,
   apiCreateMcp,
   apiDeleteMcp,
+  apiGetAgentBootstrapGroup,
+  apiStartAgentBootstrap,
   apiListAgentSkillPool,
   apiListAgentProfiles,
   apiListAgents,
@@ -507,12 +509,27 @@ async function createAgent() {
   agentErr.value = ''
   creatingAgent.value = true
   try {
-    await apiCreateAgent({ display_name: name, description: null, template_profile_id: newAgentProfileId.value })
+    const res = await apiCreateAgent({ display_name: name, description: null, template_profile_id: newAgentProfileId.value })
     newAgentName.value = ''
     newAgentProfileId.value = null
     createAgentOpen.value = false
     await loadAgents()
     ElMessage.success('已创建智能体')
+    if (res?.data?.id) {
+      try {
+        const boot = await apiGetAgentBootstrapGroup(String(res.data.id))
+        if (boot?.data?.id) {
+          try {
+            await apiStartAgentBootstrap(String(res.data.id))
+          } catch {
+            // ignore
+          }
+          router.push({ name: 'messages', query: { groupId: String(boot.data.id) } })
+        }
+      } catch {
+        // ignore
+      }
+    }
   } catch (e) {
     agentErr.value = e instanceof Error ? e.message : String(e)
     ElMessage.error(agentErr.value)

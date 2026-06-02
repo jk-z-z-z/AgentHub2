@@ -12,8 +12,7 @@ class ManagerRoleAgent(BaseRoleAgent):
         """
         memory = self.load_memory(ctx)
         # Use internal LLM with project system prompt so it behaves like manager role.
-        from app.agent_runtime.internal_llm import internal_llm_chat
-        from app.agent_runtime.memory_builder import build_project_system_prompt
+        from app.services._zero_deps_ai_helpers import simple_internal_llm_chat as internal_llm_chat
 
         # Manager is a group capability (not an AgentInstance). Use a neutral system prompt.
         system_prompt = (

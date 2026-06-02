@@ -4,7 +4,7 @@ from sqlalchemy.orm import Session
 from app.db.session import get_db
 from app.schemas.ai import AIChatRequest, AIChatResponse
 from app.schemas.common import ApiResponse
-from app.agent_runtime.internal_llm import internal_llm_chat
+from app.services._zero_deps_ai_helpers import simple_internal_llm_chat as internal_llm_chat
 
 
 router = APIRouter(prefix="/ai", tags=["ai"])

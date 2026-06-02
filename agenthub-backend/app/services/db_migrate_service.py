@@ -22,6 +22,13 @@ def migrate_sqlite_schema_if_needed(db_url: str) -> None:
     conn = sqlite3.connect(path)
     try:
         cur = conn.cursor()
+        # Dev-only: if old agent_profiles table exists, rebuild it from ORM metadata.
+        # This lets us remove deprecated columns without chasing in-place ALTER quirks.
+        cur.execute("SELECT name FROM sqlite_master WHERE type='table' AND name='agent_profiles'")
+        if cur.fetchone():
+            cur.execute("DROP TABLE IF EXISTS agent_profiles")
+            conn.commit()
+
         # agent_instances: engine fields
         if not _column_exists(cur, table="agent_instances", column="engine_type"):
             cur.execute("ALTER TABLE agent_instances ADD COLUMN engine_type VARCHAR(40) NOT NULL DEFAULT 'internal_llm'")
@@ -49,12 +56,6 @@ def migrate_sqlite_schema_if_needed(db_url: str) -> None:
         # group_task_runs: final summary message
         if not _column_exists(cur, table="group_task_runs", column="final_message_id"):
             cur.execute("ALTER TABLE group_task_runs ADD COLUMN final_message_id INTEGER")
-
-        # agent_profiles: template tool/skill configs
-        if not _column_exists(cur, table="agent_profiles", column="tools_json"):
-            cur.execute("ALTER TABLE agent_profiles ADD COLUMN tools_json TEXT NOT NULL DEFAULT ''")
-        if not _column_exists(cur, table="agent_profiles", column="skills_json"):
-            cur.execute("ALTER TABLE agent_profiles ADD COLUMN skills_json TEXT NOT NULL DEFAULT ''")
 
         # agent_runs / agent_run_events (fresh tables) - created by metadata.create_all()
 

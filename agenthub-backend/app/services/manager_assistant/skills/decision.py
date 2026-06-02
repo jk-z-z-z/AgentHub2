@@ -3,7 +3,7 @@ from __future__ import annotations
 import json
 from dataclasses import dataclass
 
-from app.agent_runtime.internal_llm import internal_llm_chat
+from app.services._zero_deps_ai_helpers import simple_internal_llm_chat as internal_llm_chat
 
 
 @dataclass(frozen=True)

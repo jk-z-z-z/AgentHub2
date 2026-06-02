@@ -11,14 +11,13 @@ from app.models.group_assistant_config import GroupAssistantConfig
 from app.models.group_task_node import GroupTaskNode
 from app.models.group_task_run import GroupTaskRun
 from app.models.member import Member
-from app.models.agent_instance import AgentInstance
-from app.agent_runtime.agent_run_executor import execute_agent_run
-from app.agent_runtime.memory_builder import build_project_system_prompt
+from app.services._zero_deps_ai_helpers import build_project_system_prompt
+from app.services.agent_runtime_legacy_compat import execute_agent_run
 from app.services.group_task.event_service import list_group_task_events, log_group_task_event
 from app.services.group_task.helpers import assistant_is_enabled, ensure_group_member, runtime_dir_for_run, validate_dag_nodes, write_run_files
 from app.services.group_task.manager_service import get_or_create_manager_member
 from app.services.storage_paths import project_dir
-from app.agent_runtime.tools.executor import execute_builtin_tool
+from app.agent_runtime.tool._executor import execute_builtin_tool
 from app.services.group_orchestrator.graph_service import build_graph_snapshot, upsert_graph_snapshot
 
 

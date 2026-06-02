@@ -1,10 +1,10 @@
 from sqlalchemy import ForeignKey, Index, Integer, UniqueConstraint
 from sqlalchemy.orm import Mapped, mapped_column
 
-from app.db.base import Base, SnowflakeMixin, TimestampMixin
+from app.db.base import AutoIncrementIdMixin, Base, TimestampMixin
 
 
-class GroupAssistantConfig(SnowflakeMixin, TimestampMixin, Base):
+class GroupAssistantConfig(AutoIncrementIdMixin, TimestampMixin, Base):
     __tablename__ = "group_assistant_configs"
     __table_args__ = (
         UniqueConstraint("group_id", name="uq_group_assistant_group_id"),

@@ -24,14 +24,13 @@ from app.db.session import SessionLocal, engine
 from app.services.auth_service import ensure_default_admin
 from app.services.db_migrate_service import migrate_sqlite_schema_if_needed
 from app.services.storage_init_service import ensure_user_space
-from app.agent_runtime.tools.registry import ensure_builtin_tools_seeded
+from app.agent_runtime.tool._registry import ensure_builtin_tools_seeded
 
 
 @asynccontextmanager
 async def lifespan(_: FastAPI):
     migrate_sqlite_schema_if_needed(settings.db_url)
-    # Always create missing tables. This is safe in sqlite for incremental dev,
-    # and avoids requiring "drop & recreate" to add new features.
+    # Always create missing tables. This is safe in sqlite for incremental dev.
     Base.metadata.create_all(bind=engine)
 
     # In dev, allow resetting schema on startup only when explicitly requested.
@@ -42,6 +41,14 @@ async def lifespan(_: FastAPI):
     }:
         Base.metadata.drop_all(bind=engine)
         Base.metadata.create_all(bind=engine)
+        db = SessionLocal()
+        try:
+            ensure_default_admin(db)
+        finally:
+            db.close()
+        ensure_builtin_tools_seeded()
+    elif settings.env.lower() in {"local", "dev"}:
+        # Development mode prefers a clean schema for new models.
         db = SessionLocal()
         try:
             ensure_default_admin(db)

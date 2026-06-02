@@ -6,7 +6,7 @@ export type Group = {
   id: string
   name: string
   description: string | null
-  type: 'project' | 'personal'
+  type: 'project' | 'personal' | 'bootstrap'
   created_at: string
   updated_at: string
 }
@@ -365,10 +365,18 @@ export async function apiListAgents(): Promise<ApiResult<Agent[]>> {
   return httpGet<Agent[]>('/api/v1/agents')
 }
 
+export async function apiGetAgentBootstrapGroup(agentId: string): Promise<ApiResult<Group | null>> {
+  return httpGet<Group | null>(`/api/v1/agents/${agentId}/bootstrap-group`)
+}
+
+export async function apiStartAgentBootstrap(agentId: string): Promise<ApiResult<boolean>> {
+  return httpPost<boolean, Record<string, never>>(`/api/v1/agents/${agentId}/bootstrap/start`, {})
+}
+
 export async function apiCreateGroup(body: {
   name: string
   description: string | null
-  type: 'project' | 'personal'
+  type: 'project' | 'personal' | 'bootstrap'
   users: Array<{ user_id: Id; display_name: string; title?: string | null }>
   agents: Array<{ agent_id: Id; display_name: string; title?: string | null }>
 }): Promise<ApiResult<Group>> {

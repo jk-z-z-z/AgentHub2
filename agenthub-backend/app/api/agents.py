@@ -4,15 +4,22 @@ from sqlalchemy.orm import Session
 from app.db.session import get_db
 from app.dependencies.auth import get_current_user
 from app.models.agent_instance import AgentInstance
+from app.models.member import Member
 from app.schemas.agent_instance import AgentInstanceCreateRequest, AgentInstanceOut, AgentInstanceSoulOut
 from app.schemas.agent_skills import AgentSkillConfigOut, AgentSkillConfigUpdateRequest, SkillPoolItemOut
 from app.schemas.common import ApiResponse
 from app.schemas.fs import FsEntryOut, TextFileOut, TextFileWriteRequest
-from app.services.agent_instance_service import create_agent_instance, list_agent_instances
+from app.services.agent_instance_service import (
+    create_agent_instance,
+    get_bootstrap_group_for_agent,
+    list_agent_instances,
+)
 from app.services.agent_fs_service import delete_agent_file, list_agent_fs, read_agent_text_file, write_agent_text_file
 from app.schemas.agent_tools import AgentToolTogglesOut, AgentToolTogglesUpdateRequest
 from app.services.agent_tool_service import get_agent_tool_toggles, update_agent_tool_toggles
 from app.services.agent_workspace_service import load_agent_soul, save_agent_soul
+from app.schemas.group import GroupOut
+from app.services.message_service import create_message_and_trigger_ai
 from app.services.skill_runtime_service import (
     list_skill_pool,
     load_agent_skills_config,
@@ -40,6 +47,53 @@ def create_agent_api(
 ):
     row = create_agent_instance(db, payload.model_dump(), creator_user_id=int(user.id))
     return ApiResponse(data=AgentInstanceOut.model_validate(row))
+
+
+@router.get("/{agent_id}/bootstrap-group", response_model=ApiResponse[GroupOut | None])
+def get_agent_bootstrap_group_api(
+    agent_id: int,
+    db: Session = Depends(get_db),
+    user=Depends(get_current_user),
+):
+    instance = db.query(AgentInstance).filter(AgentInstance.id == agent_id).first()
+    if not instance:
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Agent not found")
+    if int(instance.creator_user_id) != int(user.id):
+        raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail="Forbidden")
+    g = get_bootstrap_group_for_agent(db, agent_instance_id=int(agent_id), creator_user_id=int(user.id))
+    return ApiResponse(data=GroupOut.model_validate(g) if g else None)
+
+
+@router.post("/{agent_id}/bootstrap/start", response_model=ApiResponse[bool])
+async def start_agent_bootstrap_api(
+    agent_id: int,
+    db: Session = Depends(get_db),
+    user=Depends(get_current_user),
+):
+    instance = db.query(AgentInstance).filter(AgentInstance.id == agent_id).first()
+    if not instance:
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Agent not found")
+    if int(instance.creator_user_id) != int(user.id):
+        raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail="Forbidden")
+    g = get_bootstrap_group_for_agent(db, agent_instance_id=int(agent_id), creator_user_id=int(user.id))
+    if not g:
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Bootstrap group not found")
+    sender = (
+        db.query(Member)
+        .filter(Member.group_id == int(g.id), Member.kind == "user", Member.user_ref == str(user.id))
+        .first()
+    )
+    if not sender:
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Bootstrap user member not found")
+    await create_message_and_trigger_ai(
+        db,
+        group_id=int(g.id),
+        sender_member_id=int(sender.id),
+        message_type="text",
+        content="开始初始化（bootstrap）。请按 BOOTSTRAP.md 引导我完善配置。",
+        meta_json="{}",
+    )
+    return ApiResponse(data=True)
 
 
 @router.get("/{agent_id}/soul", response_model=ApiResponse[AgentInstanceSoulOut])

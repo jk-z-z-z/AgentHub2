@@ -1,10 +1,10 @@
 from sqlalchemy import Integer, String, Text
 from sqlalchemy.orm import Mapped, mapped_column
 
-from app.db.base import Base, SnowflakeMixin, TimestampMixin
+from app.db.base import AutoIncrementIdMixin, Base, TimestampMixin
 
 
-class Tool(SnowflakeMixin, TimestampMixin, Base):
+class Tool(AutoIncrementIdMixin, TimestampMixin, Base):
     __tablename__ = "tools"
 
     name: Mapped[str] = mapped_column(String(120), nullable=False, unique=True)

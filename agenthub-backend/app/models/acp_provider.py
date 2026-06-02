@@ -1,10 +1,10 @@
 from sqlalchemy import Integer, String, Text
 from sqlalchemy.orm import Mapped, mapped_column
 
-from app.db.base import Base, SnowflakeMixin, TimestampMixin
+from app.db.base import AutoIncrementIdMixin, Base, TimestampMixin
 
 
-class ACPProvider(SnowflakeMixin, TimestampMixin, Base):
+class ACPProvider(AutoIncrementIdMixin, TimestampMixin, Base):
     __tablename__ = "acp_providers"
 
     creator_user_id: Mapped[int] = mapped_column(Integer, nullable=False, index=True)

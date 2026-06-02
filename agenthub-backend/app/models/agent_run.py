@@ -3,10 +3,10 @@ from __future__ import annotations
 from sqlalchemy import ForeignKey, Index, String, Text
 from sqlalchemy.orm import Mapped, mapped_column
 
-from app.db.base import Base, SnowflakeMixin, TimestampMixin
+from app.db.base import AutoIncrementIdMixin, Base, TimestampMixin
 
 
-class AgentRun(SnowflakeMixin, TimestampMixin, Base):
+class AgentRun(AutoIncrementIdMixin, TimestampMixin, Base):
     __tablename__ = "agent_runs"
     __table_args__ = (
         Index("idx_agent_runs_group_id", "group_id"),

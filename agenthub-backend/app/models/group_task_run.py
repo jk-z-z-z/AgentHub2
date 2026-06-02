@@ -1,10 +1,10 @@
 from sqlalchemy import ForeignKey, Index, String, Text
 from sqlalchemy.orm import Mapped, mapped_column
 
-from app.db.base import Base, SnowflakeMixin, TimestampMixin
+from app.db.base import AutoIncrementIdMixin, Base, TimestampMixin
 
 
-class GroupTaskRun(SnowflakeMixin, TimestampMixin, Base):
+class GroupTaskRun(AutoIncrementIdMixin, TimestampMixin, Base):
     __tablename__ = "group_task_runs"
     __table_args__ = (
         Index("idx_group_task_runs_group_id", "group_id"),

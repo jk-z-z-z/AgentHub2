@@ -1,10 +1,10 @@
 from sqlalchemy import ForeignKey, Index, String, Text
 from sqlalchemy.orm import Mapped, mapped_column
 
-from app.db.base import Base, SnowflakeMixin, TimestampMixin
+from app.db.base import AutoIncrementIdMixin, Base, TimestampMixin
 
 
-class Message(SnowflakeMixin, TimestampMixin, Base):
+class Message(AutoIncrementIdMixin, TimestampMixin, Base):
     __tablename__ = "messages"
     __table_args__ = (
         Index("idx_messages_group_id", "group_id"),
