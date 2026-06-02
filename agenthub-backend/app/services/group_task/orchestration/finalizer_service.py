@@ -4,13 +4,13 @@ import json
 
 from sqlalchemy.orm import Session
 
-from app.services._zero_deps_ai_helpers import simple_internal_llm_chat as internal_llm_chat
+from app.agent_runtime.message_store import create_message
 from app.common.event_types import GroupTaskEventType
 from app.models.group_task_run import GroupTaskRun
 from app.services.group_task.event_service import log_group_task_event
-from app.services.group_task.node_service import list_group_task_nodes
 from app.services.group_task.manager_service import get_or_create_manager_member
-from app.agent_runtime.message_store import create_message
+from app.services.group_task.node_service import list_group_task_nodes
+from app.services._zero_deps_ai_helpers import simple_internal_llm_chat as internal_llm_chat
 
 
 def _can_finalize(run: GroupTaskRun, nodes: list) -> bool:
@@ -18,7 +18,6 @@ def _can_finalize(run: GroupTaskRun, nodes: list) -> bool:
         return False
     if getattr(run, "final_message_id", None):
         return False
-    # "可收口"：所有节点 completed 且 manager_review_status=approved
     for n in nodes:
         if str(getattr(n, "status", "")) != "completed":
             return False
@@ -58,10 +57,6 @@ def _extract_node_receipt_summary(nodes: list) -> list[dict]:
 
 
 async def maybe_finalize_run(db: Session, *, run_id: int) -> int | None:
-    """
-    If a run is in a "closable" state, have manager generate ONE final summary message,
-    post it in group as manager member, and store message_id to run.final_message_id.
-    """
     run = db.query(GroupTaskRun).filter(GroupTaskRun.id == int(run_id)).first()
     if not run:
         return None

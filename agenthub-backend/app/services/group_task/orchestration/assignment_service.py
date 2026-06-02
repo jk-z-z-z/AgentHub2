@@ -8,6 +8,7 @@ from app.common.event_types import GroupTaskEventType
 from app.models.group_task_node import GroupTaskNode
 from app.models.group_task_run import GroupTaskRun
 from app.models.member import Member
+from app.services._zero_deps_ai_helpers import simple_internal_llm_chat as internal_llm_chat
 from app.services.group_task.event_service import log_group_task_event
 from app.services.group_task.node_service import list_group_task_nodes
 
@@ -31,7 +32,6 @@ def _extract_json_object(text: str) -> dict | None:
     raw = str(text or "").strip()
     if not raw:
         return None
-    # Try fenced JSON blocks
     if "```" in raw:
         for b in raw.split("```"):
             candidate = b.strip()
@@ -44,14 +44,12 @@ def _extract_json_object(text: str) -> dict | None:
                         return obj
                 except Exception:
                     pass
-    # Direct JSON object
     if raw.startswith("{") and raw.endswith("}"):
         try:
             obj = json.loads(raw)
             return obj if isinstance(obj, dict) else None
         except Exception:
             return None
-    # Best-effort substring
     start = raw.find("{")
     end = raw.rfind("}")
     if start >= 0 and end > start:
@@ -64,14 +62,6 @@ def _extract_json_object(text: str) -> dict | None:
 
 
 async def smart_auto_assign_pending_nodes(db: Session, *, run_id: int, max_nodes: int = 12) -> int:
-    """
-    LLM-assisted auto assignment.
-
-    - Only assigns nodes that are still pending & unclaimed.
-    - Only assigns nodes whose deps are met.
-    - Never assigns to non-members.
-    - Prefers agent members when reasonable, but can assign to user members too.
-    """
     run = db.query(GroupTaskRun).filter(GroupTaskRun.id == int(run_id)).first()
     if not run:
         return 0
@@ -86,7 +76,6 @@ async def smart_auto_assign_pending_nodes(db: Session, *, run_id: int, max_nodes
         return 0
     pending = pending[: max(1, int(max_nodes))]
 
-    # Auto-assignment is for runnable subagents only. Users should claim manually.
     members = [m for m in _candidate_members(db, group_id=int(run.group_id)) if str(m.kind) == "agent" and m.agent_instance_id]
     candidates: list[dict] = []
     for m in members:
@@ -157,7 +146,6 @@ async def smart_auto_assign_pending_nodes(db: Session, *, run_id: int, max_nodes
         if member_id not in candidate_ids:
             continue
         node = by_key[node_key]
-        # Re-check still assignable (race-safe-ish)
         if node.status != "pending" or node.assignee_member_id is not None or str(node.assignee_kind or "") != "unclaimed":
             continue
         m = member_by_id.get(int(member_id))

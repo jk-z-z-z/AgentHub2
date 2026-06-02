@@ -5,7 +5,7 @@ import asyncio
 from sqlalchemy.orm import Session
 
 from app.db.session import SessionLocal
-from app.services.group_orchestrator.assignment_service import smart_auto_assign_pending_nodes
+from app.services.group_task.orchestration.assignment_service import smart_auto_assign_pending_nodes
 from app.services.group_task.node_service import auto_assign_pending_nodes, list_group_task_nodes, run_agent_for_node
 
 
@@ -21,7 +21,6 @@ async def run_ready_nodes_parallel(db: Session, *, run_id: int, max_concurrency:
     sem = asyncio.Semaphore(max(1, int(max_concurrency)))
 
     while True:
-        # First try smart assignment (LLM assisted), then fallback to exact-match assignment.
         try:
             _ = await smart_auto_assign_pending_nodes(db, run_id=int(run_id))
         except Exception:
@@ -46,7 +45,6 @@ async def run_ready_nodes_parallel(db: Session, *, run_id: int, max_concurrency:
         results = await asyncio.gather(*[_run_one(int(n.id)) for n in targets], return_exceptions=False)
         total_ok += sum(1 for r in results if r)
 
-        # Refresh outer session state to observe node transitions and newly-ready nodes.
         try:
             db.expire_all()
         except Exception:

@@ -4,11 +4,12 @@ import json
 
 from sqlalchemy.orm import Session
 
-from app.services._zero_deps_ai_helpers import simple_internal_llm_chat as internal_llm_chat
+from app.agent_runtime.message_store import create_message
 from app.common.event_types import GroupTaskEventType
-from app.models.group_task_node import GroupTaskNode
 from app.models.group_task_event import GroupTaskEvent
+from app.models.group_task_node import GroupTaskNode
 from app.models.group_task_run import GroupTaskRun
+from app.services._zero_deps_ai_helpers import simple_internal_llm_chat as internal_llm_chat
 from app.services.group_task.event_service import log_group_task_event
 from app.services.group_task.node_service import list_group_task_nodes, update_group_task_dag
 
@@ -104,16 +105,10 @@ async def maybe_replan_unstarted_nodes(
     reason: str,
     max_nodes: int = 8,
 ) -> bool:
-    """
-    Minimal replan:
-    - Triggered when there are failures/rework/suggested_ops.
-    - Use LLM to propose an updated DAG, but only unstarted nodes will actually change (enforced by update_group_task_dag).
-    """
     run = db.query(GroupTaskRun).filter(GroupTaskRun.id == int(run_id)).first()
     if not run:
         return False
 
-    # Cooldown: avoid frequent replans spamming LLM and graph versions.
     try:
         latest = (
             db.query(GroupTaskEvent)
@@ -131,10 +126,7 @@ async def maybe_replan_unstarted_nodes(
         pass
 
     nodes = list_group_task_nodes(db, run_id=int(run.id))
-    # Only replan if there's at least one problematic node.
-    has_problem = any(
-        (str(n.manager_review_status) == "rework") or (str(n.status) in {"failed"}) for n in nodes
-    )
+    has_problem = any((str(n.manager_review_status) == "rework") or (str(n.status) in {"failed"}) for n in nodes)
     has_suggested_ops = False
     for n in nodes:
         try:
@@ -147,7 +139,6 @@ async def maybe_replan_unstarted_nodes(
     if not (has_problem or has_suggested_ops):
         return False
 
-    # Prepare context: keep completed nodes fixed; update_group_task_dag will ignore completed/running anyway.
     completed = [n for n in nodes if str(n.status) == "completed"]
     unstarted = [n for n in nodes if str(n.status) in {"pending", "blocked"}]
     if not unstarted:

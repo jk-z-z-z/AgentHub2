@@ -3,7 +3,7 @@ from __future__ import annotations
 from sqlalchemy.orm import Session
 
 from app.manager_runtime.tool.base import ManagerTool, ToolCallResult
-from app.services.group_orchestrator.orchestrator_service import apply_plan_and_schedule
+from app.services.group_task.orchestration.orchestrator_service import apply_plan_and_schedule
 from app.manager_runtime.assistant.planning import manager_tool_upsert_plan
 
 

@@ -6,8 +6,8 @@ from app.models.member import Member
 from app.services.group_task.manager_service import get_or_create_manager_member
 from app.services.group_task.node_service import auto_review_completed_node, complete_task_node, get_group_task_run
 from app.agent_runtime.message_store import create_message
-from app.services.group_orchestrator.finalizer_service import maybe_finalize_run
-from app.services.group_orchestrator.replanner_service import maybe_replan_unstarted_nodes
+from app.services.group_task.orchestration.finalizer_service import maybe_finalize_run
+from app.services.group_task.orchestration.replanner_service import maybe_replan_unstarted_nodes
 
 
 async def complete_node_with_auto_review(

@@ -10,7 +10,7 @@ from app.db.session import SessionLocal
 from app.models.group import Group
 from app.models.member import Member
 from app.models.message import Message
-from app.services.group_ai_reply import ReplyContext, ReplyExecutor
+from app.services.group_ai_reply import GroupAIReplyRequest, handle_group_ai_reply
 from app.agent_runtime.message_store import create_message
 from app.ws.manager import ws_manager
 
@@ -61,7 +61,6 @@ async def create_message_and_trigger_ai(
     group = db.query(Group).filter(Group.id == group_id).first()
     if not group:
         return user_message
-    executor = ReplyExecutor()
     # Fire-and-forget: avoid blocking HTTP response on slow LLM/tooling.
     async def _run_reply():
         local_db = SessionLocal()
@@ -71,19 +70,19 @@ async def create_message_and_trigger_ai(
             local_user_message = local_db.query(Message).filter(Message.id == int(user_message.id)).first()
             if not local_sender or not local_group or not local_user_message:
                 return
-            await executor.execute(
-                ReplyContext(
+            await handle_group_ai_reply(
+                GroupAIReplyRequest(
                     db=local_db,
-                    group=local_group,
-                    sender=local_sender,
-                    user_message=local_user_message,
-                    content=content,
-                    meta_json=meta_json,
-                    emit_message=create_message,
+                    group_id=int(local_group.id),
+                    sender_member_id=int(local_sender.id),
+                    user_message_id=int(local_user_message.id),
+                    message_type=str(message_type),
+                    content=str(content),
+                    meta_json=str(meta_json),
                 )
             )
         except Exception:
-            # errors are already broadcast as reply.failed by executor
+            # errors are already broadcast as reply.failed by the group_ai_reply facade
             return
         finally:
             local_db.close()

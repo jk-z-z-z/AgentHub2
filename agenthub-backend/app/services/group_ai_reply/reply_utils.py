@@ -2,8 +2,10 @@ from __future__ import annotations
 
 import json
 
-from app.services.group_ai_reply.context import ReplyContext
+from sqlalchemy.orm import Session
+
 from app.agent_runtime.message_store import create_message, update_message
+from app.models.message import Message
 
 
 def build_reply_metadata(*, reply_to_message_id: int, trigger: str, status: str | None = None) -> str:
@@ -20,27 +22,29 @@ def build_reply_metadata(*, reply_to_message_id: int, trigger: str, status: str 
 
 
 async def emit_ai_reply(
-    ctx: ReplyContext,
+    db: Session,
     *,
+    group_id: int,
+    user_message_id: int,
     sender_member_id: int,
     content: str,
     trigger: str,
+    ai_message_id: int | None = None,
     status: str = "done",
-) -> None:
-    if ctx.ai_message and int(ctx.ai_message.sender_member_id) == int(sender_member_id):
-        updated = await update_message(
-            ctx.db,
-            message_id=int(ctx.ai_message.id),
+) -> Message:
+    meta_json = build_reply_metadata(reply_to_message_id=int(user_message_id), trigger=trigger, status=status)
+    if ai_message_id is not None:
+        return await update_message(
+            db,
+            message_id=int(ai_message_id),
             content=content,
-            meta_json=build_reply_metadata(reply_to_message_id=int(ctx.user_message.id), trigger=trigger, status=status),
+            meta_json=meta_json,
         )
-        ctx.ai_message = updated
-        return
-    await create_message(
-        ctx.db,
-        group_id=int(ctx.group.id),
+    return await create_message(
+        db,
+        group_id=int(group_id),
         sender_member_id=int(sender_member_id),
         message_type="ai",
         content=content,
-        meta_json=build_reply_metadata(reply_to_message_id=int(ctx.user_message.id), trigger=trigger, status=status),
+        meta_json=meta_json,
     )

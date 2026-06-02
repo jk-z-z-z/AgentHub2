@@ -1,12 +1,10 @@
 from __future__ import annotations
 
-import json
 from dataclasses import dataclass
 
 from sqlalchemy.orm import Session
 
 from app.common.event_types import GroupTaskEventType
-from app.models.group_task_run import GroupTaskRun
 from app.services.group_task.event_service import log_group_task_event
 from app.services.group_task.node_service import (
     auto_assign_pending_nodes,
@@ -40,10 +38,6 @@ async def apply_plan_and_schedule(
     plan: dict,
     actor_member_id: int,
 ) -> OrchestratorResult:
-    """
-    Apply a manager plan to the active run (only modifying not-started nodes),
-    persist a new graph snapshot/version, then schedule runnable agent nodes.
-    """
     run = get_group_task_run(db, run_id=int(run_id))
     if not run:
         raise ValueError("Run not found")
@@ -86,19 +80,14 @@ async def apply_plan_and_schedule(
         },
     )
 
-    # Auto-assign + schedule runnable agent nodes.
     _ = auto_assign_pending_nodes(db, run_id=int(updated.id))
     scheduled = await trigger_ready_agent_nodes(db, run_id=int(updated.id))
     return OrchestratorResult(run_id=int(updated.id), action="applied", scheduled_count=int(scheduled))
 
 
 async def schedule_ready_nodes(db: Session, *, run_id: int) -> int:
-    """
-    Convenience entrypoint used by API/jobs: auto-assign then schedule runnable nodes.
-    """
     run = get_group_task_run(db, run_id=int(run_id))
     if not run:
         return 0
     _ = auto_assign_pending_nodes(db, run_id=int(run.id))
     return await trigger_ready_agent_nodes(db, run_id=int(run.id))
-

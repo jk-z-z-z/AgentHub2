@@ -15,7 +15,7 @@ from app.manager_runtime.assistant.state_store import (
     save_pending_plan,
 )
 from app.services._zero_deps_ai_helpers import simple_internal_llm_chat
-from app.services.group_orchestrator.orchestrator_service import apply_plan_and_schedule
+from app.services.group_task.orchestration.orchestrator_service import apply_plan_and_schedule
 from app.services.group_task.node_service import create_group_task_run, list_group_task_runs, update_group_task_dag
 from app.services.storage_paths import project_dir
 
