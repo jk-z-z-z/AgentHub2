@@ -7,7 +7,7 @@ This backend is designed for an IM-style multi-agent collaboration platform wher
 - each project group can enable one global `Manager Agent`
 - planning is represented as one editable node graph per group
 - each node belongs to one group and can be assigned to one member
-- agent nodes can be auto-executed through the runtime packages
+- agent nodes are executed through an event-driven dispatch chain
 - manager planning is confirm-first, then persisted
 
 ## Module Responsibilities
@@ -69,7 +69,7 @@ Application services for messages, groups, agent runs, task nodes, storage, and 
 
 - each node has one execution owner at a time
 - the owner can be a user or an agent member
-- if the owner is an agent, execution is performed by the runtime package
+- if the owner is an agent, execution is requested by event, dispatched by the runtime, and then reviewed by manager
 
 ### Decision Flow
 
@@ -77,8 +77,10 @@ Application services for messages, groups, agent runs, task nodes, storage, and 
 - manager returns structured DAG draft and asks for confirmation
 - only the draft creator can confirm and persist
 - backend auto-assigns nodes by role to members when possible
-- assigned agent nodes execute and append node-level events
-- manager can review node outcomes and propose graph updates for unstarted nodes
+- `manager.node_execute` writes a node execution request event
+- dispatcher reads the event, invokes the assigned agent, and records execution trace events
+- the agent writes `task.completed` or `task.failed`
+- manager receives completion events, reviews the node, and updates node state or DAG when needed
 
 ## Runtime Packages
 

@@ -9,6 +9,7 @@ from sqlalchemy.orm import Session
 
 from app.manager_runtime.engine.base import ManagerEngineContext
 from app.models.group import Group
+from app.manager_runtime.skill._loader import load_manager_skill_prompt_sections
 from app.manager_runtime.tool._loader import load_manager_toolkit
 from app.services.storage_paths import project_dir
 
@@ -79,6 +80,7 @@ def build_manager_runtime_context(
         "docs_preview": _load_docs_preview(root),
         "short_term_preview": _short_term_preview(short_term_memory),
         "skill_loaders": load_manager_skill_loaders(int(group_id)),
+        "skill_prompt_sections": load_manager_skill_prompt_sections(int(group_id)),
     }
 
 
@@ -114,6 +116,20 @@ def build_manager_system_prompt(
             text = str(value)
         if text.strip():
             prompt_parts.append(f"{label}：\n{text[:limit]}")
+
+    skill_sections = context.get("skill_prompt_sections")
+    if isinstance(skill_sections, list) and skill_sections:
+        skill_text_parts: list[str] = []
+        for item in skill_sections:
+            if not isinstance(item, dict):
+                continue
+            name = str(item.get("name") or "").strip()
+            content = str(item.get("content") or "").strip()
+            if not content:
+                continue
+            skill_text_parts.append(f"## {name}\n{content}")
+        if skill_text_parts:
+            prompt_parts.append("技能说明：\n" + "\n\n".join(skill_text_parts[:12]))
 
     if str(extra.get("goal_text") or extra.get("input_text") or "").strip():
         prompt_parts.append(f"用户输入：\n{str(extra.get('goal_text') or extra.get('input_text') or '').strip()}")

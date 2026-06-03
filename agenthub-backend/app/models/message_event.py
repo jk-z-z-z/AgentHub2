@@ -1,3 +1,5 @@
+import json
+
 from sqlalchemy import ForeignKey, Index, Integer, String, Text
 from sqlalchemy.orm import Mapped, mapped_column
 
@@ -19,3 +21,11 @@ class MessageEvent(AutoIncrementIdMixin, TimestampMixin, Base):
     category: Mapped[str] = mapped_column(String(32), default="system", nullable=False)
     status: Mapped[str] = mapped_column(String(16), default="pending", nullable=False)
     payload_json: Mapped[str] = mapped_column(Text, default="{}", nullable=False)
+
+    @property
+    def payload(self) -> dict:
+        try:
+            payload = json.loads(self.payload_json or "{}")
+            return payload if isinstance(payload, dict) else {"value": payload}
+        except Exception:
+            return {"raw": str(self.payload_json or "")}

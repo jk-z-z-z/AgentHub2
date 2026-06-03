@@ -9,6 +9,7 @@ from app.event_runtime.context import (
     failed_trigger_event,
     resolve_trigger_event,
 )
+from app.event_runtime.facade import list_message_events
 from app.event_runtime.handlers import EVENT_HANDLER_REGISTRY
 
 
@@ -36,3 +37,36 @@ async def dispatch_message_event(request: EventDispatchRequest) -> None:
                 error=str(exc),
             )
         raise
+
+
+async def dispatch_message_event_chain(request: EventDispatchRequest, *, max_passes: int = 32) -> None:
+    processed_event_ids: set[int] = set()
+    for _ in range(max_passes):
+        events = list_message_events(request.db, message_id=int(request.message_id))
+        pending_events = [
+            event
+            for event in events
+            if int(event.id) not in processed_event_ids and str(event.status) == "pending"
+        ]
+        if not pending_events:
+            return
+        progressed = False
+        for event in pending_events:
+            if int(event.id) in processed_event_ids:
+                continue
+            progressed = True
+            processed_event_ids.add(int(event.id))
+            await dispatch_message_event(
+                EventDispatchRequest(
+                    db=request.db,
+                    group_id=int(request.group_id),
+                    sender_member_id=int(request.sender_member_id),
+                    message_id=int(request.message_id),
+                    message_type=str(request.message_type),
+                    content=str(request.content),
+                    meta_json=str(request.meta_json),
+                    event_id=int(event.id),
+                )
+            )
+        if not progressed:
+            return

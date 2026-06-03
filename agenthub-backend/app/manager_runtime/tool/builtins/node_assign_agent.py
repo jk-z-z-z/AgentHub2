@@ -16,7 +16,7 @@ class NodeAssignAgentTool(ToolBase):
     def __init__(self, *, db: Session) -> None:
         self._db = db
         self.name = "manager.node_assign_agent"
-        self.description = "Assign an agent to a node."
+        self.description = "Assign an agent to a node and move it into running state."
         self.input_schema = {
             "type": "object",
             "properties": {

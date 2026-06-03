@@ -39,26 +39,26 @@ def _build_manager_tool_groups(tools: list[ToolBase]) -> list[ToolGroup]:
     add_group(
         "context",
         "Context and state tools.",
-        "Inspect project memory, docs, and pending state before mutating anything.",
-        ["manager.project_md", "manager.pending_state", "manager.memory_compress"],
+        "Inspect project memory, docs, and pending state before mutating anything. Do not execute nodes here.",
+        ["manager.project_md", "manager.pending_state"],
     )
     add_group(
         "planning",
         "Planning tools.",
-        "Use graph tools to convert requirements into an editable node graph before direct edits.",
+        "Use graph tools to convert requirements into an editable node graph before any execution request.",
         ["manager.dag_apply"],
     )
     add_group(
         "dag",
         "DAG view/edit tools.",
-        "Use these tools to inspect or patch the task graph structure.",
+        "Use these tools to inspect or patch the task graph structure. They do not execute tasks or change node runtime state.",
         ["manager.dag_view", "manager.dag_patch"],
     )
     add_group(
         "node",
         "Node lifecycle tools.",
-        "Use these tools to claim, assign, execute, and complete nodes.",
-        ["manager.node_claim", "manager.node_assign_agent", "manager.node_execute", "manager.node_complete"],
+        "Use these tools to claim, assign, request execution, requeue, and complete nodes. Execution is event-driven: node_execute writes an event, dispatcher runs the child agent, and manager review decides final state.",
+        ["manager.node_claim", "manager.node_assign_agent", "manager.node_execute", "manager.node_requeue", "manager.node_complete"],
     )
     return groups
 
@@ -124,6 +124,11 @@ def load_manager_toolkit(
     tools: list[ToolBase] = []
     for code, factory in get_manager_tool_factories().items():
         tool = factory(db)
+        if trace is not None and hasattr(tool, "set_trace"):
+            try:
+                tool.set_trace(trace)
+            except Exception:
+                pass
         tools.append(_TracedManagerTool(code=code, tool=tool, trace=trace))
     skill_loaders = load_manager_skill_loaders(int(group_id))
     combined_skill_loaders = list(skill_loaders) + list(extra_skill_loaders or [])

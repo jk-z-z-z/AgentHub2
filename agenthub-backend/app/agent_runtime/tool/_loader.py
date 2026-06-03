@@ -15,7 +15,7 @@ from app.agent_runtime.skill._loader import load_skill_loaders_for_agent
 from app.services.storage_paths import agent_dir
 
 
-class _TracedBuiltinTool(ToolBase):
+class BuiltinAgentTool(ToolBase):
     is_mcp = False
     is_external_tool = False
     is_state_injected = False
@@ -188,7 +188,7 @@ def load_toolkit_for_agent(
         if not spec:
             continue
         tools.append(
-            _TracedBuiltinTool(
+            BuiltinAgentTool(
                 agent_id=int(agent_id),
                 code=str(code),
                 description=spec.spec.get("description"),

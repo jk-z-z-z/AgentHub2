@@ -1,10 +1,11 @@
 from __future__ import annotations
 
+import asyncio
 import json
 
 from sqlalchemy.orm import Session
 
-from app.agent_runtime.message_store import create_message, update_message
+from app.agent_runtime.message_store import create_message, dispatch_latest_message_event, update_message
 from app.event_runtime.facade import create_message_event
 from app.event_runtime.types import MessageEventType
 from app.models.message import Message
@@ -61,4 +62,25 @@ async def emit_ai_reply(
             "content": str(content or ""),
         },
     )
+    if str(status).lower() == "done":
+        try:
+            asyncio.create_task(
+                dispatch_latest_message_event(
+                    group_id=int(group_id),
+                    sender_member_id=int(sender_member_id),
+                    message_id=int(message.id),
+                    message_type=str(message.message_type),
+                    content=str(message.content or ""),
+                    meta_json=str(message.metadata_json or "{}"),
+                )
+            )
+        except RuntimeError:
+            await dispatch_latest_message_event(
+                group_id=int(group_id),
+                sender_member_id=int(sender_member_id),
+                message_id=int(message.id),
+                message_type=str(message.message_type),
+                content=str(message.content or ""),
+                meta_json=str(message.metadata_json or "{}"),
+            )
     return message

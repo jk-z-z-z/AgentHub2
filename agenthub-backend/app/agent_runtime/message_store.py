@@ -9,8 +9,10 @@ from sqlalchemy.orm import Session
 from app.models.group import Group
 from app.models.member import Member
 from app.models.message import Message
+from app.db.session import SessionLocal
 from app.event_runtime.facade import create_message_event
 from app.event_runtime.types import MessageEventType
+from app.event_runtime.dispatcher import EventDispatchRequest, dispatch_message_event_chain
 from app.ws_runtime import WsEventType, ws_manager
 
 
@@ -81,6 +83,13 @@ async def create_message(
     content: str,
     meta_json: str,
 ) -> Message:
+    """
+    Create a message row and its initial `message.created` event.
+
+    In this project, `message.created` is the trigger event for the business flow.
+    Trace-style events (`llm.*`, `tool.*`, `run.*`, etc.) are still written to
+    `message_events`, but they are not dispatched back into the runtime.
+    """
     _assert_group_and_member(db, group_id=int(group_id), sender_member_id=int(sender_member_id))
     item = Message(
         group_id=int(group_id),
@@ -106,6 +115,39 @@ async def create_message(
         },
     )
     return item
+
+
+async def dispatch_message_event_for_message(
+    *,
+    group_id: int,
+    sender_member_id: int,
+    message_id: int,
+    message_type: str,
+    content: str,
+    meta_json: str,
+) -> None:
+    local_db = SessionLocal()
+    try:
+        await dispatch_message_event_chain(
+            EventDispatchRequest(
+                db=local_db,
+                group_id=int(group_id),
+                sender_member_id=int(sender_member_id),
+                message_id=int(message_id),
+                message_type=str(message_type),
+                content=str(content),
+                meta_json=str(meta_json),
+            )
+        )
+    except Exception:
+        # Runtime errors are surfaced by the dispatcher via reply.failed when relevant.
+        return
+    finally:
+        local_db.close()
+
+
+dispatch_message_created_event = dispatch_message_event_for_message
+dispatch_latest_message_event = dispatch_message_event_for_message
 
 
 async def create_pending_ai_message(

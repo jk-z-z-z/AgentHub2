@@ -585,3 +585,19 @@ def mark_node_failed(db: Session, *, node_id: int, error: str) -> GroupTaskNode:
     db.commit()
     db.refresh(node)
     return node
+
+
+def requeue_node(db: Session, *, node_id: int, reason: str | None = None) -> GroupTaskNode:
+    node = get_node(db, node_id=int(node_id))
+    if not node:
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Node not found")
+    node.status = "pending"
+    node.assignee_kind = "unclaimed"
+    node.assignee_member_id = None
+    node.error = str(reason or "").strip()
+    node.updated_at = datetime.now(timezone.utc)
+    node.attempt = int(node.attempt or 0) + 1
+    db.add(node)
+    db.commit()
+    db.refresh(node)
+    return node

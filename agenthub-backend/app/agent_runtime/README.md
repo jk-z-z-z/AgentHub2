@@ -27,4 +27,5 @@ result = await invoke_agent(
 - 工具、技能、MCP 保持 AgentScope 原生接法
 - `Toolkit(skills_or_loaders=..., tools=..., tool_groups=...)` 统一挂载
 - `event_runtime` 负责事件路由与回复写回，不承担模型执行细节
+- 子 agent 的工具执行过程会写入 trace 事件，但不会反向驱动 manager 的节点状态
 - 本包不承担 `manager_runtime` 或 `bootstrap_runtime` 的执行逻辑

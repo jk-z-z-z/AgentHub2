@@ -64,7 +64,7 @@ Deliverables:
 
 ## Phase 4: Node Execution Runtime
 
-Goal: run isolated node sessions through the runtime packages.
+Goal: drive node execution through the event dispatcher and runtime packages.
 
 Modules:
 
@@ -74,8 +74,9 @@ Modules:
 
 Deliverables:
 
-- execute agent nodes through the runtime package
-- store node execution events for progress/audit
+- write node execution request events
+- dispatch assigned agents from events
+- store child-agent completion and manager review events
 - expose node events API for frontend polling
 
 ## Phase 5: Replan And Governance
@@ -111,3 +112,4 @@ Deliverables:
 - stronger permission boundaries and operation audit
 - structured logs and tracing
 - move from SQLite to PostgreSQL when concurrency increases
+- keep event dispatch idempotent at the message_id boundary

@@ -19,7 +19,7 @@ agenthub-backend/
 │   ├── bootstrap_runtime/    # Bootstrap runtime
 │   ├── event_runtime/        # Message/event orchestration
 │   ├── manager_runtime/      # Manager runtime
-│   ├── memory_runtime/       # Memory compression and token estimation
+│   ├── memory_runtime/       # Memory token estimation and config helpers
 │   ├── ws_runtime/           # WebSocket broadcast helpers
 │   ├── common/               # Shared helpers
 │   ├── core/                 # Settings
@@ -71,26 +71,28 @@ uv run python scripts/seed_demo.py --base-url http://127.0.0.1:8000/api/v1
 - Messages: send/list messages, websocket broadcast, `@管家` trigger path
 - AI routing: `event_runtime` decides whether to call `bootstrap_runtime`, `agent_runtime`, or `manager_runtime`
 - Manager planning: draft DAG by LLM, creator-only confirmation, then update the group graph
-- Group tasks: node graph persistence, graph snapshots, node assignment, node execution events, final summaries
+- Group tasks: node graph persistence, graph snapshots, node assignment, node execution request events, manager review, final summaries
 - Agents: profile templates + agent instances + per-agent workspace bootstrap
 - Tools/MCP: builtin tools registry + agent tool toggles + MCP metadata CRUD
-- Memory: short-term context + long-memory compression runtime
+- Memory: short-term context + token estimation helpers
 
 ## Runtime Architecture
 
 Current runtime stack uses four single-facade packages:
 
-- `app/agent_runtime.invoke_agent()` handles digital-worker replies, tool calls, message persistence, and process events
-- `app/manager_runtime.invoke_manager()` handles manager replies, graph editing, tool execution, and message persistence
+- `app/agent_runtime.invoke_agent()` handles digital-worker replies, tool calls, message persistence, and trace events
+- `app/manager_runtime.invoke_manager()` handles manager replies, graph editing, node review, and trace events
 - `app/bootstrap_runtime.invoke_bootstrap()` handles bootstrap initialization messages and process events
-- `app.memory_runtime.compress_project_memory()` handles project memory compression and token estimation
+- `app.memory_runtime` currently provides memory config and token estimation helpers
 
 Flow:
 
 `message_service.create_message_and_trigger_ai(...)`
--> `event_runtime.dispatcher.dispatch_message_event(...)`
--> `bootstrap_runtime / agent_runtime / manager_runtime / memory_runtime`
--> runtime-specific persistence and event logging
+-> `agent_runtime.message_store.create_message(...)`
+-> `event_runtime.dispatcher.dispatch_message_event_chain(...)`
+-> `event_runtime.handlers.message` / `event_runtime.handlers.task`
+-> `bootstrap_runtime / agent_runtime / manager_runtime`
+-> runtime-specific persistence, event logging, and node review
 
 ## API Docs
 
@@ -101,5 +103,5 @@ Flow:
 
 - `group` is treated as project container in current design.
 - One group keeps one active editable graph that is updated incrementally.
-- `group_task_service` contains node graph, assignment, node state editing, and finalization helpers.
-- `memory_runtime` contains memory compression config, token estimation, and summary persistence helpers.
+- `group_task_service` contains node graph, assignment, state transitions, and review helpers.
+- `memory_runtime` contains memory config and token estimation helpers.

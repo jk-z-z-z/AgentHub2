@@ -9,17 +9,6 @@ from app.manager_runtime.engine.factory import create_engine
 from app.manager_runtime.managerbuilder._builder import build_complete_manager
 from app.manager_runtime.schemas import ManagerInvokeResult
 from app.manager_runtime.trace import ManagerRuntimeTrace
-from app.memory_runtime.facade import get_project_memory_compressor_status, maybe_compress_project_memory
-
-
-async def _force_project_memory_compression_if_needed(db: Session, *, group_id: int, runtime_context: dict[str, Any]) -> dict[str, Any] | None:
-    if str(runtime_context.get("group_type") or "project") != "project":
-        return None
-    status = get_project_memory_compressor_status(db, project_id=int(group_id))
-    if not bool(status.get("will_trigger")):
-        return status
-    await maybe_compress_project_memory(db, project_id=int(group_id))
-    return get_project_memory_compressor_status(db, project_id=int(group_id))
 
 
 class _StrictManagerRunRequest:
@@ -81,13 +70,6 @@ async def invoke_manager(
     trace_message_id: int | None = None,
 ) -> ManagerInvokeResult:
     runtime_context = dict(extra_context or {})
-    compression_status = await _force_project_memory_compression_if_needed(
-        db,
-        group_id=int(group_id),
-        runtime_context=runtime_context,
-    )
-    if compression_status is not None:
-        runtime_context["memory_compression_status"] = compression_status
     trace = ManagerRuntimeTrace(db=db, message_id=_trace_message_id(runtime_context, trace_message_id))
     built = build_complete_manager(
         db,

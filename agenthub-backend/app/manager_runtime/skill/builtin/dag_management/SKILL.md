@@ -41,6 +41,10 @@ Use this skill when the user wants to:
 6. Plan for readability and execution.
 - Roles should map to realistic executors such as `backend`, `frontend`, `qa`, `product`, `architect`, `ops`.
 - Node detail should help an assignee act immediately.
+7. Keep graph mutation and execution separate.
+- `manager.dag_patch` / `manager.dag_view` only handle graph shape.
+- `manager.node_execute` only emits execution-request events.
+- Node state changes should follow the event chain and manager review.
 
 ## Best-Practice Workflow
 
@@ -180,6 +184,7 @@ Supported ops:
 
 This tool works directly on the current graph stored in `group_task_nodes`.
 It does not use `run_id`.
+It does not directly execute nodes.
 
 ## Node Assignment and Completion
 
@@ -194,15 +199,21 @@ Use the node tools when you need to move a task forward after the graph is alrea
   - sets the assignee to an agent member and moves the node into running state
 
 - `manager.node_complete`:
-  - used when a human or a sub-agent finishes a node
-  - stores the summary and marks the node completed
+  - use only for manual override or legacy compatibility
+  - normal completion should come from `task.completed` -> manager review -> state update
+
+- `manager.node_requeue`:
+  - use when review decides the node needs another pass
+  - clears assignee, increments attempt, and returns the node to pending
 
 ### Best-practice flow
 
 1. Use `manager.dag_view` to inspect the current graph.
 2. Use `manager.dag_patch` to add or refine nodes.
-3. Use `manager.node_assign_agent` or `manager.node_claim` to start execution.
-4. Use `manager.node_complete` when the work is finished.
+3. Use `manager.node_assign_agent` or `manager.node_claim` to prepare execution.
+4. Use `manager.node_execute` to emit the execution request event.
+5. Let the event chain drive sub-agent execution and manager review.
+6. Use `manager.node_requeue` or `manager.node_complete` only when the review result requires it.
 
 ## Tool Call Patterns
 

@@ -5,34 +5,23 @@ from typing import Any
 from agentscope.tool import ToolBase, ToolChunk
 from sqlalchemy.orm import Session
 
-from app.common.project_prompt import build_project_system_prompt
-from app.agent_runtime import invoke_agent
-from app.agent_runtime.tool._executor import execute_builtin_tool
+from app.event_runtime.context import EventDispatchRequest
+from app.event_runtime.dispatcher import dispatch_message_event_chain
+from app.event_runtime.facade import create_message_event
+from app.event_runtime.context import get_or_create_manager_member
+from app.event_runtime.types import MessageEventStatus, MessageEventType
 from app.manager_runtime.tool.base import build_error_chunk, build_tool_chunk
 from app.models.member import Member
-from app.services.group_task_service import complete_node, get_node
+from app.models.message import Message
+from app.services.group_task_service import get_node
 
 
-def _build_execution_prompt(*, node_key: str, title: str, detail: str) -> str:
-    return (
-        "你负责执行任务节点。\n"
-        f"node_key={node_key}\n"
-        f"title={title}\n"
-        f"detail={detail}\n"
-        "请输出结果 JSON，包含 summary、status、deliverables、evidence、confidence、issues、suggested_ops。"
-    )
-
-
-def _build_tool_executor(*, agent_id: int, group_id: int, node_id: int) -> Any:
-    def _tool_exec(tool_code: str, args: dict) -> dict:
-        return execute_builtin_tool(
-            agent_id=int(agent_id),
-            tool_code=str(tool_code),
-            args=args or {},
-            runtime_context={"group_id": int(group_id), "node_id": int(node_id)},
-        )
-
-    return _tool_exec
+def _build_request_payload(*, group_id: int, node_id: int, member_id: int) -> dict[str, Any]:
+    return {
+        "group_id": int(group_id),
+        "node_id": int(node_id),
+        "member_id": int(member_id),
+    }
 
 
 def _resolve_node_and_member(db: Session, *, node_id: int, member_id: int) -> tuple[Any | None, Any | None]:
@@ -53,8 +42,9 @@ class NodeExecuteTool(ToolBase):
 
     def __init__(self, *, db: Session) -> None:
         self._db = db
+        self._trace = None
         self.name = "manager.node_execute"
-        self.description = "Execute a node via the assigned agent."
+        self.description = "Emit a node execution request event and dispatch the assigned agent."
         self.input_schema = {
             "type": "object",
             "properties": {
@@ -64,6 +54,9 @@ class NodeExecuteTool(ToolBase):
             "required": ["node_id", "member_id"],
             "additionalProperties": True,
         }
+
+    def set_trace(self, trace: Any | None) -> None:
+        self._trace = trace
 
     async def check_permissions(self, _tool_input: dict, _context: object) -> object:
         return object()
@@ -78,31 +71,84 @@ class NodeExecuteTool(ToolBase):
             return build_error_chunk("node_not_found")
         if not member:
             return build_error_chunk("agent_member_not_found")
-        agent_id = int(member.agent_instance_id)
-        system_prompt = build_project_system_prompt(agent_id=agent_id, project_id=int(node.group_id))
-        prompt = _build_execution_prompt(node_key=str(node.node_key), title=str(node.title), detail=str(node.detail))
 
-        result = await invoke_agent(
-            self._db,
-            agent_id=int(agent_id),
-            short_term_memory=[],
-            extra_context={"group_id": int(node.group_id), "node_id": int(node.id), "input_text": prompt},
-            system_prompt=system_prompt,
-            tool_executor=_build_tool_executor(agent_id=agent_id, group_id=int(node.group_id), node_id=int(node.id)),
+        trace_message_id = int(getattr(self._trace, "message_id", 0) or 0) or None
+        if trace_message_id is not None:
+            event = create_message_event(
+                self._db,
+                message_id=int(trace_message_id),
+                event_type=MessageEventType.Task.NODE_EXEC_STARTED,
+                payload=_build_request_payload(group_id=int(node.group_id), node_id=int(node.id), member_id=int(member.id)),
+                status=MessageEventStatus.PENDING,
+            )
+            await dispatch_message_event_chain(
+                EventDispatchRequest(
+                    db=self._db,
+                    group_id=int(node.group_id),
+                    sender_member_id=int(member.id),
+                    message_id=int(trace_message_id),
+                    message_type="ai",
+                    content=str(node.title or ""),
+                    meta_json="{}",
+                    event_id=int(event.id),
+                )
+            )
+            completed = get_node(self._db, node_id=int(node.id))
+            return build_tool_chunk(
+                {
+                    "ok": True,
+                    "result": {
+                        "node_id": int(completed.id) if completed else int(node.id),
+                        "node_key": str(completed.node_key) if completed else str(node.node_key),
+                        "status": str(completed.status) if completed else "queued",
+                        "output_summary": str(completed.output_summary or "") if completed else "",
+                    },
+                    "error": None,
+                }
+            )
+
+        system_member = get_or_create_manager_member(self._db, group_id=int(node.group_id))
+        control_message = Message(
+            group_id=int(node.group_id),
+            sender_member_id=int(system_member.id),
+            message_type="system",
+            content=f"node.execute:{node.node_key}",
+            metadata_json="{}",
         )
-        completed = complete_node(
+        self._db.add(control_message)
+        self._db.commit()
+        self._db.refresh(control_message)
+        event = create_message_event(
             self._db,
-            node_id=int(node.id),
-            member_id=int(member.id),
-            output_summary=result.text or "节点执行完成",
+            message_id=int(control_message.id),
+            event_type=MessageEventType.Task.NODE_EXEC_STARTED,
+            payload=_build_request_payload(group_id=int(node.group_id), node_id=int(node.id), member_id=int(member.id)),
+            status=MessageEventStatus.PENDING,
         )
-        return build_tool_chunk(_build_execute_result(completed))
-
-
-def _build_execute_result(completed: Any) -> dict[str, Any]:
-    return {
-        "node_id": int(completed.id),
-        "node_key": completed.node_key,
-        "status": completed.status,
-        "output_summary": completed.output_summary,
-    }
+        await dispatch_message_event_chain(
+            EventDispatchRequest(
+                db=self._db,
+                group_id=int(node.group_id),
+                sender_member_id=int(system_member.id),
+                message_id=int(control_message.id),
+                message_type="system",
+                content=str(control_message.content or ""),
+                meta_json=str(control_message.metadata_json or "{}"),
+                event_id=int(event.id),
+            )
+        )
+        completed = get_node(self._db, node_id=int(node.id))
+        return build_tool_chunk(
+            {
+                "ok": True,
+                "result": {
+                    "node_id": int(completed.id) if completed else int(node.id),
+                    "node_key": str(completed.node_key) if completed else str(node.node_key),
+                    "status": str(completed.status) if completed else "queued",
+                    "output_summary": str(completed.output_summary or "") if completed else "",
+                    "message_id": int(control_message.id),
+                    "event_id": int(event.id),
+                },
+                "error": None,
+            }
+        )

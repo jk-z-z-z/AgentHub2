@@ -5,7 +5,7 @@ from app.manager_runtime.tool.builtins.node_assign_agent import NodeAssignAgentT
 from app.manager_runtime.tool.builtins.node_claim import NodeClaimTool
 from app.manager_runtime.tool.builtins.node_complete import NodeCompleteTool
 from app.manager_runtime.tool.builtins.node_execute import NodeExecuteTool
-from app.manager_runtime.tool.builtins.memory_compress import ProjectMemoryCompressTool
+from app.manager_runtime.tool.builtins.node_requeue import NodeRequeueTool
 from app.manager_runtime.tool.builtins.pending_state import PendingStateTool
 from app.manager_runtime.tool.builtins.project_md import ProjectMdTool
 
@@ -17,7 +17,7 @@ __all__ = [
     "NodeClaimTool",
     "NodeCompleteTool",
     "NodeExecuteTool",
-    "ProjectMemoryCompressTool",
+    "NodeRequeueTool",
     "PendingStateTool",
     "ProjectMdTool",
 ]

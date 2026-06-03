@@ -184,6 +184,66 @@ async def handle_project_mentions(request: EventDispatchRequest, event: Any | No
     await asyncio.gather(*[_handle_single_project_agent(request, member_id) for member_id in mentioned_ids])
 
 
+async def handle_reply_finished(request: EventDispatchRequest, event: Any | None = None) -> None:
+    payload = getattr(event, "payload", None) if event is not None else None
+    if not isinstance(payload, dict):
+        return
+    if str(payload.get("status") or "").lower() != "done":
+        return
+    if str(payload.get("trigger") or "") != "mention":
+        return
+    group = request.db.query(Group).filter(Group.id == int(request.group_id)).first()
+    sender = request.db.query(Member).filter(Member.id == int(request.sender_member_id)).first()
+    user_message = request.db.query(Message).filter(Message.id == int(request.message_id)).first()
+    if not group or not sender or not user_message:
+        return
+    if str(group.type) != "project" or sender.kind != "agent":
+        return
+    agent_member = sender
+    agent = request.db.query(AgentInstance).filter(AgentInstance.id == int(agent_member.agent_instance_id)).first() if agent_member.agent_instance_id else None
+    if not agent:
+        return
+    manager_member = get_or_create_manager_member(request.db, group_id=int(group.id))
+    ai_message = await create_pending_ai_message(
+        request.db,
+        group_id=int(group.id),
+        sender_member_id=int(manager_member.id),
+        reply_to_message_id=int(user_message.id),
+        trigger="manager_runtime",
+    )
+    reply_text = str(payload.get("content") or request.content or "")
+    try:
+        result = await invoke_manager(
+            request.db,
+            group_id=int(group.id),
+            short_term_memory=build_short_term_memory(request.db, group_id=int(group.id), exclude_message_id=int(user_message.id)),
+            extra_context={
+                "purpose": "evaluation",
+                "goal_text": f"请评估刚才的 agent 回复，并在必要时更新任务状态或修改 DAG。\n\nagent_reply:\n{reply_text}",
+                "group_type": "project",
+                "group_id": int(group.id),
+                "project_id": int(group.id),
+                "user_id": int(sender.user_ref) if sender.user_ref else None,
+                "sender_id": int(sender.id),
+                "source_message_id": int(request.message_id),
+                "source_reply_content": reply_text,
+            },
+            trace_message_id=int(ai_message.id),
+        )
+        await emit_ai_reply(
+            request.db,
+            group_id=int(group.id),
+            user_message_id=int(user_message.id),
+            sender_member_id=int(manager_member.id),
+            content=str(result.text or ""),
+            trigger="manager_runtime",
+            ai_message_id=int(ai_message.id),
+        )
+    except Exception:
+        await mark_failed_reply(ai_message, reply_to_message_id=int(user_message.id), trigger="manager_runtime", db=request.db)
+        raise
+
+
 async def _handle_single_project_agent(request: EventDispatchRequest, agent_member_id: int) -> None:
     group = request.db.query(Group).filter(Group.id == int(request.group_id)).first()
     sender = request.db.query(Member).filter(Member.id == int(request.sender_member_id)).first()
@@ -251,6 +311,6 @@ MESSAGE_EVENT_HANDLER_REGISTRY = {
     MessageEventType.InputOutput.MESSAGE_ACCEPTED: _handle_noop,
     MessageEventType.InputOutput.REPLY_PLACEHOLDER_CREATED: _handle_noop,
     MessageEventType.InputOutput.REPLY_STARTED: _handle_noop,
-    MessageEventType.InputOutput.REPLY_FINISHED: _handle_noop,
+    MessageEventType.InputOutput.REPLY_FINISHED: handle_reply_finished,
     MessageEventType.InputOutput.REPLY_FAILED: _handle_noop,
 }
