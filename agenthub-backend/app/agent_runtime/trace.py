@@ -5,7 +5,8 @@ from typing import Any
 
 from sqlalchemy.orm import Session
 
-from app.services.message_event_service import create_message_event
+from app.event_runtime.types import MessageEventType
+from app.event_runtime.facade import create_message_event
 
 
 @dataclass
@@ -23,3 +24,20 @@ class AgentRuntimeTrace:
             payload=payload or {},
         )
 
+    def emit_llm_request(self, payload: dict[str, Any] | None = None) -> None:
+        self.emit(MessageEventType.Execution.LLM_REQUEST, payload)
+
+    def emit_llm_response(self, payload: dict[str, Any] | None = None) -> None:
+        self.emit(MessageEventType.Execution.LLM_RESPONSE, payload)
+
+    def emit_tool_call(self, payload: dict[str, Any] | None = None) -> None:
+        self.emit(MessageEventType.Execution.TOOL_CALL, payload)
+
+    def emit_tool_result(self, payload: dict[str, Any] | None = None) -> None:
+        self.emit(MessageEventType.Execution.TOOL_RESULT, payload)
+
+    def emit_run_started(self, payload: dict[str, Any] | None = None) -> None:
+        self.emit(MessageEventType.Execution.RUN_STARTED, payload)
+
+    def emit_run_finished(self, payload: dict[str, Any] | None = None) -> None:
+        self.emit(MessageEventType.Execution.RUN_FINISHED, payload)

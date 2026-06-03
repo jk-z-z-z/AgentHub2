@@ -8,16 +8,15 @@ from app.schemas.common import ApiResponse
 from app.schemas.group import GroupCreateRequest, GroupOut
 from app.schemas.memory import ProjectMemoryCompressRunOut, ProjectMemoryCompressorStatusOut
 from app.schemas.memory_config import ProjectMemoryCompressorConfigOut, ProjectMemoryCompressorConfigUpdateRequest
-from app.services.group_service import create_group, delete_group, get_group, list_groups
-from app.services.memory_compressor_service import (
+from app.manager_runtime.tool.builtins.memory_compress import (
     get_project_memory_compressor_config,
     get_project_memory_compressor_status,
     maybe_compress_project_memory,
     update_project_memory_compressor_config,
 )
+from app.services.group_service import create_group, delete_group, get_group, list_groups
 from app.services.member_service import create_agent_member, create_user_member
 from app.models.member import Member
-from app.models.agent_instance import AgentInstance
 
 
 router = APIRouter(prefix="/groups", tags=["groups"])
@@ -143,22 +142,8 @@ async def run_group_memory_compress_api(
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Group not found")
     _assert_group_member(db, group_id=int(group_id), user_id=int(user.id))
 
-    # Use the first agent in this group as compressor executor.
-    agent_member = (
-        db.query(Member)
-        .filter(Member.group_id == int(group_id), Member.kind == "agent")
-        .order_by(Member.id.asc())
-        .first()
-    )
-    if not agent_member or not agent_member.agent_instance_id:
-        raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail="No agent member found in this group")
-    agent = db.query(AgentInstance).filter(AgentInstance.id == int(agent_member.agent_instance_id)).first()
-    if not agent:
-        raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail="Agent instance not found")
-
     result = await maybe_compress_project_memory(
         db,
         project_id=int(group_id),
-        agent_id=int(agent.id),
     )
     return ApiResponse(data=ProjectMemoryCompressRunOut.model_validate(result))

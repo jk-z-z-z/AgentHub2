@@ -8,6 +8,7 @@ from agentscope.message import Msg
 from agentscope.model import OpenAIChatModel
 
 from app.agent_runtime.engine.base import BaseAgentEngine, EngineContext
+from app.event_runtime.types import MessageEventType
 from app.core.config import settings
 
 
@@ -60,7 +61,7 @@ class AgentScopeReactEngine(BaseAgentEngine):
         messages.append(Msg(role="user", content=_text_content(input_text), name="user"))
 
         if trace:
-            trace.emit("llm.request", {"input_preview": input_text[:500], "system_preview": str(getattr(req, "system_prompt", "") or "")[:300]})
+            trace.emit(MessageEventType.Execution.LLM_REQUEST, {"input_preview": input_text[:500], "system_preview": str(getattr(req, "system_prompt", "") or "")[:300]})
         reply = await agent.reply(messages)
         parts: list[str] = []
         for part in reply.content:
@@ -73,5 +74,5 @@ class AgentScopeReactEngine(BaseAgentEngine):
 
         text = "".join(parts).strip()
         if trace:
-            trace.emit("llm.response", {"text_preview": text[:800]})
+            trace.emit(MessageEventType.Execution.LLM_RESPONSE, {"text_preview": text[:800]})
         return text, {"engine": "agentscope_react"}

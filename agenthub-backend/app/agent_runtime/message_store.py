@@ -6,12 +6,12 @@ from fastapi import HTTPException, status
 from fastapi.encoders import jsonable_encoder
 from sqlalchemy.orm import Session
 
-from app.common.event_types import WsEventType
 from app.models.group import Group
 from app.models.member import Member
 from app.models.message import Message
-from app.services.message_event_service import create_message_event
-from app.ws.manager import ws_manager
+from app.event_runtime.facade import create_message_event
+from app.event_runtime.types import MessageEventType
+from app.ws_runtime import WsEventType, ws_manager
 
 
 def _assert_group_and_member(db: Session, *, group_id: int, sender_member_id: int) -> Member:
@@ -93,6 +93,18 @@ async def create_message(
     db.commit()
     db.refresh(item)
     await broadcast_message_created(item)
+    create_message_event(
+        db,
+        message_id=int(item.id),
+        event_type=MessageEventType.InputOutput.MESSAGE_CREATED,
+        payload={
+            "content": str(item.content or ""),
+            "message_type": str(item.message_type),
+            "sender_member_id": int(item.sender_member_id),
+            "reply_to_message_id": int(item.reply_to_message_id) if item.reply_to_message_id else None,
+            "metadata_json": str(item.metadata_json or "{}"),
+        },
+    )
     return item
 
 
@@ -122,7 +134,26 @@ async def create_pending_ai_message(
     create_message_event(
         db,
         message_id=int(item.id),
-        event_type="reply.placeholder.created",
+        event_type=MessageEventType.InputOutput.MESSAGE_CREATED,
+        payload={
+            "content": "",
+            "message_type": "ai",
+            "sender_member_id": int(sender_member_id),
+            "reply_to_message_id": int(reply_to_message_id),
+            "metadata_json": str(item.metadata_json or "{}"),
+            "status": "pending",
+        },
+    )
+    create_message_event(
+        db,
+        message_id=int(item.id),
+        event_type=MessageEventType.InputOutput.REPLY_PLACEHOLDER_CREATED,
+        payload={"trigger": trigger, "reply_to_message_id": int(reply_to_message_id)},
+    )
+    create_message_event(
+        db,
+        message_id=int(item.id),
+        event_type=MessageEventType.InputOutput.REPLY_STARTED,
         payload={"trigger": trigger, "reply_to_message_id": int(reply_to_message_id)},
     )
     return item
@@ -146,4 +177,16 @@ async def update_message(
     db.commit()
     db.refresh(item)
     await broadcast_message_updated(item)
+    create_message_event(
+        db,
+        message_id=int(item.id),
+        event_type=MessageEventType.InputOutput.MESSAGE_UPDATED,
+        payload={
+            "content": str(item.content or ""),
+            "message_type": str(item.message_type),
+            "sender_member_id": int(item.sender_member_id),
+            "reply_to_message_id": int(item.reply_to_message_id) if item.reply_to_message_id else None,
+            "metadata_json": str(item.metadata_json or "{}"),
+        },
+    )
     return item

@@ -40,7 +40,6 @@ class GroupTaskNodeOut(ORMBaseModel):
     input_json: str = "{}"
     result_json: str = "{}"
     error: str = ""
-    agent_run_id: str | None = None
     output_summary: str
     created_at: datetime
     updated_at: datetime

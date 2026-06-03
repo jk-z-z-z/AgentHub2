@@ -8,6 +8,7 @@ from agentscope.model import OpenAIChatModel
 
 from app.agent_runtime.engine.base import BaseAgentEngine, EngineContext
 from app.core.config import settings
+from app.event_runtime.types import MessageEventType
 
 
 def _text_content(text: Any) -> list[Any]:
@@ -68,9 +69,9 @@ class InternalLLMEngine(BaseAgentEngine):
         messages.append(Msg(role="user", content=_text_content(input_text), name="user"))
 
         if trace:
-            trace.emit("llm.request", {"input_preview": input_text[:500], "system_preview": system_prompt[:300]})
+            trace.emit(MessageEventType.Execution.LLM_REQUEST, {"input_preview": input_text[:500], "system_preview": system_prompt[:300]})
         response = await model(messages)
         text = _extract_response_text(response)
         if trace:
-            trace.emit("llm.response", {"text_preview": text[:800]})
+            trace.emit(MessageEventType.Execution.LLM_RESPONSE, {"text_preview": text[:800]})
         return text, {"engine": "internal_llm"}

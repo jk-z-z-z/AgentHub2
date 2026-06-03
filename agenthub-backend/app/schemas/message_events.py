@@ -10,6 +10,8 @@ class MessageEventOut(ORMBaseModel):
     message_id: str
     seq: int
     event_type: str
+    category: str
+    status: str
     payload_json: str
     created_at: datetime
     updated_at: datetime

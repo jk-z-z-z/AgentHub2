@@ -54,37 +54,36 @@ Modules:
 
 - `api/group_tasks`
 - `services/group_task_service`
-- `services/manager_planning_service`
+- `manager_runtime`
 
 Deliverables:
 
 - create and update group task DAG nodes and edges
-- support manager draft -> user confirm -> run upsert
+- support manager draft -> user confirm -> graph update
 - support in-place DAG edits and reassignment
 
 ## Phase 4: Node Execution Runtime
 
-Goal: run isolated node sessions through AgentScope and external runners.
+Goal: run isolated node sessions through the runtime packages.
 
 Modules:
 
 - `api/group_tasks`
 - `services/group_task_service`
-- `services/ai_service`
+- `agent_runtime`
 
 Deliverables:
 
-- execute agent nodes with LLM runtime
+- execute agent nodes through the runtime package
 - store node execution events for progress/audit
 - expose node events API for frontend polling
 
 ## Phase 5: Replan And Governance
 
-Goal: support orchestrator-led follow-up decisions and safe replanning.
+Goal: support manager-led follow-up decisions and safe replanning.
 
 Modules:
 
-- `services/manager_planning_service`
 - `services/group_task_service`
 - `api/group_tasks`
 

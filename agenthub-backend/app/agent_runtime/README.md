@@ -26,4 +26,5 @@ result = await invoke_agent(
 ## 设计口径
 - 工具、技能、MCP 保持 AgentScope 原生接法
 - `Toolkit(skills_or_loaders=..., tools=..., tool_groups=...)` 统一挂载
-- `group_ai_reply` 只负责路由，不承担执行细节
+- `event_runtime` 负责事件路由与回复写回，不承担模型执行细节
+- 本包不承担 `manager_runtime` 或 `bootstrap_runtime` 的执行逻辑

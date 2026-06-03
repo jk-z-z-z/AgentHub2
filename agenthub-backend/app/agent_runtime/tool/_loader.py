@@ -9,6 +9,7 @@ from agentscope.message import TextBlock, ToolResultState
 from agentscope.skill import LocalSkillLoader
 from agentscope.tool import ToolBase, ToolGroup, Toolkit, ToolChunk
 
+from app.event_runtime.types import MessageEventType
 from ._builtins_init import BUILTIN_TOOL_DEFS
 from app.agent_runtime.skill._loader import load_skill_loaders_for_agent
 from app.services.storage_paths import agent_dir
@@ -56,7 +57,7 @@ class _TracedBuiltinTool(ToolBase):
         start_time = time.perf_counter()
         if self._trace:
             try:
-                self._trace.emit("tool.call", {"tool_code": self._code, "args": kwargs or {}})
+                self._trace.emit(MessageEventType.Execution.TOOL_CALL, {"tool_code": self._code, "args": kwargs or {}})
             except Exception:
                 pass
         trace_record: dict[str, Any] = {
@@ -79,7 +80,7 @@ class _TracedBuiltinTool(ToolBase):
             self._call_traces.append(trace_record)
             if self._trace:
                 try:
-                    self._trace.emit("tool.result", {"tool_code": self._code, "result": result})
+                    self._trace.emit(MessageEventType.Execution.TOOL_RESULT, {"tool_code": self._code, "result": result})
                 except Exception:
                     pass
             return ToolChunk(
@@ -92,7 +93,7 @@ class _TracedBuiltinTool(ToolBase):
             self._call_traces.append(trace_record)
             if self._trace:
                 try:
-                    self._trace.emit("tool.result", {"tool_code": self._code, "error": str(e)})
+                    self._trace.emit(MessageEventType.Execution.TOOL_RESULT, {"tool_code": self._code, "error": str(e)})
                 except Exception:
                     pass
             return ToolChunk(

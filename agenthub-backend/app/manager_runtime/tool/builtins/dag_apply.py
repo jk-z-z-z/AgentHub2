@@ -1,0 +1,57 @@
+from __future__ import annotations
+
+from agentscope.tool import ToolBase, ToolChunk
+from sqlalchemy.orm import Session
+
+from app.manager_runtime.tool.base import build_error_chunk, build_tool_chunk
+from app.services.group_task_service import list_nodes, patch_nodes
+
+
+class DagApplyTool(ToolBase):
+    is_mcp = False
+    is_external_tool = False
+    is_state_injected = False
+    is_concurrency_safe = True
+
+    def __init__(self, *, db: Session) -> None:
+        self._db = db
+        self.name = "manager.dag_apply"
+        self.description = "Apply a structured graph update to the DAG."
+        self.input_schema = {
+            "type": "object",
+            "properties": {
+                "group_id": {"type": "integer"},
+                "actor_member_id": {"type": "integer"},
+                "graph": {"type": "object"},
+            },
+            "required": ["group_id", "actor_member_id", "graph"],
+            "additionalProperties": True,
+        }
+
+    async def check_permissions(self, _tool_input: dict, _context: object) -> object:
+        return object()
+
+    async def __call__(self, **kwargs) -> ToolChunk:
+        group_id = kwargs.get("group_id")
+        actor_member_id = kwargs.get("actor_member_id")
+        graph = dict(kwargs.get("graph") or {})
+        if group_id in (None, ""):
+            return build_error_chunk("group_id_required")
+        if actor_member_id in (None, ""):
+            return build_error_chunk("actor_member_id_required")
+        nodes = list(graph.get("nodes") or [])
+        current = list_nodes(self._db, group_id=int(group_id))
+        action = "updated" if current else "created"
+        patch_nodes(
+            self._db,
+            group_id=int(group_id),
+            creator_member_id=int(actor_member_id),
+            nodes=nodes,
+        )
+        return build_tool_chunk(
+            {
+                "action": action,
+                "group_id": int(group_id),
+                "node_count": len(nodes),
+            }
+        )

@@ -1,0 +1,22 @@
+# EventRuntime 事件运行时包
+
+本包负责统一管理 `message_id` 关联的事件日志。
+
+## 职责
+- 创建事件
+- 更新事件状态
+- 按 `message_id` 读取事件链
+- 按 `group_id` 拼接短期上下文
+- 为 agent / manager / bootstrap 的 trace 提供统一事件写入口
+
+## 事件语义
+- `pending`：事件已创建，等待消费
+- `done`：事件已被消费或处理完成
+- `failed`：事件消费失败，或事件本身无法处理
+
+## 分类
+- `input_output`：消息输入、最终回复、消息状态
+- `dag`：计划图、节点、边、状态编辑
+- `execution`：思考、tool call、tool result、流式执行
+- `task`：任务分配、认领、完成、回收
+- `system`：兜底系统事件

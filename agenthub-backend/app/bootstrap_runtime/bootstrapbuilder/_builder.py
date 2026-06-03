@@ -6,6 +6,7 @@ from pathlib import Path
 from typing import Any
 
 from agentscope.skill import LocalSkillLoader
+from agentscope.tool import Toolkit
 from sqlalchemy.orm import Session
 
 from app.models.agent_instance import AgentInstance
@@ -15,6 +16,7 @@ from app.models.message import Message
 from app.services.storage_init_service import ensure_runtime_personal, ensure_user_space
 from app.services.storage_paths import agent_dir, user_dir
 from app.bootstrap_runtime.skill import load_bootstrap_skill_loaders
+from app.bootstrap_runtime.tool import load_bootstrap_toolkit
 
 
 def _read_text(path: Path) -> str:
@@ -108,6 +110,8 @@ class BuiltBootstrap:
     runtime_context: dict[str, Any]
     short_term_memory: list[dict[str, Any]]
     skill_loaders: list[LocalSkillLoader]
+    toolkit: Toolkit
+    engine_type: str
 
 
 def build_complete_bootstrap(
@@ -150,6 +154,7 @@ def build_complete_bootstrap(
         "user_id": int(user_id),
         "input_text": str(content or ""),
     }
+    skill_loaders = load_bootstrap_skill_loaders()
     return BuiltBootstrap(
         group=group,
         sender=sender,
@@ -160,5 +165,11 @@ def build_complete_bootstrap(
         system_prompt=_build_bootstrap_system_prompt(agent_id=int(agent.id), user_id=int(user_id)),
         runtime_context=runtime_context,
         short_term_memory=_normalize_short_term_memory(short_term_memory),
-        skill_loaders=load_bootstrap_skill_loaders(),
+        skill_loaders=skill_loaders,
+        toolkit=load_bootstrap_toolkit(
+            int(agent.id),
+            runtime_context=runtime_context,
+            extra_skill_loaders=skill_loaders,
+        ),
+        engine_type=str(getattr(agent, "engine_type", "internal_llm") or "internal_llm"),
     )

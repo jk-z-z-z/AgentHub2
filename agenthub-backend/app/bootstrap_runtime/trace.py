@@ -4,7 +4,8 @@ from typing import Any
 
 from sqlalchemy.orm import Session
 
-from app.services.message_event_service import create_message_event
+from app.event_runtime.types import MessageEventType
+from app.event_runtime.facade import create_message_event
 
 
 class BootstrapRuntimeTrace:
@@ -24,3 +25,12 @@ class BootstrapRuntimeTrace:
 
     def emit_text(self, event_type: str, payload_text: str) -> None:
         self.emit(event_type, {"text": str(payload_text)})
+
+    def emit_bootstrap_started(self, payload: dict[str, Any] | None = None) -> None:
+        self.emit(MessageEventType.System.BOOTSTRAP_STARTED, payload or {})
+
+    def emit_bootstrap_finished(self, payload: dict[str, Any] | None = None) -> None:
+        self.emit(MessageEventType.System.BOOTSTRAP_FINISHED, payload or {})
+
+    def emit_bootstrap_failed(self, payload: dict[str, Any] | None = None) -> None:
+        self.emit(MessageEventType.System.BOOTSTRAP_FAILED, payload or {})

@@ -5,7 +5,7 @@ from app.db.session import get_db
 from app.schemas.common import ApiResponse
 from app.schemas.message_events import MessageEventOut
 from app.schemas.message import MessageCreateRequest, MessageOut
-from app.services.message_event_service import list_message_events
+from app.event_runtime.facade import list_message_events
 from app.services.message_service import create_message_and_trigger_ai, list_messages
 
 

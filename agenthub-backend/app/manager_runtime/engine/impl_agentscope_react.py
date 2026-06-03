@@ -2,13 +2,14 @@ from __future__ import annotations
 
 from typing import Any
 
-from agentscope.agent import ReActAgent
+from agentscope.agent import Agent
 from agentscope.credential import OpenAICredential
 from agentscope.message import Msg
 from agentscope.model import OpenAIChatModel
 from agentscope.permission import PermissionMode
 
 from app.core.config import settings
+from app.event_runtime.types import MessageEventType
 from app.manager_runtime.engine.base import BaseManagerEngine, ManagerEngineContext
 
 
@@ -35,9 +36,9 @@ class ManagerAgentScopeReactEngine(BaseManagerEngine):
             credential=cred,
             model=settings.openai_model,
         )
-        agent = ReActAgent(
+        agent = Agent(
             name=f"manager-react-agent-{ctx.group_id}",
-            sys_prompt=str(getattr(req, "system_prompt", "") or ""),
+            system_prompt=str(getattr(req, "system_prompt", "") or ""),
             model=model,
             toolkit=getattr(req, "toolkit", None),
         )
@@ -58,7 +59,7 @@ class ManagerAgentScopeReactEngine(BaseManagerEngine):
         trace = getattr(req, "trace", None)
         if trace:
             trace.emit(
-                "llm.request",
+                MessageEventType.Execution.LLM_REQUEST,
                 {
                     "input_preview": input_text[:500],
                     "system_preview": str(getattr(req, "system_prompt", "") or "")[:300],
@@ -75,5 +76,5 @@ class ManagerAgentScopeReactEngine(BaseManagerEngine):
                 parts.append(part)
         text = "".join(parts).strip()
         if trace:
-            trace.emit("llm.response", {"text_preview": text[:800]})
+            trace.emit(MessageEventType.Execution.LLM_RESPONSE, {"text_preview": text[:800]})
         return text, {"engine": "agentscope_react"}

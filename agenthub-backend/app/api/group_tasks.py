@@ -7,7 +7,7 @@ from app.db.session import get_db
 from app.dependencies.auth import get_current_user
 from app.models.group import Group
 from app.models.member import Member
-from app.services.group_task.dag_service import get_node
+from app.services.group_task_service import get_node
 from app.schemas.common import ApiResponse
 from app.schemas.group_tasks import (
     GroupTaskNodeCompleteRequest,
@@ -15,8 +15,8 @@ from app.schemas.group_tasks import (
     GroupTaskNodeMemberRequest,
     GroupTaskNodeOut,
 )
-from app.services.group_task.dag_service import create_nodes, get_dag_view, list_nodes
-from app.services.group_task.node_status_service import assign_node_to_agent, claim_node, complete_node
+from app.services.group_task_service import create_nodes, get_dag_view, list_nodes
+from app.services.group_task_service import assign_node_to_agent, claim_node, complete_node
 from app.manager_runtime.tool.builtins.node_execute import NodeExecuteTool
 
 

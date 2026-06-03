@@ -9,6 +9,7 @@ from app.agent_runtime.engine.factory import create_engine
 from app.agent_runtime.trace import AgentRuntimeTrace
 from app.agent_runtime.tool._executor import execute_builtin_tool
 from app.agent_runtime.schemas import AgentInvokeResult
+from app.event_runtime.types import MessageEventType
 
 
 class _StrictAgentRunRequest:
@@ -70,7 +71,7 @@ async def invoke_agent(
     ==========================================
 
     【外部系统负责提供，传入本函数】
-    1. short_term_memory：由群聊message对话体系完成拼接后传入
+    1. short_term_memory：由群聊 event 事件流拼接后传入，message 只负责展示
     2. extra_context：项目信息、个人信息、用户当前输入文本input_text，由外部整理好全部传入
 
     【agent_runtime包内部自主负责，完全隐藏】
@@ -117,7 +118,7 @@ async def invoke_agent(
 
     def _trace_tool_executor(tool_code: str, args: dict[str, Any]) -> dict[str, Any]:
         payload_args = args or {}
-        trace.emit("tool.call", {"tool_code": str(tool_code), "args": payload_args})
+        trace.emit_tool_call({"tool_code": str(tool_code), "args": payload_args})
         try:
             executor = tool_executor
             if executor is None:
@@ -129,14 +130,13 @@ async def invoke_agent(
                 )
             else:
                 result = executor(str(tool_code), payload_args)
-            trace.emit("tool.result", {"tool_code": str(tool_code), "result": result})
+            trace.emit_tool_result({"tool_code": str(tool_code), "result": result})
             return result
         except Exception as exc:
-            trace.emit("tool.result", {"tool_code": str(tool_code), "error": str(exc)})
+            trace.emit_tool_result({"tool_code": str(tool_code), "error": str(exc)})
             raise
 
-    trace.emit(
-        "run.started",
+    trace.emit_run_started(
         {
             "agent_id": int(agent_id),
             "engine_type": built_agent.engine_ctx.engine_type,
@@ -149,7 +149,7 @@ async def invoke_agent(
             req=wrapped_req,
             tool_executor=_trace_tool_executor,
         )
-        trace.emit("run.finished", {"status": "succeeded", "engine_type": built_agent.engine_ctx.engine_type})
+        trace.emit_run_finished({"status": "succeeded", "engine_type": built_agent.engine_ctx.engine_type})
         return AgentInvokeResult(
             text=text,
             engine_type=built_agent.engine_ctx.engine_type,
@@ -157,6 +157,6 @@ async def invoke_agent(
             system_prompt_used=wrapped_req.system_prompt,
         )
     except Exception as exc:
-        trace.emit("error", {"error": str(exc), "engine_type": built_agent.engine_ctx.engine_type})
-        trace.emit("run.finished", {"status": "failed", "engine_type": built_agent.engine_ctx.engine_type})
+        trace.emit(MessageEventType.Execution.ERROR, {"error": str(exc), "engine_type": built_agent.engine_ctx.engine_type})
+        trace.emit_run_finished({"status": "failed", "engine_type": built_agent.engine_ctx.engine_type})
         raise

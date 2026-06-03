@@ -6,6 +6,7 @@ from agentscope.skill import LocalSkillLoader
 from agentscope.tool import ToolBase, ToolChunk, ToolGroup, Toolkit
 from sqlalchemy.orm import Session
 
+from app.event_runtime.types import MessageEventType
 from app.manager_runtime.skill._loader import load_manager_skill_loaders
 from app.manager_runtime.tool.base import build_error_chunk, extract_tool_result
 from app.manager_runtime.tool._registry import get_manager_tool_factories
@@ -39,13 +40,13 @@ def _build_manager_tool_groups(tools: list[ToolBase]) -> list[ToolGroup]:
         "context",
         "Context and state tools.",
         "Inspect project memory, docs, and pending state before mutating anything.",
-        ["manager.project_md", "manager.pending_state"],
+        ["manager.project_md", "manager.pending_state", "manager.memory_compress"],
     )
     add_group(
         "planning",
         "Planning tools.",
-        "Use planning tools to convert requirements into a DAG before direct edits.",
-        ["manager.apply_plan"],
+        "Use graph tools to convert requirements into an editable node graph before direct edits.",
+        ["manager.dag_apply"],
     )
     add_group(
         "dag",
@@ -92,7 +93,7 @@ class _TracedManagerTool(ToolBase):
     async def __call__(self, **kwargs: Any) -> ToolChunk:
         if self._trace:
             try:
-                self._trace.emit("manager.tool.call", {"tool_code": self._code, "args": kwargs or {}})
+                self._trace.emit(MessageEventType.Execution.TOOL_CALL, {"tool_code": self._code, "args": kwargs or {}})
             except Exception:
                 pass
         try:
@@ -100,14 +101,14 @@ class _TracedManagerTool(ToolBase):
             payload = extract_tool_result(result)
             if self._trace:
                 try:
-                    self._trace.emit("manager.tool.result", {"tool_code": self._code, **payload})
+                    self._trace.emit(MessageEventType.Execution.TOOL_RESULT, {"tool_code": self._code, **payload})
                 except Exception:
                     pass
             return result
         except Exception as exc:
             if self._trace:
                 try:
-                    self._trace.emit("manager.tool.result", {"tool_code": self._code, "error": str(exc)})
+                    self._trace.emit(MessageEventType.Execution.TOOL_RESULT, {"tool_code": self._code, "error": str(exc)})
                 except Exception:
                     pass
             return build_error_chunk(str(exc))

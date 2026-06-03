@@ -67,13 +67,6 @@ def build_manager_runtime_context(
     group = db.query(Group).filter(Group.id == int(group_id)).first()
     root = project_dir(int(group_id)).resolve()
     extra = dict(extra_context or {})
-    run_preview = ""
-    run_id = extra.get("group_task_run_id") or extra.get("task_run_id")
-    if run_id not in (None, ""):
-        run_root = root / "runs" / str(run_id)
-        dag_text = _read_text(run_root / "dag.json")[:3000]
-        run_text = _read_text(run_root / "run.json")[:3000]
-        run_preview = "\n".join([p for p in [dag_text, run_text] if p])
 
     return {
         "group_id": int(group_id),
@@ -84,7 +77,6 @@ def build_manager_runtime_context(
         "profile_preview": _read_text(root / "PROFILE.md")[:4000],
         "readme_preview": _read_text(root / "README.md")[:4000],
         "docs_preview": _load_docs_preview(root),
-        "run_preview": run_preview,
         "short_term_preview": _short_term_preview(short_term_memory),
         "skill_loaders": load_manager_skill_loaders(int(group_id)),
     }
@@ -107,7 +99,6 @@ def build_manager_system_prompt(
         ("项目长期记忆摘要", "memory_preview", 3000),
         ("项目说明摘要", "readme_preview", 2000),
         ("项目文档预览", "docs_preview", 3000),
-        ("当前任务运行摘要", "run_preview", 2000),
         ("短期对话摘要", "short_term_preview", 1200),
     ]:
         value = context.get(key)

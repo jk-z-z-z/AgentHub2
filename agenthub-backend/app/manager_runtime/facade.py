@@ -4,10 +4,22 @@ from typing import Any
 
 from sqlalchemy.orm import Session
 
+from app.event_runtime.types import MessageEventType
 from app.manager_runtime.engine.factory import create_engine
 from app.manager_runtime.managerbuilder._builder import build_complete_manager
 from app.manager_runtime.schemas import ManagerInvokeResult
 from app.manager_runtime.trace import ManagerRuntimeTrace
+from app.memory_runtime.facade import get_project_memory_compressor_status, maybe_compress_project_memory
+
+
+async def _force_project_memory_compression_if_needed(db: Session, *, group_id: int, runtime_context: dict[str, Any]) -> dict[str, Any] | None:
+    if str(runtime_context.get("group_type") or "project") != "project":
+        return None
+    status = get_project_memory_compressor_status(db, project_id=int(group_id))
+    if not bool(status.get("will_trigger")):
+        return status
+    await maybe_compress_project_memory(db, project_id=int(group_id))
+    return get_project_memory_compressor_status(db, project_id=int(group_id))
 
 
 class _StrictManagerRunRequest:
@@ -69,6 +81,13 @@ async def invoke_manager(
     trace_message_id: int | None = None,
 ) -> ManagerInvokeResult:
     runtime_context = dict(extra_context or {})
+    compression_status = await _force_project_memory_compression_if_needed(
+        db,
+        group_id=int(group_id),
+        runtime_context=runtime_context,
+    )
+    if compression_status is not None:
+        runtime_context["memory_compression_status"] = compression_status
     trace = ManagerRuntimeTrace(db=db, message_id=_trace_message_id(runtime_context, trace_message_id))
     built = build_complete_manager(
         db,
@@ -89,8 +108,7 @@ async def invoke_manager(
     )
 
     engine = create_engine(built.engine_ctx.engine_type)
-    trace.emit(
-        "run.started",
+    trace.emit_run_started(
         {
             "group_id": int(group_id),
             "engine_type": built.engine_ctx.engine_type,
@@ -99,7 +117,7 @@ async def invoke_manager(
     )
     try:
         text, meta = await engine.run(ctx=built.engine_ctx, req=req, tool_executor=None)
-        trace.emit("run.finished", {"status": "succeeded", "engine_type": built.engine_ctx.engine_type})
+        trace.emit_run_finished({"status": "succeeded", "engine_type": built.engine_ctx.engine_type})
         return ManagerInvokeResult(
             text=text,
             action="assistant",
@@ -109,6 +127,6 @@ async def invoke_manager(
             system_prompt_used=req.system_prompt,
         )
     except Exception as exc:
-        trace.emit("error", {"error": str(exc), "engine_type": built.engine_ctx.engine_type})
-        trace.emit("run.finished", {"status": "failed", "engine_type": built.engine_ctx.engine_type})
+        trace.emit(MessageEventType.Execution.ERROR, {"error": str(exc), "engine_type": built.engine_ctx.engine_type})
+        trace.emit_run_finished({"status": "failed", "engine_type": built.engine_ctx.engine_type})
         raise

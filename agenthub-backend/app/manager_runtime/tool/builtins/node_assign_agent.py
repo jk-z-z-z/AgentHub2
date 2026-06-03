@@ -4,7 +4,7 @@ from agentscope.tool import ToolBase, ToolChunk
 from sqlalchemy.orm import Session
 
 from app.manager_runtime.tool.base import build_error_chunk, build_tool_chunk
-from app.services.group_task.node_status_service import assign_node_to_agent
+from app.services.group_task_service import assign_node_to_agent
 
 
 class NodeAssignAgentTool(ToolBase):

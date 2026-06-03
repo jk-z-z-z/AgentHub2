@@ -8,7 +8,7 @@
 ## 职责范围
 - 读取 agent 工作区中的 `SOUL.md`、`PROFILE.md`、`BOOTSTRAP.md`
 - 组装 bootstrap 专用 `system_prompt`
-- 挂载 bootstrap 专用 skill loader，再交给 `agent_runtime` 执行
+- 挂载 bootstrap 专用 skill loader 与工具后，在本包内直接执行
 - 写回 bootstrap 消息并记录过程事件
 
 ## 当前分层
@@ -18,4 +18,8 @@
 - `trace.py`：bootstrap 过程事件写入
 
 ## 调用链
-`group_ai_reply` -> `invoke_bootstrap(...)` -> `bootstrapbuilder.build_complete_bootstrap(...)` -> `agent_runtime.invoke_agent(...)`
+`event_runtime.handlers.message` -> `invoke_bootstrap(...)` -> `bootstrapbuilder.build_complete_bootstrap(...)` -> `bootstrap_runtime.engine.run(...)`
+
+## 设计口径
+- bootstrap 是独立运行时，不复用 `agent_runtime.invoke_agent()`
+- 本包只负责初始化流程，不承担普通群聊回复与项目执行

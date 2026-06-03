@@ -26,5 +26,4 @@ class GroupTaskNode(AutoIncrementIdMixin, TimestampMixin, Base):
     input_json: Mapped[str] = mapped_column(Text, default="{}", nullable=False)
     result_json: Mapped[str] = mapped_column(Text, default="{}", nullable=False)
     error: Mapped[str] = mapped_column(Text, default="", nullable=False)
-    agent_run_id: Mapped[int | None] = mapped_column(ForeignKey("agent_runs.id"))
     output_summary: Mapped[str] = mapped_column(Text, default="", nullable=False)

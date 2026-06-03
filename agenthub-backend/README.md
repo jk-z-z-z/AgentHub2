@@ -14,13 +14,19 @@ Current stack:
 ```text
 agenthub-backend/
 ├── app/                      # AgentHub2-style FastAPI application package
-│   ├── api/                  # API routers
+│   ├── api/                  # HTTP routers
+│   ├── agent_runtime/        # Digital worker runtime
+│   ├── bootstrap_runtime/    # Bootstrap runtime
+│   ├── event_runtime/        # Message/event orchestration
+│   ├── manager_runtime/      # Manager runtime
+│   ├── memory_runtime/       # Memory compression and token estimation
+│   ├── ws_runtime/           # WebSocket broadcast helpers
 │   ├── common/               # Shared helpers
 │   ├── core/                 # Settings
 │   ├── db/                   # Engine and base metadata
 │   ├── models/               # SQLAlchemy models (one file per table)
 │   ├── schemas/              # Pydantic request/response models
-│   ├── services/             # Domain services
+│   ├── services/             # Thin domain services
 │   └── main.py               # FastAPI entrypoint
 ├── docs/                     # Architecture, roadmap, and database design
 └── pyproject.toml
@@ -34,15 +40,14 @@ uv sync
 uv run uvicorn app.main:app --reload
 ```
 
+> 开发模式下启动会直接重建 SQLite 表结构并重新种子化基础数据；如果你要保留本地数据，先切换到非 `local/dev` 环境。
+
 ## Configure AI Runtime
 
-Create `agenthub-backend/.env`:
+Create `agenthub-backend/.env` from `.env.example` and fill in your local values:
 
 ```bash
-AGENTHUB_OPENAI_API_KEY=your_key
-# optional
-AGENTHUB_OPENAI_BASE_URL=https://api.openai.com/v1
-AGENTHUB_OPENAI_MODEL=gpt-4.1-mini
+cp .env.example .env
 ```
 
 Then you can call:
@@ -64,26 +69,27 @@ uv run python scripts/seed_demo.py --base-url http://127.0.0.1:8000/api/v1
 - Groups: create/list/delete groups (`personal` / `project`) with member constraints
 - Members: add/remove user or agent members
 - Messages: send/list messages, websocket broadcast, `@管家` trigger path
-- AI routing: `group_ai_reply` decides whether to call `bootstrap_runtime`, `agent_runtime`, or `manager_runtime`
-- Manager planning: draft DAG by LLM, creator-only confirmation, then upsert to group task run
-- Group tasks: run/node/event persistence, graph snapshots, node assignment, agent-node execution events, final summaries
+- AI routing: `event_runtime` decides whether to call `bootstrap_runtime`, `agent_runtime`, or `manager_runtime`
+- Manager planning: draft DAG by LLM, creator-only confirmation, then update the group graph
+- Group tasks: node graph persistence, graph snapshots, node assignment, node execution events, final summaries
 - Agents: profile templates + agent instances + per-agent workspace bootstrap
 - Tools/MCP: builtin tools registry + agent tool toggles + MCP metadata CRUD
-- Memory: short-term context + long-memory compression pipeline integration
+- Memory: short-term context + long-memory compression runtime
 
 ## Runtime Architecture
 
-Current runtime stack uses three single-facade packages:
+Current runtime stack uses four single-facade packages:
 
 - `app/agent_runtime.invoke_agent()` handles digital-worker replies, tool calls, message persistence, and process events
-- `app/manager_runtime.invoke_manager()` handles manager replies, planning, tool execution, and message persistence
+- `app/manager_runtime.invoke_manager()` handles manager replies, graph editing, tool execution, and message persistence
 - `app/bootstrap_runtime.invoke_bootstrap()` handles bootstrap initialization messages and process events
+- `app.memory_runtime.compress_project_memory()` handles project memory compression and token estimation
 
 Flow:
 
 `message_service.create_message_and_trigger_ai(...)`
--> `group_ai_reply.handle_group_ai_reply(...)`
--> `bootstrap_runtime / agent_runtime / manager_runtime`
+-> `event_runtime.dispatcher.dispatch_message_event(...)`
+-> `bootstrap_runtime / agent_runtime / manager_runtime / memory_runtime`
 -> runtime-specific persistence and event logging
 
 ## API Docs
@@ -94,5 +100,6 @@ Flow:
 ## Notes
 
 - `group` is treated as project container in current design.
-- One group keeps one active planning graph that is updated incrementally.
-- `group_task/orchestration` contains task-graph snapshot, assignment, replanning, receipt, and finalization helpers.
+- One group keeps one active editable graph that is updated incrementally.
+- `group_task_service` contains node graph, assignment, node state editing, and finalization helpers.
+- `memory_runtime` contains memory compression config, token estimation, and summary persistence helpers.

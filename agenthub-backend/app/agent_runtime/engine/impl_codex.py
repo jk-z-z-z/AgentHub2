@@ -5,6 +5,7 @@ from typing import Any
 from app.agent_runtime.engine.base import BaseAgentEngine, EngineContext
 from app.agent_runtime.mcp._transport import ACPRunnerConfig, managed_acp_transport
 from app.core.config import settings
+from app.event_runtime.types import MessageEventType
 
 
 class CodexEngine(BaseAgentEngine):
@@ -33,7 +34,7 @@ class CodexEngine(BaseAgentEngine):
             user_prompt = str(getattr(req, "input_text", ""))
 
             if trace:
-                trace.emit("llm.request", {"input_preview": user_prompt[:500], "system_preview": system_prompt[:300], "engine": "codex"})
+                trace.emit(MessageEventType.Execution.LLM_REQUEST, {"input_preview": user_prompt[:500], "system_preview": system_prompt[:300], "engine": "codex"})
 
             await transport.send_request({
                 "jsonrpc": "2.0",
@@ -52,7 +53,7 @@ class CodexEngine(BaseAgentEngine):
         final_text = str(result.get("result", {}).get("text", ""))
         updates = result.get("result", {}).get("updates", [])
         if trace:
-            trace.emit("llm.response", {"text_preview": final_text[:800], "engine": "codex", "updates_count": len(updates)})
+            trace.emit(MessageEventType.Execution.LLM_RESPONSE, {"text_preview": final_text[:800], "engine": "codex", "updates_count": len(updates)})
 
         return final_text, {
             "engine": "acp",

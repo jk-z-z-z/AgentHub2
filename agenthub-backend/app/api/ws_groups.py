@@ -3,7 +3,7 @@ from fastapi import APIRouter, WebSocket, WebSocketDisconnect
 from app.db.session import SessionLocal
 from app.dependencies.auth import get_active_user_by_token
 from app.models.member import Member
-from app.ws.manager import ws_manager
+from app.ws_runtime import ws_manager
 
 
 router = APIRouter(tags=["ws"])
