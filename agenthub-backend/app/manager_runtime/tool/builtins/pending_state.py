@@ -1,6 +1,7 @@
 from __future__ import annotations
 
-from app.manager_runtime.tool.base import ManagerTool, ToolCallResult
+from agentscope.tool import ToolBase, ToolChunk
+
 from app.manager_runtime.assistant.state_store import (
     clear_pending_clarify,
     clear_pending_plan,
@@ -9,21 +10,44 @@ from app.manager_runtime.assistant.state_store import (
     save_pending_clarify,
     save_pending_plan,
 )
+from app.manager_runtime.tool.base import build_error_chunk, build_tool_chunk
 
 
-class PendingStateTool(ManagerTool):
-    code = "manager.pending_state"
+class PendingStateTool(ToolBase):
+    is_mcp = False
+    is_external_tool = False
+    is_state_injected = False
+    is_concurrency_safe = True
 
-    async def __call__(self, **kwargs) -> ToolCallResult:
+    def __init__(self) -> None:
+        self.name = "manager.pending_state"
+        self.description = "Load and update pending clarification or planning state."
+        self.input_schema = {
+            "type": "object",
+            "properties": {
+                "op": {"type": "string"},
+                "group_id": {"type": "integer"},
+                "creator_member_id": {"type": "integer"},
+                "goal_text": {"type": "string"},
+                "questions": {"type": "array"},
+                "plan": {"type": "object"},
+            },
+            "required": ["op", "group_id"],
+            "additionalProperties": True,
+        }
+
+    async def check_permissions(self, _tool_input: dict, _context: object) -> object:
+        return object()
+
+    async def __call__(self, **kwargs) -> ToolChunk:
         op = str(kwargs.get("op") or "").strip()
         group_id = int(kwargs.get("group_id"))
         if op == "load":
-            return ToolCallResult(
-                ok=True,
-                result={
+            return build_tool_chunk(
+                {
                     "pending_plan": load_pending_plan(group_id=group_id),
                     "pending_clarify": load_pending_clarify(group_id=group_id),
-                },
+                }
             )
         if op == "save_clarify":
             save_pending_clarify(
@@ -32,18 +56,18 @@ class PendingStateTool(ManagerTool):
                 goal_text=str(kwargs.get("goal_text") or ""),
                 questions=list(kwargs.get("questions") or []),
             )
-            return ToolCallResult(ok=True, result={"saved": True})
+            return build_tool_chunk({"saved": True})
         if op == "save_plan":
             save_pending_plan(
                 group_id=group_id,
                 creator_member_id=int(kwargs.get("creator_member_id")),
                 plan=dict(kwargs.get("plan") or {}),
             )
-            return ToolCallResult(ok=True, result={"saved": True})
+            return build_tool_chunk({"saved": True})
         if op == "clear_clarify":
             clear_pending_clarify(group_id=group_id)
-            return ToolCallResult(ok=True, result={"cleared": True})
+            return build_tool_chunk({"cleared": True})
         if op == "clear_plan":
             clear_pending_plan(group_id=group_id)
-            return ToolCallResult(ok=True, result={"cleared": True})
-        return ToolCallResult(ok=False, result={}, error="Unsupported op")
+            return build_tool_chunk({"cleared": True})
+        return build_error_chunk("Unsupported op")

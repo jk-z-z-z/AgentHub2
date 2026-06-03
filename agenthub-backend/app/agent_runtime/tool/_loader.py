@@ -6,9 +6,11 @@ from pathlib import Path
 from typing import Any
 
 from agentscope.message import TextBlock, ToolResultState
-from agentscope.tool import ToolBase, Toolkit, ToolChunk
+from agentscope.skill import LocalSkillLoader
+from agentscope.tool import ToolBase, ToolGroup, Toolkit, ToolChunk
 
 from ._builtins_init import BUILTIN_TOOL_DEFS
+from app.agent_runtime.skill._loader import load_skill_loaders_for_agent
 from app.services.storage_paths import agent_dir
 
 
@@ -114,10 +116,55 @@ def _normalize_toggles(enabled: dict[str, bool], allowed_codes: list[str]) -> di
     return normalized
 
 
+def _build_tool_groups(tools: list[ToolBase]) -> list[ToolGroup]:
+    by_code = {str(getattr(tool, "name", "")).strip(): tool for tool in tools}
+    groups: list[ToolGroup] = []
+
+    def add_group(name: str, description: str, instructions: str, codes: list[str]) -> None:
+        selected = [by_code[code] for code in codes if code in by_code]
+        if not selected:
+            return
+        groups.append(
+            ToolGroup(
+                name=name,
+                description=description,
+                instructions=instructions,
+                tools=selected,
+            )
+        )
+
+    add_group(
+        "workspace",
+        "Workspace file operations.",
+        "Always inspect before editing and keep changes minimal.",
+        ["file_list", "file_read", "file_write", "file_edit"],
+    )
+    add_group(
+        "project",
+        "Project shared code and commands.",
+        "Prefer project-scoped reads and safe allowlisted commands.",
+        ["project_code_list", "project_code_read", "project_command_run"],
+    )
+    add_group(
+        "runtime",
+        "Runtime workspace file operations.",
+        "Use runtime-scoped files when the task belongs to current execution context.",
+        ["worker_file_list", "worker_file_read", "worker_file_write"],
+    )
+    add_group(
+        "profile",
+        "Agent and user profile maintenance.",
+        "Keep profile updates structured and section-based when possible.",
+        ["user_profile_write", "agent_spec_write", "agent_spec_delete", "agent_profile_upsert_section"],
+    )
+    return groups
+
+
 def load_toolkit_for_agent(
     agent_id: int,
     runtime_context: dict[str, Any] | None = None,
     trace: Any | None = None,
+    extra_skill_loaders: list[LocalSkillLoader] | None = None,
 ) -> Toolkit:
     allowed_codes = [str(k) for k in sorted(BUILTIN_TOOL_DEFS.keys())]
     tools_json_path = _get_tools_json_path(int(agent_id))
@@ -149,4 +196,10 @@ def load_toolkit_for_agent(
                 trace=trace,
             )
         )
-    return Toolkit(tools=tools)
+    skill_loaders = load_skill_loaders_for_agent(int(agent_id))
+    combined_skill_loaders = list(skill_loaders) + list(extra_skill_loaders or [])
+    return Toolkit(
+        skills_or_loaders=combined_skill_loaders,
+        tools=tools,
+        tool_groups=_build_tool_groups(tools),
+    )

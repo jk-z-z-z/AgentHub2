@@ -41,7 +41,7 @@ class AgentScopeReactEngine(BaseAgentEngine):
             name=f"react-agent-{ctx.agent_id}",
             system_prompt=str(getattr(req, "system_prompt", "") or ""),
             model=model,
-            toolkit=getattr(req, "_toolkit", None),
+            toolkit=getattr(req, "toolkit", None),
         )
 
         try:

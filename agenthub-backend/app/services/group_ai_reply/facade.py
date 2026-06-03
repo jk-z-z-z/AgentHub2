@@ -19,7 +19,6 @@ from app.models.group_assistant_config import GroupAssistantConfig
 from app.models.member import Member
 from app.models.message import Message
 from app.services.group_ai_reply.reply_utils import emit_ai_reply
-from app.services.group_task.manager_service import get_or_create_manager_member
 from app.services.memory_compressor_service import maybe_compress_project_memory
 from app.agent_runtime.message_store import update_message
 from app.ws.manager import ws_manager
@@ -34,6 +33,36 @@ class GroupAIReplyRequest:
     message_type: str
     content: str
     meta_json: str
+
+
+MANAGER_MEMBER_NAME = "管家"
+
+
+def _get_or_create_manager_member(db: Session, *, group_id: int) -> Member:
+    row = (
+        db.query(Member)
+        .filter(Member.group_id == int(group_id), Member.kind == "system", Member.display_name == MANAGER_MEMBER_NAME)
+        .first()
+    )
+    if row:
+        return row
+    row = Member(
+        group_id=int(group_id),
+        kind="system",
+        display_name=MANAGER_MEMBER_NAME,
+        user_ref=None,
+        agent_instance_id=None,
+        title="group-manager",
+    )
+    db.add(row)
+    db.commit()
+    db.refresh(row)
+    return row
+
+
+def _project_manager_enabled(db: Session, *, group_id: int) -> bool:
+    cfg = db.query(GroupAssistantConfig).filter(GroupAssistantConfig.group_id == int(group_id)).first()
+    return bool(cfg and int(cfg.enabled) == 1)
 
 
 def _build_reply_context(db: Session, *, group_id: int, sender_member_id: int, user_message_id: int) -> tuple[Group, Member, Message] | None:
@@ -186,7 +215,7 @@ async def _handle_personal(ctx_db: Session, group: Group, sender: Member, user_m
 
 
 async def _handle_project_manager(ctx_db: Session, group: Group, sender: Member, user_message: Message, content: str) -> None:
-    manager_member = get_or_create_manager_member(ctx_db, group_id=int(group.id))
+    manager_member = _get_or_create_manager_member(ctx_db, group_id=int(group.id))
     ai_message = await create_pending_ai_message(
         ctx_db,
         group_id=int(group.id),
@@ -296,6 +325,61 @@ async def _handle_single_project_agent(
         )
 
 
+async def _handle_project_group(
+    ctx_db: Session,
+    group: Group,
+    sender: Member,
+    user_message: Message,
+    content: str,
+    meta_json: str,
+) -> None:
+    mentioned_ids = _extract_agent_mentions(meta_json)
+    if not mentioned_ids:
+        return
+    if _project_manager_enabled(ctx_db, group_id=int(group.id)):
+        manager_member = _get_or_create_manager_member(ctx_db, group_id=int(group.id))
+        if int(manager_member.id) in set(mentioned_ids):
+            await _handle_project_manager(ctx_db, group, sender, user_message, content)
+            return
+    await _handle_project_mentions(ctx_db, group, sender, user_message, content, meta_json)
+
+
+_GROUP_REPLY_HANDLERS = {
+    "bootstrap": _handle_bootstrap,
+    "personal": _handle_personal,
+    "project": _handle_project_group,
+}
+
+
+async def _dispatch_group_reply(
+    *,
+    db: Session,
+    group: Group,
+    sender: Member,
+    user_message: Message,
+    content: str,
+    meta_json: str,
+) -> None:
+    handler = _GROUP_REPLY_HANDLERS.get(str(group.type))
+    if handler:
+        await handler(db, group, sender, user_message, content, meta_json)
+
+
+async def _handle_group_reply_error(
+    *,
+    group: Group,
+    sender: Member,
+    user_message: Message,
+    error: Exception,
+) -> None:
+    await _broadcast_reply_failed(
+        group_id=int(group.id),
+        user_message_id=int(user_message.id),
+        sender_member_id=int(sender.id),
+        error=str(error),
+    )
+
+
 async def handle_group_ai_reply(request: GroupAIReplyRequest) -> None:
     ctx = _build_reply_context(
         request.db,
@@ -309,26 +393,14 @@ async def handle_group_ai_reply(request: GroupAIReplyRequest) -> None:
     if sender.kind != "user" or request.message_type != "text":
         return
     try:
-        if str(group.type) == "bootstrap":
-            await _handle_bootstrap(request.db, group, sender, user_message, request.content, request.meta_json)
-        elif str(group.type) == "personal":
-            await _handle_personal(request.db, group, sender, user_message, request.content, request.meta_json)
-        elif str(group.type) == "project":
-            mentions = _extract_agent_mentions(request.meta_json)
-            if not mentions:
-                return
-            cfg = request.db.query(GroupAssistantConfig).filter(GroupAssistantConfig.group_id == int(group.id)).first()
-            if cfg and int(cfg.enabled) == 1:
-                manager_member = get_or_create_manager_member(request.db, group_id=int(group.id))
-                if int(manager_member.id) in set(mentions):
-                    await _handle_project_manager(request.db, group, sender, user_message, request.content)
-                    return
-            await _handle_project_mentions(request.db, group, sender, user_message, request.content, request.meta_json)
-    except Exception as exc:
-        await _broadcast_reply_failed(
-            group_id=int(group.id),
-            user_message_id=int(user_message.id),
-            sender_member_id=int(sender.id),
-            error=str(exc),
+        await _dispatch_group_reply(
+            db=request.db,
+            group=group,
+            sender=sender,
+            user_message=user_message,
+            content=request.content,
+            meta_json=request.meta_json,
         )
+    except Exception as exc:
+        await _handle_group_reply_error(group=group, sender=sender, user_message=user_message, error=exc)
         raise

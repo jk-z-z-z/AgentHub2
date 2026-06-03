@@ -11,7 +11,6 @@ class GroupTaskEventType:
     RUN_REPLAN_STARTED = "run.replan.started"
     RUN_REPLAN_APPLIED = "run.replan.applied"
     DAG_UPDATED = "dag.updated"
-    ORCHESTRATOR_PLAN_APPLIED = "orchestrator.plan_applied"
     MANAGER_PLANNING_LLM_STARTED = "manager.planning.llm.started"
     NODE_CLAIMED = "node.claimed"
     NODE_AUTO_ASSIGNED = "node.auto_assigned"

@@ -5,6 +5,7 @@ from dataclasses import dataclass
 from pathlib import Path
 from typing import Any
 
+from agentscope.skill import LocalSkillLoader
 from sqlalchemy.orm import Session
 
 from app.models.agent_instance import AgentInstance
@@ -13,6 +14,7 @@ from app.models.member import Member
 from app.models.message import Message
 from app.services.storage_init_service import ensure_runtime_personal, ensure_user_space
 from app.services.storage_paths import agent_dir, user_dir
+from app.bootstrap_runtime.skill import load_bootstrap_skill_loaders
 
 
 def _read_text(path: Path) -> str:
@@ -84,13 +86,8 @@ def _build_bootstrap_system_prompt(*, agent_id: int, user_id: int) -> str:
     if bootstrap.strip():
         parts.append("# Agent BOOTSTRAP\n" + bootstrap.strip())
     parts.append(
-        "# Bootstrap Rules\n"
-        "你正在为当前智能体进行“初始化定义（bootstrap）”。你的目标是：\n"
-        "- 按 BOOTSTRAP.md 的规范逐步向用户提问，收集缺失信息。\n"
-        "- 用工具更新智能体工作区中的配置文件（例如 PROFILE.md、tools.json、skills.json、knowledge/*）。\n"
-        "- 当你认为信息已足够，向用户询问是否结束 bootstrap。\n"
-        "- 用户确认结束后，删除本智能体工作区中的 BOOTSTRAP.md，并提示用户 bootstrap 已完成。\n"
-        "注意：不要一次性抛出过多问题，优先问最关键的 1-3 个。\n"
+        "# Role\n"
+        "你正在执行 bootstrap，优先遵循已挂载的 bootstrap skill 和工具完成工作区初始化。"
     )
     if user_profile.strip():
         parts.append("# User PROFILE\n" + user_profile.strip())
@@ -110,6 +107,7 @@ class BuiltBootstrap:
     system_prompt: str
     runtime_context: dict[str, Any]
     short_term_memory: list[dict[str, Any]]
+    skill_loaders: list[LocalSkillLoader]
 
 
 def build_complete_bootstrap(
@@ -162,4 +160,5 @@ def build_complete_bootstrap(
         system_prompt=_build_bootstrap_system_prompt(agent_id=int(agent.id), user_id=int(user_id)),
         runtime_context=runtime_context,
         short_term_memory=_normalize_short_term_memory(short_term_memory),
+        skill_loaders=load_bootstrap_skill_loaders(),
     )

@@ -67,20 +67,20 @@ async def invoke_bootstrap(
         group_id=int(built.group.id),
         sender_member_id=int(built.agent_member.id),
         reply_to_message_id=int(user_message_id),
-        trigger="bootstrap_auto",
+        trigger="bootstrap",
     )
     try:
         result = await invoke_agent(
             db,
             agent_id=int(built.agent.id),
             short_term_memory=built.short_term_memory,
-            extra_context=built.runtime_context,
+            extra_context={**built.runtime_context, "runtime_skill_loaders": built.skill_loaders},
             system_prompt=built.system_prompt,
             trace_message_id=int(ai_message.id),
         )
         metadata_json = _build_reply_metadata(
             reply_to_message_id=int(user_message_id),
-            trigger="bootstrap_auto",
+            trigger="bootstrap",
             status="done",
         )
         updated = await update_message(
@@ -118,7 +118,7 @@ async def invoke_bootstrap(
         )
         metadata_json = _build_reply_metadata(
             reply_to_message_id=int(user_message_id),
-            trigger="bootstrap_auto",
+            trigger="bootstrap",
             status="failed",
         )
         await update_message(

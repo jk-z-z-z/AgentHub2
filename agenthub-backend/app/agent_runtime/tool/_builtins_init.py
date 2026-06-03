@@ -39,7 +39,7 @@ BUILTIN_TOOL_DEFS: dict[str, BuiltinToolDef] = {
     "file_edit": BuiltinToolDef(spec=_file_edit_spec(), handler=_file_edit_run),
     "project_code_list": BuiltinToolDef(spec=_project_code_list_spec(), handler=_project_code_list_run),
     "project_code_read": BuiltinToolDef(spec=_project_code_read_spec(), handler=_project_code_read_run),
-    "worker_file_list": BuiltinToolDef(spec=_worker_file_list_run, handler=_worker_file_list_run),
+    "worker_file_list": BuiltinToolDef(spec=_worker_file_list_spec(), handler=_worker_file_list_run),
     "worker_file_read": BuiltinToolDef(spec=_worker_file_read_spec(), handler=_worker_file_read_run),
     "worker_file_write": BuiltinToolDef(spec=_worker_file_write_spec(), handler=_worker_file_write_run),
     "user_profile_write": BuiltinToolDef(spec=_user_profile_write_spec(), handler=_user_profile_write_run),

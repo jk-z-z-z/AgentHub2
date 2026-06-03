@@ -29,7 +29,7 @@ class _StrictAgentRunRequest:
         self.system_prompt = system_prompt
         self.runtime_context = runtime_context
         self.short_term_memory = short_term_memory
-        self._toolkit = toolkit
+        self.toolkit = toolkit
         self.trace = trace
 
 

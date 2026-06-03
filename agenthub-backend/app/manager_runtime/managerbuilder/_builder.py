@@ -4,9 +4,12 @@ from dataclasses import dataclass
 from pathlib import Path
 from typing import Any
 
+from agentscope.tool import Toolkit
 from sqlalchemy.orm import Session
 
+from app.manager_runtime.engine.base import ManagerEngineContext
 from app.models.group import Group
+from app.manager_runtime.tool._loader import load_manager_toolkit
 from app.services.storage_paths import project_dir
 
 
@@ -83,6 +86,7 @@ def build_manager_runtime_context(
         "docs_preview": _load_docs_preview(root),
         "run_preview": run_preview,
         "short_term_preview": _short_term_preview(short_term_memory),
+        "skill_loaders": load_manager_skill_loaders(int(group_id)),
     }
 
 
@@ -93,46 +97,37 @@ def build_manager_system_prompt(
     extra_context: dict[str, Any] | None = None,
 ) -> str:
     extra = dict(extra_context or {})
-    purpose = str(purpose or "chat").strip().lower()
-    goal_text = str(extra.get("goal_text") or extra.get("input_text") or "").strip()
-    clarify_answers = str(extra.get("clarify_answers") or "").strip()
     prompt_parts = [
-        "你是群聊项目的管家（Master），负责答疑、规划、必要时组织节点执行。",
-        "你只服务当前群聊项目，不要脱离群聊上下文回答。",
-        f"当前项目目录：{context['project_root']}",
-        f"当前群组名称：{context['group_name']}",
-        f"当前群组类型：{context['group_type']}",
+        "你是群聊项目的管家（Master）。",
+        "你只服务当前群聊项目，使用已挂载的 skills 和 tools 完成任务。",
+        f"当前项目：{context['group_name']} ({context['group_type']})",
+        f"项目目录：{context['project_root']}",
     ]
-    if str(context.get("profile_preview") or "").strip():
-        prompt_parts.append(f"管家资料摘要：\n{str(context.get('profile_preview') or '')[:4000]}")
-    if str(context.get("memory_preview") or "").strip():
-        prompt_parts.append(f"项目长期记忆摘要：\n{str(context.get('memory_preview') or '')[:6000]}")
-    if str(context.get("readme_preview") or "").strip():
-        prompt_parts.append(f"项目说明摘要：\n{str(context.get('readme_preview') or '')[:4000]}")
-    docs_preview = context.get("docs_preview") or []
-    if isinstance(docs_preview, list) and docs_preview:
-        docs_text = "\n".join([f"- {item.get('path')}: {item.get('preview')}" for item in docs_preview if isinstance(item, dict)])
-        prompt_parts.append(f"项目文档预览：\n{docs_text[:4000]}")
-    if str(context.get("run_preview") or "").strip():
-        prompt_parts.append(f"当前任务运行摘要：\n{str(context.get('run_preview') or '')[:4000]}")
-    if str(context.get("short_term_preview") or "").strip():
-        prompt_parts.append(f"短期对话摘要：\n{str(context.get('short_term_preview') or '')[:2000]}")
+    for label, key, limit in [
+        ("项目长期记忆摘要", "memory_preview", 3000),
+        ("项目说明摘要", "readme_preview", 2000),
+        ("项目文档预览", "docs_preview", 3000),
+        ("当前任务运行摘要", "run_preview", 2000),
+        ("短期对话摘要", "short_term_preview", 1200),
+    ]:
+        value = context.get(key)
+        if not value:
+            continue
+        if isinstance(value, list):
+            lines = []
+            for item in value:
+                if isinstance(item, dict):
+                    lines.append(f"- {item.get('path')}: {item.get('preview')}")
+            text = "\n".join(lines)
+        else:
+            text = str(value)
+        if text.strip():
+            prompt_parts.append(f"{label}：\n{text[:limit]}")
 
-    if purpose == "plan":
-        prompt_parts.append("当前任务是生成DAG规划草案。你必须只输出合法JSON对象，不要markdown，不要解释。")
-        prompt_parts.append(
-            "JSON schema: {\"plan_title\":\"string\",\"goal\":\"string\",\"nodes\":[{\"node_key\":\"N1\",\"title\":\"string\",\"detail\":\"string\",\"role_required\":\"string|null\",\"deps\":[\"N0\"]}]}"
-        )
-        if goal_text:
-            prompt_parts.append(f"用户目标：\n{goal_text}")
-        if clarify_answers:
-            prompt_parts.append(f"用户补充回答：\n{clarify_answers}")
-    else:
-        prompt_parts.append(
-            "当前任务是正常对话。你可以回答问题、解释项目上下文、建议下一步；如果用户明确要求规划，再切换到规划思维。"
-        )
-        if goal_text:
-            prompt_parts.append(f"用户当前输入：\n{goal_text}")
+    if str(extra.get("goal_text") or extra.get("input_text") or "").strip():
+        prompt_parts.append(f"用户输入：\n{str(extra.get('goal_text') or extra.get('input_text') or '').strip()}")
+    if str(extra.get("clarify_answers") or "").strip():
+        prompt_parts.append(f"补充回答：\n{str(extra.get('clarify_answers') or '').strip()}")
 
     return "\n\n".join(prompt_parts).strip()
 
@@ -142,6 +137,8 @@ class BuiltManager:
     group: Group | None
     system_prompt: str
     runtime_context: dict[str, Any]
+    toolkit: Toolkit
+    engine_ctx: ManagerEngineContext
 
 
 def build_complete_manager(
@@ -165,8 +162,23 @@ def build_complete_manager(
     group = db.query(Group).filter(Group.id == int(group_id)).first()
     runtime_context = dict(context)
     runtime_context["purpose"] = str(extra_context.get("purpose") or "chat")
+    engine_ctx = ManagerEngineContext(
+        group_id=int(group_id),
+        engine_type=str(extra_context.get("engine_type") or "agentscope_react"),
+        engine_config_json=str(extra_context.get("engine_config_json") or "{}"),
+    )
+    extra_skill_loaders = extra_context.get("runtime_skill_loaders")
+    if not isinstance(extra_skill_loaders, list):
+        extra_skill_loaders = []
     return BuiltManager(
         group=group,
         system_prompt=system_prompt,
         runtime_context=runtime_context,
+        toolkit=load_manager_toolkit(
+            db,
+            group_id=int(group_id),
+            trace=extra_context.get("trace"),
+            extra_skill_loaders=extra_skill_loaders,
+        ),
+        engine_ctx=engine_ctx,
     )

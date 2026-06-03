@@ -58,9 +58,17 @@ def _pool_root() -> Path:
     return p
 
 
+def _builtin_skill_root() -> Path:
+    return (Path(__file__).resolve().parent / "builtin").resolve()
+
+
 def load_skill_loaders_for_agent(agent_id: int) -> list[LocalSkillLoader]:
     cfg = _load_normalized_skills_config(int(agent_id))
     dirs: list[tuple[str, bool]] = []
+
+    builtin_root = _builtin_skill_root()
+    if builtin_root.exists() and builtin_root.is_dir():
+        dirs.append((builtin_root.as_posix(), True))
 
     pool_root = _pool_root()
     for code in cfg.get("pool_skill_codes", []):

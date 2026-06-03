@@ -8,7 +8,6 @@ from agentscope.tool import Toolkit
 from sqlalchemy.orm import Session
 
 from app.agent_runtime.engine.base import EngineContext
-from app.agent_runtime.skill._loader import load_skill_loaders_for_agent
 from app.agent_runtime.tool._loader import load_toolkit_for_agent
 from app.models.agent_instance import AgentInstance
 from app.services.storage_init_service import (
@@ -41,6 +40,10 @@ def _build_system_prompt_personal(*, agent_id: int, user_id: int) -> str:
         parts.append("# Agent SOUL\n" + soul.strip())
     if profile_md.strip():
         parts.append("# Agent PROFILE\n" + profile_md.strip())
+    parts.append(
+        "# Role\n"
+        "你是当前用户的数字员工，优先遵循已挂载的 skills 和 tools 完成任务。"
+    )
     if user_profile.strip():
         parts.append("# User PROFILE\n" + user_profile.strip())
     if user_memory.strip():
@@ -62,6 +65,10 @@ def _build_system_prompt_project(*, agent_id: int, project_id: int) -> str:
         parts.append("# Agent SOUL\n" + soul.strip())
     if profile_md.strip():
         parts.append("# Agent PROFILE\n" + profile_md.strip())
+    parts.append(
+        "# Role\n"
+        "你是当前项目的数字员工，优先遵循已挂载的 skills 和 tools 完成任务。"
+    )
     if project_profile.strip():
         parts.append("# Project PROFILE\n" + project_profile.strip())
     if project_memory.strip():
@@ -74,7 +81,6 @@ class BuiltAgent:
     agent_instance: AgentInstance
     system_prompt: str
     toolkit: Toolkit
-    skill_loaders: list[Any]
     engine_ctx: EngineContext
 
 
@@ -101,8 +107,15 @@ def build_complete_agent(
     else:
         system_prompt = ""
 
-    toolkit = load_toolkit_for_agent(int(agent_id), runtime_context=runtime_context, trace=trace)
-    skill_loaders = load_skill_loaders_for_agent(int(agent_id))
+    extra_skill_loaders = runtime_context.get("runtime_skill_loaders")
+    if not isinstance(extra_skill_loaders, list):
+        extra_skill_loaders = []
+    toolkit = load_toolkit_for_agent(
+        int(agent_id),
+        runtime_context=runtime_context,
+        trace=trace,
+        extra_skill_loaders=extra_skill_loaders,
+    )
 
     engine_type = str(getattr(agent_instance, "engine_type", "internal_llm") or "internal_llm")
     engine_cfg = str(getattr(agent_instance, "engine_config_json", "{}") or "{}")
@@ -116,6 +129,5 @@ def build_complete_agent(
         agent_instance=agent_instance,
         system_prompt=system_prompt,
         toolkit=toolkit,
-        skill_loaders=skill_loaders,
         engine_ctx=engine_ctx,
     )
