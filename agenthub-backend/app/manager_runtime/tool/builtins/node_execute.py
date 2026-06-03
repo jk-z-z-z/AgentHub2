@@ -6,7 +6,6 @@ from agentscope.tool import ToolBase, ToolChunk
 from sqlalchemy.orm import Session
 
 from app.event_runtime.context import EventDispatchRequest
-from app.event_runtime.dispatcher import dispatch_message_event_chain
 from app.event_runtime.facade import create_message_event
 from app.event_runtime.context import get_or_create_manager_member
 from app.event_runtime.types import MessageEventStatus, MessageEventType
@@ -74,6 +73,8 @@ class NodeExecuteTool(ToolBase):
 
         trace_message_id = int(getattr(self._trace, "message_id", 0) or 0) or None
         if trace_message_id is not None:
+            from app.event_runtime.dispatcher import dispatch_message_event_chain
+
             event = create_message_event(
                 self._db,
                 message_id=int(trace_message_id),
@@ -125,6 +126,8 @@ class NodeExecuteTool(ToolBase):
             payload=_build_request_payload(group_id=int(node.group_id), node_id=int(node.id), member_id=int(member.id)),
             status=MessageEventStatus.PENDING,
         )
+        from app.event_runtime.dispatcher import dispatch_message_event_chain
+
         await dispatch_message_event_chain(
             EventDispatchRequest(
                 db=self._db,

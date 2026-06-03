@@ -8,7 +8,8 @@ from app.schemas.common import ApiResponse
 from app.schemas.group import GroupCreateRequest, GroupOut
 from app.schemas.memory import ProjectMemoryCompressRunOut, ProjectMemoryCompressorStatusOut
 from app.schemas.memory_config import ProjectMemoryCompressorConfigOut, ProjectMemoryCompressorConfigUpdateRequest
-from app.manager_runtime.tool.builtins.memory_compress import (
+from app.memory_runtime.facade import (
+    compress_project_memory,
     get_project_memory_compressor_config,
     get_project_memory_compressor_status,
     maybe_compress_project_memory,

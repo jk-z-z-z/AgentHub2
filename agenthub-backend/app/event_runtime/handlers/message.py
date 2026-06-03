@@ -19,7 +19,7 @@ from app.event_runtime.context import (
 )
 from app.event_runtime.types import MessageEventType
 from app.agent_runtime.message_store import create_pending_ai_message
-from app.manager_runtime import invoke_manager
+from app.manager_runtime.facade import invoke_manager
 from app.models.agent_instance import AgentInstance
 from app.models.group import Group
 from app.models.member import Member

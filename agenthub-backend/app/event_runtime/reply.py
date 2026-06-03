@@ -5,7 +5,6 @@ import json
 
 from sqlalchemy.orm import Session
 
-from app.agent_runtime.message_store import create_message, dispatch_latest_message_event, update_message
 from app.event_runtime.facade import create_message_event
 from app.event_runtime.types import MessageEventType
 from app.models.message import Message
@@ -32,6 +31,8 @@ async def emit_ai_reply(
     ai_message_id: int | None = None,
     status: str = "done",
 ) -> Message:
+    from app.agent_runtime.message_store import create_message, dispatch_latest_message_event, update_message
+
     meta_json = build_reply_metadata(reply_to_message_id=int(user_message_id), trigger=trigger, status=status)
     if ai_message_id is not None:
         message = await update_message(

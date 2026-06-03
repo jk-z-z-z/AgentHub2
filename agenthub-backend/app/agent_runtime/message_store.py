@@ -10,9 +10,7 @@ from app.models.group import Group
 from app.models.member import Member
 from app.models.message import Message
 from app.db.session import SessionLocal
-from app.event_runtime.facade import create_message_event
 from app.event_runtime.types import MessageEventType
-from app.event_runtime.dispatcher import EventDispatchRequest, dispatch_message_event_chain
 from app.ws_runtime import WsEventType, ws_manager
 
 
@@ -102,6 +100,8 @@ async def create_message(
     db.commit()
     db.refresh(item)
     await broadcast_message_created(item)
+    from app.event_runtime.facade import create_message_event
+
     create_message_event(
         db,
         message_id=int(item.id),
@@ -128,6 +128,8 @@ async def dispatch_message_event_for_message(
 ) -> None:
     local_db = SessionLocal()
     try:
+        from app.event_runtime.dispatcher import EventDispatchRequest, dispatch_message_event_chain
+
         await dispatch_message_event_chain(
             EventDispatchRequest(
                 db=local_db,
@@ -173,6 +175,8 @@ async def create_pending_ai_message(
     db.commit()
     db.refresh(item)
     await broadcast_message_created(item)
+    from app.event_runtime.facade import create_message_event
+
     create_message_event(
         db,
         message_id=int(item.id),
@@ -219,6 +223,8 @@ async def update_message(
     db.commit()
     db.refresh(item)
     await broadcast_message_updated(item)
+    from app.event_runtime.facade import create_message_event
+
     create_message_event(
         db,
         message_id=int(item.id),

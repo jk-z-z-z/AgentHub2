@@ -8,7 +8,7 @@ from app.common.project_prompt import build_project_system_prompt
 from app.event_runtime.context import EventDispatchRequest, build_short_term_memory
 from app.event_runtime.facade import create_message_event
 from app.event_runtime.types import MessageEventStatus, MessageEventType
-from app.manager_runtime import invoke_manager
+from app.manager_runtime.facade import invoke_manager
 from app.models.agent_instance import AgentInstance
 from app.models.group_task_node import GroupTaskNode
 from app.models.member import Member
