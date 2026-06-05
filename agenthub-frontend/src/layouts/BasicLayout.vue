@@ -142,7 +142,7 @@ import {
   User,
   UserFilled,
 } from '@element-plus/icons-vue'
-import { apiGetCurrentUser, type User as CurrentUser } from '../api/agenthub'
+import { apiGetCurrentUser, type User as CurrentUser } from '../api/users'
 import railLogoSrc from '../assets/sidebar-logo-dog.png'
 
 const route = useRoute()

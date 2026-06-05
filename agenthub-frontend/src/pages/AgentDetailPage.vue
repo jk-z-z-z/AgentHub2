@@ -144,7 +144,7 @@ import {
   type FsEntry,
   type SkillPoolItem,
   type Tool,
-} from '../api/agenthub'
+} from '../api/agents'
 import { ElMessage } from 'element-plus'
 import AgentFileTreeNode, { type FileTreeNode } from '../components/AgentFileTreeNode.vue'
 

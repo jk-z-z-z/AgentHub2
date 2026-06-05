@@ -19,9 +19,7 @@
 <script setup lang="ts">
 import { ref } from 'vue'
 import { useRouter } from 'vue-router'
-import { httpPost } from '../api/http'
-
-type LoginResp = { access_token: string }
+import { apiLogin } from '../api/auth'
 
 const router = useRouter()
 const email = ref('admin@example.com')
@@ -33,10 +31,7 @@ async function submit() {
   error.value = ''
   loading.value = true
   try {
-    const res = await httpPost<LoginResp, { email: string; password: string }>('/api/v1/auth/login', {
-      email: email.value,
-      password: password.value,
-    })
+    const res = await apiLogin({ email: email.value, password: password.value })
     localStorage.setItem('token', res.data.access_token)
     await router.replace('/messages')
   } catch (e) {
@@ -87,4 +82,3 @@ async function submit() {
   font-size: 12px;
 }
 </style>
-

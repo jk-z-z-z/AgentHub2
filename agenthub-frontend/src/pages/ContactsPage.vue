@@ -1,185 +1,26 @@
 <template>
-  <div class="contactsPage">
-    <section class="contactsListPanel">
-      <div class="panelHeader">
-        <div>
-          <div class="eyebrow">Contacts</div>
-          <div class="panelTitle">通讯录</div>
-          <div class="panelSub">搜索联系人并快速进入会话。</div>
-        </div>
-        <div class="countPill">{{ visibleUsers.length }}</div>
-      </div>
-
-      <el-input v-model="searchKeyword" class="searchBar" placeholder="搜索联系人" clearable>
-        <template #prefix>
-          <el-icon class="searchIcon">
-            <Search />
-          </el-icon>
-        </template>
-      </el-input>
-
-      <div class="sectionTitle">
-        <span>联系人</span>
-        <span v-if="loading" class="sectionHint">加载中…</span>
-        <span v-else class="sectionHint">{{ visibleUsers.length }} 人</span>
-      </div>
-
-      <div v-if="loading" class="stateBlock">
-        <el-skeleton :rows="7" animated />
-      </div>
-      <div v-else-if="listError" class="stateBlock stateError">
-        <div class="stateTitle">联系人加载失败</div>
-        <div class="stateText">{{ listError }}</div>
-        <el-button class="stateAction" type="primary" plain @click="loadContacts">重试</el-button>
-      </div>
-      <div v-else-if="visibleUsers.length === 0" class="stateBlock">
-        <el-empty description="没有匹配的联系人" />
-      </div>
-      <div v-else class="contactList">
-        <button
-          v-for="user in visibleUsers"
-          :key="user.id"
-          class="contactRow"
-          :class="{ active: selectedUserId === user.id, self: user.id === currentUserId }"
-          @click="selectUser(user.id)"
-        >
-          <div class="avatar">{{ avatarText(user) }}</div>
-          <div class="contactMeta">
-            <div class="contactTop">
-              <div class="contactName">{{ displayName(user) }}</div>
-              <span v-if="user.id === currentUserId" class="tag">我</span>
-            </div>
-            <div class="contactBottom">
-              <span class="contactLine">{{ user.username }}</span>
-              <span class="dot">·</span>
-              <span class="contactLine">{{ user.role }}</span>
-            </div>
-          </div>
-        </button>
-      </div>
-    </section>
-
-    <section class="detailPanel">
-      <template v-if="selectedUser">
-        <div class="detailCard">
-          <div class="detailHero">
-            <div class="detailAvatar">{{ avatarText(selectedUser) }}</div>
-            <div class="detailHeroMeta">
-              <div class="detailNameRow">
-                <div class="detailName">{{ displayName(selectedUser) }}</div>
-                <span v-if="selectedUser.id === currentUserId" class="heroTag">当前账号</span>
-              </div>
-              <div class="detailUser">{{ selectedUser.username }}</div>
-              <div class="detailEmail">{{ selectedUser.email }}</div>
-            </div>
-            <button
-              class="detailArrowBtn"
-              type="button"
-              aria-label="进入详细信息"
-              @click="scrollToDetails"
-            >
-              <el-icon>
-                <ArrowRight />
-              </el-icon>
-            </button>
-          </div>
-
-          <div class="detailSection">
-            <div class="detailSectionTitle">基础信息</div>
-            <div class="detailGrid">
-              <div class="kv">
-                <div class="k">用户名</div>
-                <div class="v">{{ selectedUser.username }}</div>
-              </div>
-              <div class="kv">
-                <div class="k">邮箱</div>
-                <div class="v">{{ selectedUser.email }}</div>
-              </div>
-              <div class="kv">
-                <div class="k">角色</div>
-                <div class="v">{{ selectedUser.role }}</div>
-              </div>
-              <div class="kv">
-                <div class="k">状态</div>
-                <div class="v">{{ selectedUser.status }}</div>
-              </div>
-            </div>
-          </div>
-
-          <div class="detailSection">
-            <div class="detailSectionTitle">个人简介</div>
-            <div class="bioBox">
-              <template v-if="selectedUser.bio">
-                {{ selectedUser.bio }}
-              </template>
-              <template v-else>暂无简介。</template>
-            </div>
-          </div>
-
-          <div class="detailSection detailFooter">
-            <div class="detailTip">
-              立刻联系会创建一个新的单聊会话，并跳转到消息页。
-            </div>
-            <el-button
-              type="primary"
-              class="contactBtn"
-              :loading="contacting"
-              :disabled="selectedUser.id === currentUserId"
-              @click="contactNow"
-            >
-              立刻联系
-            </el-button>
-          </div>
-        </div>
-      </template>
-      <div v-else class="emptyPanel">
-        <el-empty description="选择一个联系人查看详情" />
-      </div>
-    </section>
-  </div>
-
-  <el-drawer v-model="detailOpen" title="联系人详细信息" direction="rtl" size="380px" :destroy-on-close="true">
-    <template v-if="selectedUser">
-      <div class="drawerHero">
-        <div class="drawerAvatar">{{ avatarText(selectedUser) }}</div>
-        <div class="drawerMeta">
-          <div class="drawerName">{{ displayName(selectedUser) }}</div>
-          <div class="drawerSub">{{ selectedUser.username }}</div>
-        </div>
-      </div>
-
-      <div class="drawerSection">
-        <div class="drawerTitle">基础字段</div>
-        <div class="drawerRows">
-          <div class="drawerRow"><span>用户名</span><span>{{ selectedUser.username }}</span></div>
-          <div class="drawerRow"><span>邮箱</span><span>{{ selectedUser.email }}</span></div>
-          <div class="drawerRow"><span>角色</span><span>{{ selectedUser.role }}</span></div>
-          <div class="drawerRow"><span>状态</span><span>{{ selectedUser.status }}</span></div>
-        </div>
-      </div>
-
-      <div class="drawerSection">
-        <div class="drawerTitle">个人简介</div>
-        <div class="drawerBio">{{ selectedUser.bio || '暂无简介。' }}</div>
-      </div>
-
-      <div class="drawerSection">
-        <div class="drawerTitle">时间信息</div>
-        <div class="drawerRows">
-          <div class="drawerRow"><span>创建时间</span><span>{{ formatDate(selectedUser.created_at) }}</span></div>
-          <div class="drawerRow"><span>更新时间</span><span>{{ formatDate(selectedUser.updated_at) }}</span></div>
-        </div>
-      </div>
-    </template>
-  </el-drawer>
+  <ContactDirectory
+    v-model:search-keyword="searchKeyword"
+    v-model:detail-open="detailOpen"
+    :loading="loading"
+    :list-error="listError"
+    :visible-users="visibleUsers"
+    :selected-user="selectedUser"
+    :current-user-id="currentUserId"
+    :contacting="contacting"
+    @load-contacts="loadContacts"
+    @select-user="selectUser"
+    @contact-now="contactNow"
+  />
 </template>
 
 <script setup lang="ts">
 import { computed, onMounted, ref } from 'vue'
 import { useRouter } from 'vue-router'
 import { ElMessage } from 'element-plus'
-import { ArrowRight, Search } from '@element-plus/icons-vue'
-import { apiCreateGroup, apiGetCurrentUser, apiListUsers, type User } from '../api/agenthub'
+import { apiCreateGroup } from '../api/groups'
+import { apiGetCurrentUser, apiListUsers, type User } from '../api/users'
+import ContactDirectory from '../components/contacts/ContactDirectory.vue'
 
 const router = useRouter()
 
@@ -209,11 +50,6 @@ const selectedUser = computed(() => users.value.find((user) => user.id === selec
 
 function displayName(user: User) {
   return user.display_name || user.username || user.email || '未命名联系人'
-}
-
-function avatarText(user: User) {
-  const label = displayName(user).trim()
-  return (label || 'U').slice(0, 1).toUpperCase()
 }
 
 function selectUser(userId: string) {
@@ -246,23 +82,6 @@ async function loadContacts() {
   } finally {
     loading.value = false
   }
-}
-
-function scrollToDetails() {
-  detailOpen.value = true
-}
-
-function formatDate(value: string) {
-  if (!value) return '-'
-  const date = new Date(value)
-  if (Number.isNaN(date.getTime())) return value
-  return new Intl.DateTimeFormat('zh-CN', {
-    year: 'numeric',
-    month: '2-digit',
-    day: '2-digit',
-    hour: '2-digit',
-    minute: '2-digit',
-  }).format(date)
 }
 
 async function contactNow() {
