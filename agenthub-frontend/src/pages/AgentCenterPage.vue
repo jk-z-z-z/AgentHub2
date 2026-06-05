@@ -379,7 +379,7 @@ import {
   type MCP,
   type SkillPoolItem,
   type Tool,
-} from '../api/agenthub'
+} from '../api/agents'
 
 const router = useRouter()
 

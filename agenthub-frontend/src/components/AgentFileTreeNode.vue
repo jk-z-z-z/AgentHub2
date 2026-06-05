@@ -63,7 +63,7 @@ function formatSize(n: number) {
   return `${(n / (1024 * 1024)).toFixed(1)} MB`
 }
 
-const isOpen = computed(() => !!props.openDirs[props.node.path])
+const isOpen = computed(() => props.openDirs[props.node.path])
 
 function onClick() {
   if (props.node.is_dir) {

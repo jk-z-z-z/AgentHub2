@@ -142,7 +142,7 @@ import {
   User,
   UserFilled,
 } from '@element-plus/icons-vue'
-import { apiGetCurrentUser, type User as CurrentUser } from '../api/agenthub'
+import { apiGetCurrentUser, type User as CurrentUser } from '../api/users'
 import railLogoSrc from '../assets/sidebar-logo-dog.png'
 
 const route = useRoute()
@@ -383,13 +383,6 @@ onMounted(loadCurrentUser)
 }
 .logoutRow:hover {
   background: rgba(217, 45, 32, 0.12);
-}
-
-.profilePopover {
-  border-radius: 20px !important;
-  transition: none !important;
-  animation: none !important;
-  overflow: hidden;
 }
 
 </style>

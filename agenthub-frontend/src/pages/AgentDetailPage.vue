@@ -5,7 +5,13 @@
       <div class="actions">
         <el-button @click="router.push('/agents')">返回管理</el-button>
         <el-button @click="reloadAll" :disabled="!agentId || saving">刷新</el-button>
-        <el-button type="primary" @click="save" :loading="saving" :disabled="!agentId || !activeFilePath">保存</el-button>
+        <el-button
+          type="primary"
+          @click="save"
+          :loading="saving"
+          :disabled="!agentId || !activeFilePath"
+          >保存</el-button
+        >
       </div>
     </div>
 
@@ -14,20 +20,25 @@
         <div class="panelInner">
           <aside class="files">
             <div class="filesTitle">文件</div>
-	            <div v-if="loading" class="hint">加载中…</div>
-	            <el-input v-model="filter" placeholder="搜索文件…" size="small" style="margin: 6px 0 10px 0" />
+            <div v-if="loading" class="hint">加载中…</div>
+            <el-input
+              v-model="filter"
+              placeholder="搜索文件…"
+              size="small"
+              style="margin: 6px 0 10px 0"
+            />
 
-	            <div class="tree">
-	              <AgentFileTreeNode
-	                v-for="n in treeRoots"
-	                :key="n.path"
-	                :node="n"
-	                :active-path="activeFilePath"
-	                :open-dirs="openDirs"
-	                @open="openFile"
-	                @toggle="toggleDir"
-	              />
-	            </div>
+            <div class="tree">
+              <AgentFileTreeNode
+                v-for="n in treeRoots"
+                :key="n.path"
+                :node="n"
+                :active-path="activeFilePath"
+                :open-dirs="openDirs"
+                @open="openFile"
+                @toggle="toggleDir"
+              />
+            </div>
 
             <div class="ops">
               <el-select v-model="newFileDir" style="width: 140px">
@@ -36,7 +47,9 @@
                 <el-option label="mcps/" value="mcps/" />
               </el-select>
               <el-input v-model="newFilePath" placeholder="例如：web/search.md 或 notes.md" />
-              <el-button type="primary" @click="createFile" :disabled="!newFilePath.trim()">新建</el-button>
+              <el-button type="primary" @click="createFile" :disabled="!newFilePath.trim()"
+                >新建</el-button
+              >
             </div>
           </aside>
 
@@ -72,13 +85,17 @@
                   <div v-if="tools.length === 0" class="hint">暂无内置工具</div>
                 </div>
                 <div class="toolActions">
-                  <el-button size="small" :loading="toolSaving" @click="saveToolToggles">保存工具开关</el-button>
+                  <el-button size="small" :loading="toolSaving" @click="saveToolToggles"
+                    >保存工具开关</el-button
+                  >
                 </div>
               </div>
 
               <div class="toolPanel">
                 <div class="toolTitle">技能加载</div>
-                <div class="toolHint">可从全局 Skill 池选择，也可控制是否加载该 Agent 本地 skills 目录。</div>
+                <div class="toolHint">
+                  可从全局 Skill 池选择，也可控制是否加载该 Agent 本地 skills 目录。
+                </div>
                 <div class="toolRow">
                   <div class="tLeft">
                     <div class="tName">加载本地 skills/</div>
@@ -97,14 +114,18 @@
                     <div class="tRight">
                       <el-checkbox
                         :model-value="skillConfig.pool_skill_codes.includes(s.code)"
-                        @change="(v:boolean) => togglePoolSkill(s.code, v)"
+                        @change="(v: boolean) => togglePoolSkill(s.code, v)"
                       />
                     </div>
                   </div>
-                  <div v-if="skillPool.length === 0" class="hint">全局 Skill 池为空（请在后端 skill-pool 目录下放置 SKILL.md）</div>
+                  <div v-if="skillPool.length === 0" class="hint">
+                    全局 Skill 池为空（请在后端 skill-pool 目录下放置 SKILL.md）
+                  </div>
                 </div>
                 <div class="toolActions">
-                  <el-button size="small" :loading="skillSaving" @click="saveSkillConfig">保存技能配置</el-button>
+                  <el-button size="small" :loading="skillSaving" @click="saveSkillConfig"
+                    >保存技能配置</el-button
+                  >
                 </div>
               </div>
 
@@ -144,7 +165,7 @@ import {
   type FsEntry,
   type SkillPoolItem,
   type Tool,
-} from '../api/agenthub'
+} from '../api/agents'
 import { ElMessage } from 'element-plus'
 import AgentFileTreeNode, { type FileTreeNode } from '../components/AgentFileTreeNode.vue'
 
@@ -279,16 +300,11 @@ async function loadSkillConfig() {
   if (!agentId.value) return
   const res = await apiGetAgentSkillConfig(agentId.value)
   skillConfig.value = {
-    enable_agent_local_skills: !!res.data.enable_agent_local_skills,
-    pool_skill_codes: Array.isArray(res.data.pool_skill_codes) ? [...res.data.pool_skill_codes] : [],
+    enable_agent_local_skills: res.data.enable_agent_local_skills,
+    pool_skill_codes: Array.isArray(res.data.pool_skill_codes)
+      ? [...res.data.pool_skill_codes]
+      : [],
   }
-}
-
-function formatSize(n: number) {
-  if (!n) return '0 B'
-  if (n < 1024) return `${n} B`
-  if (n < 1024 * 1024) return `${(n / 1024).toFixed(1)} KB`
-  return `${(n / (1024 * 1024)).toFixed(1)} MB`
 }
 
 async function reloadAll() {
@@ -301,7 +317,8 @@ async function reloadAll() {
     files.value = res.data.filter((x) => !x.path.endsWith('/'))
     if (!activeFilePath.value) {
       const prefer = ['SOUL.md', 'PROFILE.md']
-      const first = prefer.find((p) => files.value.some((f) => f.path === p)) || files.value[0]?.path
+      const first =
+        prefer.find((p) => files.value.some((f) => f.path === p)) || files.value[0]?.path
       if (first) await openFile(first)
     } else {
       await openFile(activeFilePath.value)
@@ -369,7 +386,9 @@ async function save() {
   if (!activeFilePath.value) return
   saving.value = true
   try {
-    const actual = activeFilePath.value.startsWith('core/') ? activeFilePath.value.replace(/^core\//, '') : activeFilePath.value
+    const actual = activeFilePath.value.startsWith('core/')
+      ? activeFilePath.value.replace(/^core\//, '')
+      : activeFilePath.value
     await apiWriteAgentFsFile(agentId.value, actual, content.value)
   } catch (e) {
     err.value = e instanceof Error ? e.message : String(e)
@@ -384,9 +403,7 @@ const canDeleteActive = computed(() => {
   const actual = p.startsWith('core/') ? p.replace(/^core\//, '') : p
   if (actual === 'SOUL.md' || actual === 'PROFILE.md') return false
   return (
-    actual.startsWith('skills/') ||
-    actual.startsWith('knowledge/') ||
-    actual.startsWith('mcps/')
+    actual.startsWith('skills/') || actual.startsWith('knowledge/') || actual.startsWith('mcps/')
   )
 })
 
@@ -414,7 +431,9 @@ async function removeFile() {
   err.value = ''
   if (!agentId.value) return
   if (!canDeleteActive.value) return
-  const actual = activeFilePath.value.startsWith('core/') ? activeFilePath.value.replace(/^core\//, '') : activeFilePath.value
+  const actual = activeFilePath.value.startsWith('core/')
+    ? activeFilePath.value.replace(/^core\//, '')
+    : activeFilePath.value
   try {
     await apiDeleteAgentFsFile(agentId.value, actual)
     activeFilePath.value = ''

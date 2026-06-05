@@ -1,87 +1,37 @@
 <template>
-  <div class="page">
-    <div class="shell">
-      <section class="treePanel">
-        <div class="panelHead">
-          <div class="panelTitle">{{ activeGroup?.name || '请选择项目' }}</div>
-          <div class="panelHeadActions">
-            <el-button class="heroRefresh" :icon="RefreshRight" circle @click="reload" :disabled="!activeGroupId" :loading="loading" />
-            <el-popover
-              v-model:visible="projectMenuOpen"
-              placement="bottom-end"
-              trigger="click"
-              :width="260"
-              :teleported="false"
-              popper-class="projectMenuPopover"
-            >
-              <div class="projectMenuCard">
-                <button
-                  v-for="g in projectGroups"
-                  :key="g.id"
-                  class="projectOption"
-                  :class="{ active: g.id === activeGroupId }"
-                  @click="selectProject(g.id)"
-                >
-                  <span class="projectName">{{ g.name }}</span>
-                  <span class="projectMark" v-if="g.id === activeGroupId">当前</span>
-                </button>
-              </div>
-              <template #reference>
-                <el-button class="toggleBtn" :icon="ArrowDown" circle />
-              </template>
-            </el-popover>
-          </div>
-        </div>
-
-        <div class="treeWrap">
-          <div v-if="!activeGroupId" class="empty">选择一个项目群聊后查看代码目录。</div>
-          <div v-else-if="loading" class="empty">加载中…</div>
-          <div v-else-if="treeRoots.length === 0" class="empty">当前 `shared/code` 目录还是空的。</div>
-          <AgentFileTreeNode
-            v-for="node in treeRoots"
-            v-else
-            :key="node.path"
-            :node="node"
-            :active-path="activePath"
-            :open-dirs="openDirs"
-            @open="openFile"
-            @toggle="toggleDir"
-          />
-        </div>
-      </section>
-
-      <section class="contentPanel">
-        <div class="contentWrap">
-          <CodeMirrorFileEditor
-            v-if="activePath"
-            :path="activePath"
-            :content="activeContent"
-            :dirty="isActiveDirty"
-            @update:content="updateActiveContent"
-            @reset="resetActiveContent"
-            @copy="copyActiveContent"
-          />
-          <div v-else class="empty">从左侧选择一个文件开始编辑。</div>
-        </div>
-      </section>
-    </div>
-  </div>
+  <ProjectCodeWorkspace
+    v-model:project-menu-open="projectMenuOpen"
+    :active-group="activeGroup"
+    :active-group-id="activeGroupId"
+    :project-groups="projectGroups"
+    :loading="loading"
+    :tree-roots="treeRoots"
+    :active-path="activePath"
+    :open-dirs="openDirs"
+    :active-content="activeContent"
+    :is-active-dirty="isActiveDirty"
+    @reload="reload"
+    @select-project="selectProject"
+    @open-file="openFile"
+    @toggle-dir="toggleDir"
+    @update:content="updateActiveContent"
+    @reset="resetActiveContent"
+    @copy="copyActiveContent"
+  />
 </template>
 
 <script setup lang="ts">
-import { computed, defineAsyncComponent, onMounted, ref, watch } from 'vue'
+import { computed, onMounted, ref, watch } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
-import { ArrowDown, RefreshRight } from '@element-plus/icons-vue'
 import {
-  apiListGroups,
   apiListProjectCode,
   apiReadProjectCodeFile,
   type Group,
   type ProjectCodeEntry,
-} from '../api/agenthub'
-import AgentFileTreeNode, { type FileTreeNode } from '../components/AgentFileTreeNode.vue'
-
-const CodeMirrorFileEditor = defineAsyncComponent(() => import('../components/CodeMirrorFileEditor.vue'))
+} from '../api/project-code'
+import { apiListGroups } from '../api/groups'
+import ProjectCodeWorkspace from '../components/project-code/ProjectCodeWorkspace.vue'
+import { type FileTreeNode } from '../components/AgentFileTreeNode.vue'
 
 const route = useRoute()
 const router = useRouter()
@@ -311,140 +261,3 @@ watch(
   },
 )
 </script>
-
-<style scoped>
-.page {
-  height: calc(100vh - 36px);
-  display: flex;
-  flex-direction: column;
-  min-height: 0;
-}
-
-.panelHead {
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  gap: 10px;
-  padding: 14px 12px 10px;
-  border-bottom: 1px solid rgba(31, 35, 41, 0.06);
-}
-
-.panelHeadActions {
-  display: flex;
-  gap: 8px;
-  align-items: center;
-}
-
-.heroRefresh {
-  flex: 0 0 auto;
-}
-
-.toggleBtn {
-  flex: 0 0 auto;
-}
-
-.projectMenuCard {
-  display: flex;
-  flex-direction: column;
-  gap: 6px;
-}
-
-:global(.projectMenuPopover) {
-  padding: 10px;
-  border-radius: 16px;
-}
-
-.panelTitle {
-  font-size: 15px;
-  font-weight: 800;
-  color: rgba(31, 35, 41, 0.86);
-  overflow: hidden;
-  text-overflow: ellipsis;
-  white-space: nowrap;
-}
-
-.projectOption {
-  width: 100%;
-  display: flex;
-  justify-content: space-between;
-  align-items: center;
-  gap: 10px;
-  border: 0;
-  border-radius: 12px;
-  padding: 10px 12px;
-  background: rgba(31, 35, 41, 0.03);
-  color: rgba(31, 35, 41, 0.78);
-  cursor: pointer;
-  text-align: left;
-}
-
-.projectOption:hover,
-.projectOption.active {
-  background: rgba(64, 158, 255, 0.1);
-  color: rgba(31, 35, 41, 0.92);
-}
-
-.projectName {
-  min-width: 0;
-  overflow: hidden;
-  text-overflow: ellipsis;
-  white-space: nowrap;
-}
-
-.projectMark {
-  flex: 0 0 auto;
-  font-size: 12px;
-  color: rgba(31, 35, 41, 0.45);
-}
-
-.shell {
-  flex: 1;
-  min-height: 0;
-  display: grid;
-  grid-template-columns: 340px minmax(0, 1fr);
-  gap: 12px;
-}
-
-.treePanel,
-.contentPanel {
-  height: 100%;
-  min-height: 0;
-  display: flex;
-  flex-direction: column;
-  border-radius: 18px;
-  background: rgba(255, 255, 255, 0.84);
-  border: 1px solid rgba(31, 35, 41, 0.08);
-  backdrop-filter: blur(10px);
-}
-
-.treeWrap,
-.contentWrap {
-  flex: 1;
-  min-height: 0;
-  overflow: auto;
-  padding: 12px;
-}
-
-.contentWrap {
-  min-height: 0;
-  display: flex;
-}
-
-.empty {
-  padding: 18px 10px;
-  color: rgba(31, 35, 41, 0.58);
-}
-
-@media (max-width: 1100px) {
-  .shell {
-    display: grid;
-    grid-template-columns: 1fr;
-  }
-
-  .treePanel,
-  .contentPanel {
-    height: auto;
-    min-height: 0;
-  }
-}
-</style>

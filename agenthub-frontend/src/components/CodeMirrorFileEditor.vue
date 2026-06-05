@@ -377,12 +377,12 @@ onBeforeUnmount(() => {
   font-size: 13px;
 }
 
-.editorMount :deep(.cm-editor) {
+.editorMount :deep() {
   width: 100%;
   height: 100%;
 }
 
-.editorMount :deep(.cm-scroller) {
+.editorMount :deep() {
   overflow: auto;
 }
 </style>
