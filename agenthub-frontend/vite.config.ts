@@ -10,6 +10,18 @@ export default defineConfig({
     vue(),
     vueDevTools(),
   ],
+  optimizeDeps: {
+    exclude: [
+      'codemirror',
+      '@codemirror/state',
+      '@codemirror/view',
+      '@codemirror/lang-css',
+      '@codemirror/lang-html',
+      '@codemirror/lang-javascript',
+      '@codemirror/lang-json',
+      '@codemirror/lang-markdown',
+    ],
+  },
   server: {
     proxy: {
       '/api': {

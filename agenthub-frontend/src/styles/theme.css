@@ -3,3 +3,19 @@
   --ah-text: #1f2329;
 }
 
+html,
+body,
+#app {
+  width: 100%;
+  height: 100%;
+  margin: 0;
+}
+
+* {
+  box-sizing: border-box;
+}
+
+body {
+  overflow: hidden;
+  background: var(--ah-bg);
+}

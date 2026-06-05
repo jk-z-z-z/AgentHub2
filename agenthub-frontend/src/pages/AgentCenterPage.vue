@@ -65,15 +65,27 @@
           <el-input v-model="toolFilterName" placeholder="按名称/Code筛选" clearable />
           <div></div>
           <div class="viewToggles">
-            <button class="viewBtn" :class="{ active: toolView === 'grid' }" @click="toolView = 'grid'">▦</button>
-            <button class="viewBtn" :class="{ active: toolView === 'list' }" @click="toolView = 'list'">≣</button>
+            <button class="viewBtn" :class="{ active: toolView === 'grid' }" @click="toolView = 'grid'">
+              <el-icon>
+                <Grid />
+              </el-icon>
+            </button>
+            <button class="viewBtn" :class="{ active: toolView === 'list' }" @click="toolView = 'list'">
+              <el-icon>
+                <List />
+              </el-icon>
+            </button>
           </div>
         </div>
 
         <div v-if="toolView === 'grid'" class="skillsGrid">
           <div v-for="t in filteredTools" :key="t.id" class="skillCard">
             <div class="cardTop">
-              <div class="docIcon">🧰</div>
+              <div class="docIcon">
+                <el-icon>
+                  <Tools />
+                </el-icon>
+              </div>
               <div class="status">
                 <span class="dot" :class="{ on: !!t.is_active }"></span>
                 <span>{{ t.is_active ? '已启用' : '未启用' }}</span>
@@ -117,15 +129,27 @@
           <el-input v-model="mcpFilterName" placeholder="按名称/Code筛选" clearable />
           <div></div>
           <div class="viewToggles">
-            <button class="viewBtn" :class="{ active: mcpView === 'grid' }" @click="mcpView = 'grid'">▦</button>
-            <button class="viewBtn" :class="{ active: mcpView === 'list' }" @click="mcpView = 'list'">≣</button>
+            <button class="viewBtn" :class="{ active: mcpView === 'grid' }" @click="mcpView = 'grid'">
+              <el-icon>
+                <Grid />
+              </el-icon>
+            </button>
+            <button class="viewBtn" :class="{ active: mcpView === 'list' }" @click="mcpView = 'list'">
+              <el-icon>
+                <List />
+              </el-icon>
+            </button>
           </div>
         </div>
 
         <div v-if="mcpView === 'grid'" class="skillsGrid">
           <div v-for="m in filteredMcps" :key="m.id" class="skillCard clickable" @click="openMcp(m)">
             <div class="cardTop">
-              <div class="docIcon">🔌</div>
+              <div class="docIcon">
+                <el-icon>
+                  <Connection />
+                </el-icon>
+              </div>
               <div class="status">
                 <span class="dot" :class="{ on: !!m.is_active }"></span>
                 <span>{{ m.is_active ? '已启用' : '未启用' }}</span>
@@ -170,8 +194,16 @@
           <el-input v-model="skillFilterName" placeholder="按名称/Code筛选" clearable />
           <div></div>
           <div class="viewToggles">
-            <button class="viewBtn" :class="{ active: skillView === 'grid' }" @click="skillView = 'grid'">▦</button>
-            <button class="viewBtn" :class="{ active: skillView === 'list' }" @click="skillView = 'list'">≣</button>
+            <button class="viewBtn" :class="{ active: skillView === 'grid' }" @click="skillView = 'grid'">
+              <el-icon>
+                <Grid />
+              </el-icon>
+            </button>
+            <button class="viewBtn" :class="{ active: skillView === 'list' }" @click="skillView = 'list'">
+              <el-icon>
+                <List />
+              </el-icon>
+            </button>
           </div>
         </div>
 
@@ -179,7 +211,11 @@
         <div v-if="skillView === 'grid'" class="skillsGrid">
           <div v-for="s in filteredSkills" :key="s.code" class="skillCard">
             <div class="cardTop">
-              <div class="docIcon">📄</div>
+              <div class="docIcon">
+                <el-icon>
+                  <Document />
+                </el-icon>
+              </div>
               <div class="status">
                 <span class="dot on"></span>
                 <span>目录技能</span>
@@ -324,6 +360,7 @@
 import { computed, onMounted, ref } from 'vue'
 import { useRouter } from 'vue-router'
 import { ElMessage } from 'element-plus'
+import { Connection, Document, Grid, List, Tools } from '@element-plus/icons-vue'
 import {
   apiCreateAgent,
   apiCreateAgentProfile,
@@ -644,22 +681,23 @@ onMounted(async () => {
 .shell {
   height: calc(100vh - 36px);
   display: grid;
-  grid-template-columns: 260px 1fr;
-  gap: 14px;
+  grid-template-columns: 340px minmax(0, 1fr);
+  gap: 12px;
 }
 .centerNav {
-  background: rgba(255, 255, 255, 0.75);
-  backdrop-filter: blur(12px);
+  background: rgba(255, 255, 255, 0.84);
+  backdrop-filter: blur(10px);
   border: 1px solid rgba(31, 35, 41, 0.08);
   border-radius: 18px;
   padding: 14px;
   display: flex;
   flex-direction: column;
   gap: 8px;
+  overflow: auto;
 }
 .title {
   font-weight: 900;
-  font-size: 16px;
+  font-size: 18px;
   margin-bottom: 6px;
 }
 .navItem {
@@ -682,11 +720,12 @@ onMounted(async () => {
 
 .content {
   overflow: hidden;
+  min-width: 0;
 }
 .panel {
   height: 100%;
-  background: rgba(255, 255, 255, 0.75);
-  backdrop-filter: blur(12px);
+  background: rgba(255, 255, 255, 0.84);
+  backdrop-filter: blur(10px);
   border: 1px solid rgba(31, 35, 41, 0.08);
   border-radius: 18px;
   overflow: hidden;
@@ -775,6 +814,10 @@ onMounted(async () => {
   background: rgba(255, 255, 255, 0.7);
   cursor: pointer;
   font-weight: 900;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 16px;
 }
 .viewBtn.active {
   background: rgba(31, 35, 41, 0.06);

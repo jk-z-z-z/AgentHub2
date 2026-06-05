@@ -2,17 +2,28 @@
   <div class="shell">
     <section class="convPane">
       <div class="paneHeader">
-        <div class="paneHeaderRow">
-          <div class="seg">
-            <button class="segBtn active">消息</button>
-            <button class="segBtn">未读</button>
-          </div>
-          <button class="addBtn" @click="createOpen = true">＋ 新建</button>
-        </div>
+        <el-input v-model="groupSearch" class="searchInput" placeholder="搜索" clearable>
+          <template #prefix>
+            <el-icon class="searchIcon">
+              <Search />
+            </el-icon>
+          </template>
+        </el-input>
+        <button class="addBtn" @click="createOpen = true" aria-label="新建会话">
+          <el-icon>
+            <CirclePlus />
+          </el-icon>
+        </button>
       </div>
 
       <div class="convList">
-        <div v-for="g in groups" :key="g.id" class="convItem" :class="{ active: g.id === activeGroupId }" @click="selectGroup(g.id)">
+        <div
+          v-for="g in filteredGroups"
+          :key="g.id"
+          class="convItem"
+          :class="{ active: g.id === activeGroupId }"
+          @click="selectGroup(g.id)"
+        >
           <div class="avatar">{{ avatarText(g.name) }}</div>
           <div class="meta">
             <div class="row1">
@@ -34,20 +45,39 @@
         <div class="chatActions">
           <button
             v-if="activeGroup?.type === 'project'"
-            class="codeBtn"
+            class="iconBtn iconBtnLarge"
             @click="openProjectCode"
+            aria-label="查看代码"
           >
-            查看代码
+            <el-icon>
+              <FolderOpened />
+            </el-icon>
           </button>
           <button
             v-if="activeGroup?.type === 'project'"
-            class="codeBtn"
+            class="iconBtn iconBtnLarge"
             @click="openTaskPlanner"
+            aria-label="任务规划"
           >
-            任务规划
+            <el-icon>
+              <Operation />
+            </el-icon>
           </button>
-          <button class="iconBtn">🔍</button>
-          <button class="iconBtn" :disabled="!activeGroup" @click="openManage">⚙️</button>
+          <button class="iconBtn iconBtnLarge" aria-label="更多操作">
+            <el-icon>
+              <MoreFilled />
+            </el-icon>
+          </button>
+          <button class="iconBtn" aria-label="搜索">
+            <el-icon>
+              <Search />
+            </el-icon>
+          </button>
+          <button class="iconBtn" :disabled="!activeGroup" @click="openManage" aria-label="聊天管理">
+            <el-icon>
+              <Setting />
+            </el-icon>
+          </button>
         </div>
       </div>
 
@@ -66,10 +96,6 @@
       </div>
 
       <div class="chatComposer">
-        <div class="tools">
-          <button class="toolBtn">🎤</button>
-          <button class="toolBtn">📎</button>
-        </div>
         <div class="composerMid">
           <div v-if="canMentionAgents && selectedMentions.size > 0" class="mentionChips">
             <span v-for="id in Array.from(selectedMentions)" :key="id" class="chip">
@@ -77,7 +103,14 @@
               <button class="chipX" @click="removeMention(id)">×</button>
             </span>
           </div>
-          <textarea v-model="draft" class="input" placeholder="输入消息…" rows="1" @input="onDraftInput" />
+          <textarea
+            v-model="draft"
+            class="input"
+            placeholder="输入消息…"
+            rows="1"
+            @input="onDraftInput"
+            @keydown="onDraftKeydown"
+          />
 
           <div v-if="canMentionAgents && mentionSuggestOpen" class="mentionSuggest">
             <div class="msTitle">@ 提示</div>
@@ -88,15 +121,27 @@
                 class="msItem"
                 @click="pickMention(m.id)"
               >
-                <div class="msAvatar">🤖</div>
+                <div class="msAvatar">
+                  <el-icon>
+                    <Monitor />
+                  </el-icon>
+                </div>
                 <div class="msName">{{ m.display_name }}</div>
               </div>
               <div v-if="filteredAgentMembers.length === 0" class="msEmpty">无匹配智能体</div>
             </div>
           </div>
         </div>
-        <button v-if="canMentionAgents" class="toolBtn" @click="openMention">＠</button>
-        <button class="sendBtn" :disabled="!canSend" @click="send">发送</button>
+        <div class="composerActions">
+          <button v-if="canMentionAgents" class="toolBtn" @click="openMention" aria-label="选择要@的智能体">
+            @
+          </button>
+          <button class="sendBtn" :disabled="!canSend" @click="send" aria-label="发送消息">
+            <el-icon>
+              <ArrowUp />
+            </el-icon>
+          </button>
+        </div>
       </div>
     </section>
   </div>
@@ -104,9 +149,17 @@
   <el-dialog v-model="mentionOpen" title="选择要@的智能体" width="420px">
     <div class="mentionList">
       <div v-for="m in agentMembers" :key="m.id" class="mentionItem" @click="toggleMention(m.id)">
-        <div class="mAvatar">🤖</div>
+        <div class="mAvatar">
+          <el-icon>
+            <Monitor />
+          </el-icon>
+        </div>
         <div class="mName">{{ m.display_name }}</div>
-        <div class="mCheck">{{ selectedMentions.has(m.id) ? '✓' : '' }}</div>
+        <div class="mCheck">
+          <el-icon v-if="selectedMentions.has(m.id)">
+            <Select />
+          </el-icon>
+        </div>
       </div>
       <div v-if="agentMembers.length === 0" style="opacity: 0.6; padding: 8px 2px">该会话没有智能体成员</div>
     </div>
@@ -133,7 +186,11 @@
           <div v-for="u in users" :key="u.id" class="pickItem" @click="togglePickUser(u)">
             <div class="pAvatar">{{ (u.display_name || u.username || u.email).slice(0, 1).toUpperCase() }}</div>
             <div class="pName">{{ u.display_name || u.username || u.email }}</div>
-            <div class="pCheck">{{ pickedUserIds.has(String(u.id)) ? '✓' : '' }}</div>
+            <div class="pCheck">
+              <el-icon v-if="pickedUserIds.has(String(u.id))">
+                <Select />
+              </el-icon>
+            </div>
           </div>
         </div>
       </div>
@@ -141,9 +198,17 @@
         <div class="pickTitle">智能体</div>
         <div class="pickList">
           <div v-for="a in agents" :key="a.id" class="pickItem" @click="togglePickAgent(a)">
-            <div class="pAvatar">🤖</div>
+            <div class="pAvatar">
+              <el-icon>
+                <Monitor />
+              </el-icon>
+            </div>
             <div class="pName">{{ a.display_name }}</div>
-            <div class="pCheck">{{ pickedAgentIds.has(String(a.id)) ? '✓' : '' }}</div>
+            <div class="pCheck">
+              <el-icon v-if="pickedAgentIds.has(String(a.id))">
+                <Select />
+              </el-icon>
+            </div>
           </div>
         </div>
       </div>
@@ -160,7 +225,17 @@
     </template>
   </el-dialog>
 
-  <el-drawer v-model="manageOpen" title="聊天管理" direction="rtl" size="520px">
+  <el-drawer
+    v-model="manageOpen"
+    title="聊天管理"
+    direction="rtl"
+    size="520px"
+    :show-close="true"
+    :close-on-click-modal="true"
+    :close-on-press-escape="true"
+    destroy-on-close
+    @close="manageOpen = false"
+  >
     <div class="drawerBody" v-if="activeGroup">
       <div class="drawerSection">
         <div class="secTitle">会话信息</div>
@@ -251,7 +326,7 @@
         <template v-else>
           <div class="kvRow">
             <span class="k">启用</span>
-            <span class="v"><el-switch v-model="assistantCfg!.enabled" :active-value="1" :inactive-value="0" /></span>
+            <span class="v"><el-switch v-model="assistantCfgEnabled" /></span>
           </div>
           <div class="kvRow">
             <span class="k">管家成员</span>
@@ -268,337 +343,179 @@
       </div>
 
     </div>
+    <template #footer>
+      <div class="drawerFooter">
+        <el-button @click="manageOpen = false">关闭</el-button>
+      </div>
+    </template>
   </el-drawer>
 
-  <el-drawer v-model="taskOpen" title="任务规划（DAG）" direction="rtl" size="760px">
-    <div class="drawerBody" v-if="activeGroup?.type === 'project'">
-      <div class="drawerSection">
-        <div style="display: flex; gap: 8px; margin-bottom: 8px">
-          <el-button size="small" type="primary" @click="taskCreateOpen = true">新建Run</el-button>
-          <el-button size="small" type="success" @click="openDagGraphPanel" :disabled="!activeRunId">图视图</el-button>
-          <el-button size="small" @click="openDagEditor" :disabled="!activeRunId">改图</el-button>
-          <el-button size="small" @click="openDepsEditor" :disabled="!activeRunId">改依赖</el-button>
-          <el-button size="small" @click="openRunReplay" :disabled="taskEvents.length === 0">Run回放</el-button>
-          <el-button size="small" @click="copyRunAuditJson" :disabled="!activeRunId">复制Run JSON</el-button>
-          <el-button size="small" @click="downloadRunAuditJson" :disabled="!activeRunId">下载Run JSON</el-button>
+  <el-drawer v-model="taskOpen" title="任务规划" direction="rtl" size="980px">
+    <div v-if="activeGroup?.type === 'project'" class="taskShell">
+      <section class="taskSidebar">
+        <div class="taskToolbar">
+          <el-button size="small" type="primary" @click="taskCreateOpen = true">新建 Run</el-button>
           <el-button size="small" @click="loadTaskRuns" :loading="taskRunsLoading">刷新</el-button>
         </div>
-        <div class="kvRow">
-          <span class="k">当前Run</span>
-          <span class="v">
-            <el-select v-model="activeRunId" placeholder="选择Run" @change="(v:string)=>loadTaskRunDetails(v)">
-              <el-option v-for="r in taskRuns" :key="r.id" :label="`${r.title} (${r.status})`" :value="String(r.id)" />
-            </el-select>
-          </span>
+        <div class="taskHint">
+          只保留最常用的操作：创建 Run、查看节点状态、认领、完成、复核。
         </div>
-      </div>
-      <div class="drawerSection">
-        <div style="display: grid; gap: 8px">
-          <div style="display: grid; grid-template-columns: 120px 1fr; gap: 8px">
-            <el-input v-model="branchRole" placeholder="role，例如 frontend" />
-            <el-input v-model="branchReason" placeholder="阻塞原因/解阻塞原因" />
-          </div>
-          <div style="display: flex; gap: 8px">
-            <el-button size="small" @click="blockBranch">阻塞该角色分支</el-button>
-            <el-button size="small" @click="unblockBranch">解除阻塞</el-button>
-          </div>
-        </div>
-        <div v-if="taskNodesLoading" style="opacity: 0.7; margin-top: 8px">加载节点中…</div>
-        <div v-else class="memberList" style="margin-top: 10px">
-          <div v-for="n in taskNodes" :key="n.id" class="memberRow" :class="nodeStatusClass(n.status)">
-            <div class="mLeft">
-              <div class="mName">{{ n.title }}</div>
-              <div class="mMeta">{{ n.node_key }} · {{ n.status }} · role={{ n.role_required || 'none' }} · deps={{ (n.deps || []).join(',') || 'none' }} · assignee={{ n.assignee_member_id || '待认领' }}</div>
-              <div v-if="n.status === 'blocked' && blockedReason(n)" class="blockTip">阻塞原因：{{ blockedReason(n) }}</div>
+        <div class="taskRunList">
+          <button
+            v-for="run in taskRuns"
+            :key="run.id"
+            class="taskRunItem"
+            :class="{ active: String(run.id) === activeRunId }"
+            @click="selectTaskRun(String(run.id))"
+          >
+            <div class="taskRunTop">
+              <div class="taskRunTitle">{{ run.title }}</div>
+              <div class="taskRunStatus">{{ run.status }}</div>
             </div>
-            <div class="mRight" style="display:flex; gap:6px; flex-wrap: wrap; justify-content: flex-end">
-              <el-button size="small" @click="openNodeAudit(n)">审计</el-button>
-              <el-button size="small" v-if="n.status === 'pending'" @click="claimNode(n)">认领</el-button>
-              <el-button size="small" type="primary" v-if="n.status === 'running' && isNodeMine(n)" @click="completeNode(n)">完成</el-button>
-              <el-button size="small" v-if="n.status === 'completed' && n.manager_review_status === 'pending'" @click="reviewNode(n,'approved')">复核通过</el-button>
-              <el-button size="small" type="danger" plain v-if="n.status === 'completed' && n.manager_review_status === 'pending'" @click="reviewNode(n,'rework')">要求返工</el-button>
-            </div>
+            <div class="taskRunGoal">{{ run.goal_text }}</div>
+            <div class="taskRunMeta">{{ new Date(run.created_at).toLocaleDateString() }} · Run #{{ run.id }}</div>
+          </button>
+          <div v-if="!taskRunsLoading && taskRuns.length === 0" class="taskEmpty">
+            还没有 Run，先点“新建 Run”
           </div>
-          <div v-if="taskNodes.length === 0" style="opacity: 0.6; padding: 8px 2px">暂无节点</div>
         </div>
-      </div>
-      <div class="drawerSection">
-        <div style="font-size: 12px; opacity: 0.8; font-weight: 800">事件时间线（{{ taskEvents.length }}）</div>
-        <div style="display:flex; gap:8px; margin-top:6px; margin-bottom:6px">
-          <el-button size="small" @click="expandAllEvents">全部展开</el-button>
-          <el-button size="small" @click="collapseAllEvents">全部收起</el-button>
-        </div>
-        <div class="eventList">
-          <div v-for="e in taskEvents" :key="e.id" class="eventRow">
-            <div class="eventHead" @click="toggleEventExpand(e.id)">
-              <div class="eType">{{ e.event_type }}</div>
-              <div class="eTime">{{ new Date(e.created_at).toLocaleString() }}</div>
-            </div>
-            <pre v-if="isEventExpanded(e.id)" class="payloadBox">{{ prettyEventPayload(e.payload_json) }}</pre>
-          </div>
-          <div v-if="taskEvents.length === 0" style="opacity: 0.6; padding: 8px 2px">暂无事件</div>
-        </div>
-      </div>
-    </div>
-    <div v-else class="drawerBody"><div class="empty">仅项目群聊支持任务规划</div></div>
-  </el-drawer>
+      </section>
 
-  <el-drawer v-model="taskGraphOpen" title="DAG 可视化" direction="rtl" size="960px">
-    <div class="drawerBody">
-      <div class="drawerSection">
-        <div class="graphLegend">
-          <span class="legendItem statusPending">待处理</span>
-          <span class="legendItem statusRun">进行中</span>
-          <span class="legendItem statusDone">已完成</span>
-          <span class="legendItem statusBlocked">已阻塞</span>
-        </div>
-        <div class="graphToolbar">
-          <el-button size="small" @click="fitDagView">Fit View</el-button>
-          <el-button size="small" @click="resetDagView">1:1</el-button>
-        </div>
-        <div class="graphShell" v-if="dagGraph.nodes.length > 0">
-          <div class="graphNodeList">
-            <div
-              v-for="n in dagGraph.nodes"
-              :key="`list-node-${n.id}`"
-              class="graphNodeItem"
-              :class="{ active: isSelectedNode(n.node_key) }"
-              @click="selectDagNode(n.node_key)"
-            >
-              <div class="graphNodeItemTitle">{{ n.node_key }} · {{ n.title }}</div>
-              <div class="graphNodeItemMeta">role={{ n.role_required || 'unassigned' }} · {{ n.status }}</div>
+      <section class="taskMain">
+        <template v-if="activeTaskRun">
+          <div class="taskHeader">
+            <div>
+              <div class="taskTitle">{{ activeTaskRun.title }}</div>
+              <div class="taskSubtitle">
+                {{ activeTaskRun.status }} · {{ activeTaskRun.created_at ? new Date(activeTaskRun.created_at).toLocaleString() : '-' }}
+              </div>
+            </div>
+            <div class="taskStats">
+              <div class="taskStat">
+                <span>总节点</span>
+                <strong>{{ taskNodeStats.total }}</strong>
+              </div>
+              <div class="taskStat">
+                <span>进行中</span>
+                <strong>{{ taskNodeStats.running }}</strong>
+              </div>
+              <div class="taskStat">
+                <span>已完成</span>
+                <strong>{{ taskNodeStats.completed }}</strong>
+              </div>
+              <div class="taskStat">
+                <span>已阻塞</span>
+                <strong>{{ taskNodeStats.blocked }}</strong>
+              </div>
             </div>
           </div>
-          <div class="graphMain">
-            <div class="graphEdgeTip" v-if="selectedEdgeId">{{ selectedEdgeText }}</div>
-            <div ref="dagViewportRef" class="dagCanvasWrap dagCanvasBig">
-              <div class="dagCanvasInnerTransform" :style="{ transform: `translate(${dagView.x}px, ${dagView.y}px) scale(${dagView.scale})` }">
-              <div class="dagCanvasInner" :style="{ width: `${dagGraph.width}px`, height: `${dagGraph.height}px` }">
-              <svg
-                class="dagSvg"
-                :viewBox="`0 0 ${dagGraph.width} ${dagGraph.height}`"
-                preserveAspectRatio="none"
-                :style="{ width: `${dagGraph.width}px`, height: `${dagGraph.height}px` }"
-              >
-                <defs>
-                  <marker
-                    id="dagArrowLarge"
-                    viewBox="0 0 10 10"
-                    refX="9"
-                    refY="5"
-                    markerWidth="7"
-                    markerHeight="7"
-                    orient="auto-start-reverse"
+
+          <div class="taskGoalCard">
+            <div class="taskSectionTitle">任务目标</div>
+            <div class="taskGoalText">{{ activeTaskRun.goal_text }}</div>
+          </div>
+
+          <div class="taskSection">
+            <div class="taskSectionHeader">
+              <div class="taskSectionTitle">节点列表</div>
+              <el-button size="small" :loading="taskNodesLoading" @click="loadTaskRunDetails(activeRunId)">
+                刷新节点
+              </el-button>
+            </div>
+
+            <div v-if="taskNodesLoading" class="taskLoading">加载节点中…</div>
+            <div v-else class="taskNodeList">
+              <div v-for="node in taskNodes" :key="node.id" class="taskNodeCard" :class="nodeStatusClass(node.status)">
+                <div class="taskNodeTop">
+                  <div>
+                    <div class="taskNodeTitle">{{ node.title }}</div>
+                    <div class="taskNodeMeta">{{ node.node_key }} · {{ node.role_required || '未指定角色' }}</div>
+                  </div>
+                  <span class="taskNodeBadge">{{ taskStatusLabel(node.status) }}</span>
+                </div>
+
+                <div class="taskNodeDetail">{{ node.detail || '暂无说明' }}</div>
+
+                <div class="taskNodeInfo">
+                  <span>依赖：{{ (node.deps || []).join(', ') || '无' }}</span>
+                  <span>负责人：{{ node.assignee_member_id ? senderName(node.assignee_member_id) : '待认领' }}</span>
+                  <span>复核：{{ node.manager_review_status }}</span>
+                </div>
+
+                <div class="taskNodeActions">
+                  <el-button size="small" v-if="node.status === 'pending'" @click="claimNode(node)">认领</el-button>
+                  <el-button
+                    size="small"
+                    type="primary"
+                    v-if="node.status === 'running' && isNodeMine(node)"
+                    @click="completeNode(node)"
                   >
-                    <path d="M 0 0 L 10 5 L 0 10 z" fill="#6d86b8" />
-                  </marker>
-                </defs>
-                <polyline
-                  v-for="e in dagGraph.edges"
-                  :key="`graph-${e.id}`"
-                  :points="`${e.x1},${e.y1} ${(e.x1 + e.x2) / 2},${e.y1} ${(e.x1 + e.x2) / 2},${e.y2} ${e.x2},${e.y2}`"
-                  fill="none"
-                  :stroke="edgeStroke(e)"
-                  :stroke-width="edgeStrokeWidth(e)"
-                  :opacity="edgeOpacity(e)"
-                  class="graphEdge"
-                  :class="{ active: selectedEdgeId === e.id }"
-                  @click="selectEdge(e.id)"
-                  marker-end="url(#dagArrowLarge)"
-                />
-              </svg>
-              <div
-                v-for="n in dagGraph.nodes"
-                :key="`graph-node-${n.id}`"
-                class="dagNode dagNodeBig"
-                :class="[nodeStatusClass(n.status), { dagNodeActive: isSelectedNode(n.node_key), dagNodeDim: shouldDimNode(n.node_key) }]"
-                :style="{ left: `${n.left}px`, top: `${n.top}px` }"
-                @click="selectDagNode(n.node_key)"
-              >
-                <div class="dagNodeKey">{{ n.node_key }}</div>
-                <div class="dagNodeTitle">{{ n.title }}</div>
-                <div class="dagNodeMeta">role={{ n.role_required || 'unassigned' }}</div>
-                <div class="dagNodeMeta">status={{ n.status }}</div>
+                    完成
+                  </el-button>
+                  <el-button
+                    size="small"
+                    v-if="node.status === 'completed' && node.manager_review_status === 'pending'"
+                    @click="reviewNode(node, 'approved')"
+                  >
+                    复核通过
+                  </el-button>
+                  <el-button
+                    size="small"
+                    type="danger"
+                    plain
+                    v-if="node.status === 'completed' && node.manager_review_status === 'pending'"
+                    @click="reviewNode(node, 'rework')"
+                  >
+                    要求返工
+                  </el-button>
+                </div>
               </div>
-              </div>
-              </div>
+              <div v-if="taskNodes.length === 0" class="taskEmpty">当前 Run 还没有节点</div>
             </div>
           </div>
-        </div>
-        <div v-else class="eventList"><div class="eventRow" style="opacity:0.65">暂无节点</div></div>
-      </div>
+        </template>
+
+        <div v-else class="taskEmpty taskEmptyMain">暂无可查看的任务 Run，请先新建一个。</div>
+      </section>
+    </div>
+    <div v-else class="drawerBody">
+      <div class="empty">仅项目群聊支持任务规划</div>
     </div>
   </el-drawer>
 
   <el-dialog v-model="taskCreateOpen" title="新建任务Run" width="560px">
     <div style="display:grid; gap:10px">
-      <el-input v-model="taskCreateTitle" placeholder="Run标题" />
-      <el-input v-model="taskCreateGoal" type="textarea" :rows="4" placeholder="任务目标描述" />
+      <el-input v-model="taskCreateTitle" placeholder="Run 标题" />
+      <el-input v-model="taskCreateGoal" type="textarea" :rows="4" placeholder="任务目标：这次 Run 要解决什么问题" />
       <el-input
         v-model="taskCreateNodeText"
         type="textarea"
         :rows="6"
         placeholder="每行一个节点：标题 | role_required | detail"
       />
-      <div style="opacity:0.7; font-size:12px">示例：实现登录页 | frontend | 产出可交互页面</div>
+      <div style="opacity:0.7; font-size:12px">示例：需求澄清 | manager | 明确目标与分工</div>
     </div>
     <template #footer>
       <el-button @click="taskCreateOpen = false">取消</el-button>
       <el-button type="primary" @click="createTaskRunNow">创建</el-button>
     </template>
   </el-dialog>
-
-  <el-dialog v-model="taskDagEditOpen" title="编辑DAG（仅更新未完成节点）" width="560px">
-    <el-input
-      v-model="taskDagEditText"
-      type="textarea"
-      :rows="10"
-      placeholder="每行一个节点：node_key | 标题 | role_required | detail | deps(node_key逗号分隔)"
-    />
-    <div style="opacity:0.7; font-size:12px; margin-top:8px">示例：n3 | 实现前端页面 | frontend | 产出页面代码 | n1,n2</div>
-    <template #footer>
-      <el-button @click="taskDagEditOpen = false">取消</el-button>
-      <el-button type="primary" @click="saveDagEdit">保存</el-button>
-    </template>
-  </el-dialog>
-
-  <el-dialog v-model="taskDepsEditOpen" title="依赖可视化编辑（并行/串行）" width="760px">
-    <div class="depsEditor">
-      <div v-for="row in taskDepsDraft" :key="row.node_key" class="depsRow">
-        <div class="depsNode">
-          <div class="depsKey">{{ row.node_key }}</div>
-          <div class="depsTitle">{{ row.title }}</div>
-        </div>
-        <div class="depsArrow">依赖</div>
-        <el-select
-          v-model="row.deps"
-          multiple
-          collapse-tags
-          collapse-tags-tooltip
-          filterable
-          style="width: 100%"
-          placeholder="选择前置节点"
-        >
-          <el-option
-            v-for="opt in taskDepsDraft"
-            :key="opt.node_key"
-            :label="`${opt.node_key} · ${opt.title}`"
-            :value="opt.node_key"
-            :disabled="opt.node_key === row.node_key"
-          />
-        </el-select>
-      </div>
-    </div>
-    <div style="opacity:0.7; font-size:12px; margin-top:10px">空依赖=可并行起步；有依赖=串行等待前置完成。</div>
-    <template #footer>
-      <el-button @click="taskDepsEditOpen = false">取消</el-button>
-      <el-button type="primary" @click="saveDepsEditor">保存依赖</el-button>
-    </template>
-  </el-dialog>
-
-  <el-drawer v-model="nodeAuditOpen" title="节点审计" direction="rtl" size="520px">
-    <div class="drawerBody" v-if="auditNode">
-      <div class="drawerSection">
-        <div class="secTitle">节点快照</div>
-        <div class="kvRow"><span class="k">Node Key</span><span class="v">{{ auditNode.node_key }}</span></div>
-        <div class="kvRow"><span class="k">标题</span><span class="v">{{ auditNode.title }}</span></div>
-        <div class="kvRow"><span class="k">状态</span><span class="v">{{ auditNode.status }}</span></div>
-        <div class="kvRow"><span class="k">角色</span><span class="v">{{ auditNode.role_required || 'none' }}</span></div>
-        <div class="kvRow"><span class="k">依赖</span><span class="v">{{ (auditNode.deps || []).join(', ') || 'none' }}</span></div>
-        <div class="kvRow"><span class="k">指派</span><span class="v">{{ auditNode.assignee_member_id || '待认领' }}</span></div>
-        <div class="kvRow"><span class="k">复核</span><span class="v">{{ auditNode.manager_review_status }}</span></div>
-      </div>
-
-      <div class="drawerSection">
-        <div class="secTitle">节点事件轨迹（{{ auditEvents.length }}）</div>
-        <div style="display:flex; gap:8px; margin-bottom:8px">
-          <el-button size="small" @click="copyAuditJson">复制JSON</el-button>
-          <el-button size="small" @click="downloadAuditJson">下载JSON</el-button>
-        </div>
-        <div class="eventList">
-          <div v-for="e in auditEvents" :key="e.id" class="eventRow">
-            <div class="eventHead">
-              <div class="eType">{{ e.event_type }}</div>
-              <div class="eTime">{{ new Date(e.created_at).toLocaleString() }}</div>
-            </div>
-            <pre class="payloadBox">{{ prettyEventPayload(e.payload_json) }}</pre>
-          </div>
-          <div v-if="auditEvents.length === 0" style="opacity: 0.6; padding: 8px 2px">该节点暂无事件</div>
-        </div>
-      </div>
-
-      <div class="drawerSection">
-        <div class="secTitle">执行进度（工具/思考/流式）</div>
-        <div class="eventList">
-          <div v-for="e in nodeExecEvents" :key="`exec-${e.id}`" class="eventRow">
-            <div class="eventHead">
-              <div class="eType">{{ e.event_type }}</div>
-              <div class="eTime">{{ new Date(e.created_at).toLocaleString() }}</div>
-            </div>
-            <pre class="payloadBox">{{ prettyEventPayload(e.payload_json) }}</pre>
-          </div>
-          <div v-if="nodeExecEvents.length === 0" style="opacity:0.6; padding: 8px 2px">暂无执行进度事件</div>
-        </div>
-      </div>
-
-      <div class="drawerSection">
-        <div class="secTitle">Agent Run Trace（{{ agentRunTraceEvents.length }}）</div>
-        <div class="eventList">
-          <div v-for="e in agentRunTraceEvents" :key="`ar-${e.id}`" class="eventRow">
-            <div class="eventHead">
-              <div class="eType">#{{ e.seq }} · {{ e.event_type }}</div>
-              <div class="eTime">{{ new Date(e.created_at).toLocaleString() }}</div>
-            </div>
-            <pre class="payloadBox">{{ prettyEventPayload(e.payload_json) }}</pre>
-          </div>
-          <div v-if="agentRunTraceEvents.length === 0" style="opacity:0.6; padding: 8px 2px">该节点暂无 AgentRun trace</div>
-        </div>
-      </div>
-    </div>
-  </el-drawer>
-
-  <el-drawer v-model="replayOpen" title="Run 回放" direction="rtl" size="620px">
-    <div class="drawerBody">
-      <div class="drawerSection">
-        <div class="secTitle">回放控制</div>
-        <div style="display:flex; gap:8px; align-items:center">
-          <el-button size="small" @click="replayStepPrev">上一步</el-button>
-          <el-button size="small" @click="replayStepNext">下一步</el-button>
-          <span style="font-size:12px; opacity:0.7">步骤 {{ Math.min(replayIndex + 1, taskEvents.length) }} / {{ taskEvents.length }}</span>
-        </div>
-      </div>
-
-      <div class="drawerSection">
-        <div class="secTitle">当前事件</div>
-        <div v-if="replayCurrentEvent" class="eventRow">
-          <div class="eventHead">
-            <div class="eType">{{ replayCurrentEvent.event_type }}</div>
-            <div class="eTime">{{ new Date(replayCurrentEvent.created_at).toLocaleString() }}</div>
-          </div>
-          <pre class="payloadBox">{{ prettyEventPayload(replayCurrentEvent.payload_json) }}</pre>
-        </div>
-        <div v-else style="opacity:0.6">无事件可回放</div>
-      </div>
-
-      <div class="drawerSection">
-        <div class="secTitle">节点状态推演</div>
-        <div class="memberList">
-          <div v-for="n in replayNodes" :key="`replay-${n.id}`" class="memberRow" :class="nodeStatusClass(n.status)">
-            <div class="mLeft">
-              <div class="mName">{{ n.node_key }} · {{ n.title }}</div>
-              <div class="mMeta">status={{ n.status }} · review={{ n.manager_review_status }}</div>
-            </div>
-          </div>
-          <div v-if="replayNodes.length === 0" style="opacity:0.6">暂无节点</div>
-        </div>
-      </div>
-    </div>
-  </el-drawer>
 </template>
 
 <script setup lang="ts">
 import { computed, nextTick, onBeforeUnmount, onMounted, ref, watch } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
+import {
+  ArrowUp,
+  CirclePlus,
+  Monitor,
+  MoreFilled,
+  Operation,
+  FolderOpened,
+  Search,
+  Select,
+  Setting,
+} from '@element-plus/icons-vue'
 import {
   apiCreateGroup,
   apiCreateMessage,
@@ -659,8 +576,19 @@ let wsSeq = 0
 
 const lastPreviewMap = ref<Record<string, string>>({})
 const lastTimeMap = ref<Record<string, string>>({})
+const groupSearch = ref('')
 
 const activeGroup = computed(() => groups.value.find((g) => g.id === activeGroupId.value) || null)
+const filteredGroups = computed(() => {
+  const query = groupSearch.value.trim().toLowerCase()
+  if (!query) return groups.value
+  return groups.value.filter((group) => {
+    const name = (group.name || '').toLowerCase()
+    const type = (group.type || '').toLowerCase()
+    const preview = (lastPreviewMap.value[group.id] || '').toLowerCase()
+    return name.includes(query) || type.includes(query) || preview.includes(query)
+  })
+})
 
 const canSend = computed(() => Boolean(activeGroup.value) && Boolean(draft.value.trim()))
 const canMentionAgents = computed(() => activeGroup.value?.type === 'project')
@@ -722,9 +650,17 @@ const memoryStatus = ref<MemoryCompressorStatus | null>(null)
 const assistantCfgLoading = ref(false)
 const assistantCfgSaving = ref(false)
 const assistantCfg = ref<GroupAssistantConfig | null>(null)
+const assistantCfgEnabled = computed({
+  get: () => (assistantCfg.value?.enabled ?? 0) === 1,
+  set: (value: boolean) => {
+    if (!assistantCfg.value) return
+    assistantCfg.value.enabled = value ? 1 : 0
+  },
+})
 const taskRunsLoading = ref(false)
 const taskRuns = ref<GroupTaskRun[]>([])
 const activeRunId = ref('')
+const activeTaskRun = computed(() => taskRuns.value.find((run) => String(run.id) === String(activeRunId.value)) || null)
 const taskNodesLoading = ref(false)
 const taskNodes = ref<GroupTaskNode[]>([])
 const taskEvents = ref<GroupTaskEvent[]>([])
@@ -763,6 +699,17 @@ const branchReasonByRole = computed(() => {
   return out
 })
 
+const taskNodeStats = computed(() => {
+  const counts = { total: taskNodes.value.length, pending: 0, running: 0, completed: 0, blocked: 0 }
+  for (const node of taskNodes.value) {
+    if (node.status === 'pending') counts.pending += 1
+    else if (node.status === 'running') counts.running += 1
+    else if (node.status === 'completed') counts.completed += 1
+    else if (node.status === 'blocked') counts.blocked += 1
+  }
+  return counts
+})
+
 watch(
   () => createType.value,
   (t) => {
@@ -777,6 +724,13 @@ watch(
 function avatarText(name: string) {
   const t = (name || '').trim()
   return t ? t.slice(0, 1) : '群'
+}
+
+function taskStatusLabel(status: string) {
+  if (status === 'completed') return '已完成'
+  if (status === 'running') return '进行中'
+  if (status === 'blocked') return '已阻塞'
+  return '待处理'
 }
 
 function senderName(memberId: string) {
@@ -980,6 +934,12 @@ function onDraftInput() {
   }
 }
 
+function onDraftKeydown(event: KeyboardEvent) {
+  if (event.key !== 'Enter' || event.shiftKey || event.isComposing) return
+  event.preventDefault()
+  void send()
+}
+
 function pickMention(memberId: string) {
   const m = agentMembers.value.find((x) => x.id === memberId)
   if (!m) return
@@ -1031,6 +991,9 @@ async function loadAssistantConfig() {
   try {
     const res = await apiGetGroupAssistantConfig(activeGroup.value.id)
     assistantCfg.value = res.data
+  } catch (error) {
+    assistantCfg.value = null
+    manageErr.value = error instanceof Error ? error.message : String(error)
   } finally {
     assistantCfgLoading.value = false
   }
@@ -1071,6 +1034,12 @@ async function loadTaskRuns() {
       taskNodes.value = []
       taskEvents.value = []
     }
+  } catch (error) {
+    taskRuns.value = []
+    taskNodes.value = []
+    taskEvents.value = []
+    taskGraph.value = null
+    manageErr.value = error instanceof Error ? error.message : String(error)
   } finally {
     taskRunsLoading.value = false
   }
@@ -1080,17 +1049,19 @@ async function loadTaskRunDetails(runId: string) {
   if (!runId) return
   taskNodesLoading.value = true
   try {
-    const [nodesRes, eventsRes, graphRes] = await Promise.all([
-      apiListGroupTaskNodes(runId),
-      apiListGroupTaskEvents(runId),
-      apiGetGroupTaskGraph(runId),
-    ])
+    const nodesRes = await apiListGroupTaskNodes(runId)
     taskNodes.value = nodesRes.data
-    taskEvents.value = eventsRes.data
-    taskGraph.value = graphRes.data
+  } catch (error) {
+    taskNodes.value = []
+    manageErr.value = error instanceof Error ? error.message : String(error)
   } finally {
     taskNodesLoading.value = false
   }
+}
+
+async function selectTaskRun(runId: string) {
+  activeRunId.value = String(runId)
+  await loadTaskRunDetails(activeRunId.value)
 }
 
 function openDagEditor() {
@@ -1242,7 +1213,7 @@ async function createTaskRunNow() {
     .filter(Boolean)
   const nodes = (lines.length > 0 ? lines : ['需求澄清与初始计划 | manager']).map(parseNodeLine)
   try {
-    await apiCreateGroupTaskRun({
+    const res = await apiCreateGroupTaskRun({
       group_id: activeGroup.value.id,
       creator_member_id: me.id,
       title,
@@ -1254,6 +1225,12 @@ async function createTaskRunNow() {
     taskCreateGoal.value = ''
     taskCreateNodeText.value = '需求澄清与初始计划 | manager'
     await loadTaskRuns()
+    if (res.data?.id) {
+      activeRunId.value = String(res.data.id)
+      await loadTaskRunDetails(activeRunId.value)
+    } else if (activeRunId.value) {
+      await loadTaskRunDetails(activeRunId.value)
+    }
     ElMessage.success('任务运行已创建')
   } catch (e) {
     manageErr.value = e instanceof Error ? e.message : String(e)
@@ -2062,73 +2039,74 @@ async function createGroup() {
 .shell {
   height: calc(100vh - 36px);
   display: grid;
-  grid-template-columns: 360px 1fr;
-  gap: 14px;
+  grid-template-columns: 340px minmax(0, 1fr);
+  gap: 12px;
+  align-items: stretch;
 }
 
 .convPane,
 .chatPane {
-  background: rgba(255, 255, 255, 0.75);
-  backdrop-filter: blur(12px);
+  background: rgba(255, 255, 255, 0.84);
+  backdrop-filter: blur(10px);
   border: 1px solid rgba(31, 35, 41, 0.08);
   border-radius: 18px;
   overflow: hidden;
+  min-width: 0;
+  display: flex;
+  flex-direction: column;
 }
 
 .paneHeader {
-  padding: 12px 14px;
+  height: 64px;
+  padding: 12px;
+  display: flex;
+  align-items: center;
+  gap: 12px;
   border-bottom: 1px solid rgba(31, 35, 41, 0.06);
 }
-.paneHeaderRow {
-  display: flex;
-  justify-content: space-between;
-  align-items: center;
-  gap: 10px;
+.searchInput {
+  flex: 1;
+}
+.searchInput :deep(.el-input__wrapper) {
+  height: 38px;
+  border-radius: 12px;
+  background: rgba(255, 255, 255, 0.92);
+  box-shadow: none;
+}
+.searchInput :deep(.el-input__prefix-inner) {
+  color: rgba(31, 35, 41, 0.42);
+}
+.searchIcon {
+  font-size: 18px;
 }
 .addBtn {
-  height: 34px;
-  padding: 0 12px;
-  border-radius: 12px;
+  width: 38px;
+  height: 38px;
   border: 0;
+  border-radius: 12px;
   cursor: pointer;
-  background: rgba(31, 35, 41, 0.06);
-  font-weight: 900;
+  background: transparent;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  color: rgba(31, 35, 41, 0.88);
 }
 .addBtn:hover {
-  background: rgba(31, 35, 41, 0.1);
-}
-.seg {
-  display: inline-flex;
   background: rgba(31, 35, 41, 0.06);
-  border-radius: 999px;
-  padding: 4px;
-}
-.segBtn {
-  border: 0;
-  background: transparent;
-  padding: 7px 12px;
-  border-radius: 999px;
-  cursor: pointer;
-  font-weight: 600;
-  opacity: 0.75;
-}
-.segBtn.active {
-  background: #fff;
-  opacity: 1;
 }
 
 .convList {
-  padding: 10px;
+  padding: 8px;
   display: grid;
-  gap: 8px;
+  gap: 6px;
   overflow: auto;
-  max-height: calc(100% - 54px);
+  max-height: calc(100% - 60px);
 }
 .convItem {
   display: grid;
-  grid-template-columns: 44px 1fr;
+  grid-template-columns: 52px 1fr;
   gap: 10px;
-  padding: 10px;
+  padding: 12px 10px;
   border-radius: 14px;
   cursor: pointer;
 }
@@ -2139,14 +2117,15 @@ async function createGroup() {
   background: rgba(79, 140, 255, 0.12);
 }
 .avatar {
-  width: 44px;
-  height: 44px;
+  width: 52px;
+  height: 52px;
   border-radius: 14px;
   display: grid;
   place-items: center;
   background: linear-gradient(135deg, #4f8cff, #7aa8ff);
   color: #fff;
   font-weight: 800;
+  font-size: 16px;
 }
 .meta .row1 {
   display: flex;
@@ -2155,6 +2134,7 @@ async function createGroup() {
 }
 .name {
   font-weight: 800;
+  font-size: 16px;
 }
 .time {
   font-size: 12px;
@@ -2165,11 +2145,11 @@ async function createGroup() {
   align-items: center;
   justify-content: space-between;
   gap: 10px;
-  margin-top: 3px;
+  margin-top: 5px;
 }
 .preview {
-  font-size: 12px;
-  opacity: 0.7;
+  font-size: 13px;
+  opacity: 0.66;
   overflow: hidden;
   white-space: nowrap;
   text-overflow: ellipsis;
@@ -2186,6 +2166,229 @@ async function createGroup() {
 
 .drawerBody {
   padding: 10px 14px;
+}
+.drawerFooter {
+  display: flex;
+  justify-content: flex-end;
+  width: 100%;
+  padding: 0 14px 14px;
+  box-sizing: border-box;
+}
+.taskShell {
+  display: grid;
+  grid-template-columns: 280px 1fr;
+  gap: 12px;
+  height: calc(100% - 12px);
+  min-height: 0;
+}
+.taskSidebar,
+.taskMain {
+  min-width: 0;
+  border: 1px solid rgba(31, 35, 41, 0.06);
+  border-radius: 16px;
+  background: rgba(255, 255, 255, 0.76);
+}
+.taskSidebar {
+  display: flex;
+  flex-direction: column;
+  padding: 12px;
+}
+.taskToolbar {
+  display: flex;
+  gap: 8px;
+  flex-wrap: wrap;
+}
+.taskHint {
+  margin-top: 10px;
+  padding: 10px 12px;
+  border-radius: 12px;
+  background: rgba(79, 140, 255, 0.08);
+  color: rgba(31, 35, 41, 0.68);
+  font-size: 12px;
+  line-height: 1.5;
+}
+.taskRunList {
+  margin-top: 12px;
+  display: grid;
+  gap: 10px;
+  overflow: auto;
+}
+.taskRunItem {
+  width: 100%;
+  text-align: left;
+  border: 1px solid rgba(31, 35, 41, 0.08);
+  border-radius: 14px;
+  padding: 12px;
+  background: rgba(255, 255, 255, 0.92);
+  cursor: pointer;
+}
+.taskRunItem:hover {
+  border-color: rgba(79, 140, 255, 0.2);
+  background: rgba(79, 140, 255, 0.05);
+}
+.taskRunItem.active {
+  border-color: rgba(79, 140, 255, 0.32);
+  background: rgba(79, 140, 255, 0.1);
+}
+.taskRunTop {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 10px;
+}
+.taskRunTitle,
+.taskTitle {
+  font-size: 16px;
+  font-weight: 900;
+}
+.taskRunStatus,
+.taskNodeBadge {
+  flex: 0 0 auto;
+  font-size: 12px;
+  font-weight: 800;
+  padding: 4px 8px;
+  border-radius: 999px;
+  background: rgba(31, 35, 41, 0.06);
+}
+.taskRunGoal {
+  margin-top: 8px;
+  font-size: 12px;
+  line-height: 1.5;
+  color: rgba(31, 35, 41, 0.72);
+}
+.taskRunMeta,
+.taskSubtitle,
+.taskNodeMeta,
+.taskNodeInfo {
+  margin-top: 8px;
+  font-size: 12px;
+  color: rgba(31, 35, 41, 0.56);
+}
+.taskEmpty {
+  padding: 16px 4px;
+  font-size: 13px;
+  color: rgba(31, 35, 41, 0.58);
+}
+.taskEmptyMain {
+  margin: auto;
+}
+.taskMain {
+  display: flex;
+  flex-direction: column;
+  padding: 14px;
+  overflow: auto;
+}
+.taskHeader {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 16px;
+}
+.taskStats {
+  display: grid;
+  grid-template-columns: repeat(4, minmax(0, 1fr));
+  gap: 8px;
+  min-width: 320px;
+}
+.taskStat {
+  padding: 10px 12px;
+  border-radius: 14px;
+  background: rgba(31, 35, 41, 0.04);
+  border: 1px solid rgba(31, 35, 41, 0.06);
+}
+.taskStat span {
+  display: block;
+  font-size: 12px;
+  color: rgba(31, 35, 41, 0.58);
+}
+.taskStat strong {
+  display: block;
+  margin-top: 4px;
+  font-size: 18px;
+}
+.taskGoalCard,
+.taskSection {
+  margin-top: 12px;
+  border: 1px solid rgba(31, 35, 41, 0.06);
+  border-radius: 16px;
+  background: rgba(255, 255, 255, 0.86);
+  padding: 14px;
+}
+.taskGoalText {
+  margin-top: 10px;
+  font-size: 13px;
+  line-height: 1.6;
+  color: rgba(31, 35, 41, 0.78);
+  white-space: pre-wrap;
+}
+.taskSectionHeader {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+}
+.taskSectionTitle {
+  font-weight: 900;
+  font-size: 14px;
+}
+.taskLoading {
+  padding: 18px 0 8px;
+  font-size: 13px;
+  color: rgba(31, 35, 41, 0.58);
+}
+.taskNodeList {
+  display: grid;
+  gap: 10px;
+  margin-top: 12px;
+}
+.taskNodeCard {
+  border: 1px solid rgba(31, 35, 41, 0.08);
+  border-radius: 14px;
+  padding: 12px;
+  background: rgba(255, 255, 255, 0.94);
+}
+.taskNodeCard.statusPending {
+  background: rgba(250, 250, 250, 0.92);
+}
+.taskNodeCard.statusRun {
+  border-color: rgba(82, 183, 255, 0.24);
+  background: rgba(82, 183, 255, 0.06);
+}
+.taskNodeCard.statusDone {
+  border-color: rgba(49, 175, 111, 0.24);
+  background: rgba(49, 175, 111, 0.06);
+}
+.taskNodeCard.statusBlocked {
+  border-color: rgba(217, 45, 32, 0.24);
+  background: rgba(217, 45, 32, 0.06);
+}
+.taskNodeTop {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 12px;
+}
+.taskNodeTitle {
+  font-size: 15px;
+  font-weight: 900;
+}
+.taskNodeDetail {
+  margin-top: 10px;
+  font-size: 13px;
+  line-height: 1.6;
+  color: rgba(31, 35, 41, 0.78);
+  white-space: pre-wrap;
+}
+.taskNodeInfo {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 10px 14px;
+}
+.taskNodeActions {
+  margin-top: 10px;
+  display: flex;
+  gap: 8px;
+  flex-wrap: wrap;
 }
 .drawerSection {
   border: 1px solid rgba(31, 35, 41, 0.06);
@@ -2476,11 +2679,11 @@ async function createGroup() {
 }
 
 .chatHeader {
-  height: 56px;
+  height: 58px;
   display: flex;
   align-items: center;
   justify-content: space-between;
-  padding: 0 16px;
+  padding: 0 18px;
   border-bottom: 1px solid rgba(31, 35, 41, 0.06);
 }
 .chatTitle {
@@ -2492,19 +2695,6 @@ async function createGroup() {
   gap: 8px;
   align-items: center;
 }
-.codeBtn {
-  height: 34px;
-  padding: 0 14px;
-  border: 0;
-  border-radius: 999px;
-  background: rgba(79, 140, 255, 0.12);
-  color: #2563eb;
-  font-weight: 900;
-  cursor: pointer;
-}
-.codeBtn:hover {
-  background: rgba(79, 140, 255, 0.18);
-}
 .iconBtn {
   border: 0;
   width: 34px;
@@ -2512,6 +2702,13 @@ async function createGroup() {
   border-radius: 10px;
   background: rgba(31, 35, 41, 0.06);
   cursor: pointer;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 16px;
+}
+.iconBtnLarge {
+  font-size: 17px;
 }
 .iconBtn:hover {
   background: rgba(31, 35, 41, 0.1);
@@ -2522,12 +2719,13 @@ async function createGroup() {
 }
 
 .chatBody {
-  height: calc(100% - 56px - 82px);
+  flex: 1;
+  min-height: 0;
   overflow: auto;
-  padding: 16px;
+  padding: 18px 18px 12px;
   display: flex;
   flex-direction: column;
-  gap: 10px;
+  gap: 12px;
 }
 .empty {
   margin: auto;
@@ -2570,44 +2768,60 @@ async function createGroup() {
 }
 
 .chatComposer {
-  height: 82px;
-  border-top: 1px solid rgba(31, 35, 41, 0.06);
-  display: grid;
-  grid-template-columns: 90px 1fr 46px 90px;
-  gap: 10px;
-  padding: 12px 12px;
-  align-items: center;
+  margin: 0 18px 18px;
+  min-height: 160px;
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+  padding: 16px;
+  background: rgba(255, 255, 255, 0.96);
+  border: 1px solid rgba(31, 35, 41, 0.08);
+  border-radius: 22px;
+  box-shadow: 0 10px 28px rgba(31, 35, 41, 0.08);
 }
 .composerMid {
   position: relative;
   min-width: 0;
-}
-.tools {
+  width: 100%;
   display: flex;
-  gap: 8px;
-  justify-content: center;
+  flex: 1;
+}
+.composerActions {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  width: 100%;
+  margin-top: auto;
 }
 .toolBtn {
   width: 34px;
   height: 34px;
   border: 0;
-  border-radius: 10px;
-  background: rgba(31, 35, 41, 0.06);
+  border-radius: 999px;
+  background: rgba(31, 35, 41, 0.05);
   cursor: pointer;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 16px;
 }
 .input {
   resize: none;
   width: 100%;
-  height: 42px;
-  border-radius: 12px;
-  border: 1px solid rgba(31, 35, 41, 0.08);
-  padding: 10px 12px;
+  min-height: 92px;
+  border: 0;
+  border-radius: 16px;
+  padding: 10px 2px 10px 2px;
   outline: none;
-  background: rgba(255, 255, 255, 0.9);
+  background: transparent;
+  font-size: 14px;
+  line-height: 1.6;
+  box-sizing: border-box;
+  align-self: stretch;
 }
 .mentionChips {
   position: absolute;
-  top: -34px;
+  top: -38px;
   left: 0;
   display: flex;
   gap: 8px;
@@ -2638,7 +2852,7 @@ async function createGroup() {
   position: absolute;
   left: 0;
   right: 0;
-  bottom: 46px;
+  bottom: 64px;
   background: rgba(255, 255, 255, 0.96);
   border: 1px solid rgba(31, 35, 41, 0.12);
   border-radius: 14px;
@@ -2672,6 +2886,7 @@ async function createGroup() {
   display: grid;
   place-items: center;
   background: rgba(79, 140, 255, 0.14);
+  font-size: 16px;
 }
 .msName {
   font-weight: 900;
@@ -2682,13 +2897,17 @@ async function createGroup() {
   font-size: 12px;
 }
 .sendBtn {
-  height: 42px;
+  width: 46px;
+  height: 46px;
   border: 0;
-  border-radius: 12px;
-  background: #2f6bff;
+  border-radius: 50%;
+  background: rgba(145, 145, 145, 0.92);
   color: #fff;
-  font-weight: 800;
   cursor: pointer;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 18px;
 }
 .sendBtn:disabled {
   opacity: 0.4;
@@ -2718,13 +2937,16 @@ async function createGroup() {
   display: grid;
   place-items: center;
   background: rgba(79, 140, 255, 0.14);
+  font-size: 16px;
 }
 .mName {
   font-weight: 800;
 }
 .mCheck {
-  font-weight: 900;
   color: #2f6bff;
+  display: flex;
+  justify-content: center;
+  font-size: 16px;
 }
 
 .createGrid {
@@ -2770,13 +2992,16 @@ async function createGroup() {
   display: grid;
   place-items: center;
   background: rgba(31, 35, 41, 0.06);
+  font-size: 16px;
 }
 .pName {
   font-weight: 800;
 }
 .pCheck {
-  font-weight: 900;
   color: #2f6bff;
+  display: flex;
+  justify-content: center;
+  font-size: 16px;
 }
 .err {
   color: #d92d20;

@@ -1,28 +1,38 @@
 <template>
   <div class="page">
-    <div class="hero">
-      <div>
-        <div class="eyebrow">Project Asset Layer</div>
-        <div class="title">项目代码预览</div>
-        <div class="sub">浏览 project 群聊对应的 `shared/code` 目录，确认智能体将来读写和生成的正式项目代码资产。</div>
-      </div>
-      <div class="heroActions">
-        <el-select v-model="activeGroupId" placeholder="选择项目群聊" filterable style="width: 280px" @change="onGroupChange">
-          <el-option v-for="g in projectGroups" :key="g.id" :label="g.name" :value="g.id" />
-        </el-select>
-        <el-button @click="reload" :disabled="!activeGroupId" :loading="loading">刷新</el-button>
-      </div>
-    </div>
-
     <div class="shell">
       <section class="treePanel">
         <div class="panelHead">
-          <div>
-            <div class="panelTitle">文件树</div>
-            <div class="panelSub">{{ activeGroup?.name || '请先选择项目群聊' }}</div>
+          <div class="panelTitle">{{ activeGroup?.name || '请选择项目' }}</div>
+          <div class="panelHeadActions">
+            <el-button class="heroRefresh" :icon="RefreshRight" circle @click="reload" :disabled="!activeGroupId" :loading="loading" />
+            <el-popover
+              v-model:visible="projectMenuOpen"
+              placement="bottom-end"
+              trigger="click"
+              :width="260"
+              :teleported="false"
+              popper-class="projectMenuPopover"
+            >
+              <div class="projectMenuCard">
+                <button
+                  v-for="g in projectGroups"
+                  :key="g.id"
+                  class="projectOption"
+                  :class="{ active: g.id === activeGroupId }"
+                  @click="selectProject(g.id)"
+                >
+                  <span class="projectName">{{ g.name }}</span>
+                  <span class="projectMark" v-if="g.id === activeGroupId">当前</span>
+                </button>
+              </div>
+              <template #reference>
+                <el-button class="toggleBtn" :icon="ArrowDown" circle />
+              </template>
+            </el-popover>
           </div>
-          <el-input v-model="filter" placeholder="搜索文件…" size="small" style="width: 220px" />
         </div>
+
         <div class="treeWrap">
           <div v-if="!activeGroupId" class="empty">选择一个项目群聊后查看代码目录。</div>
           <div v-else-if="loading" class="empty">加载中…</div>
@@ -41,15 +51,17 @@
       </section>
 
       <section class="contentPanel">
-        <div class="panelHead">
-          <div>
-            <div class="panelTitle">{{ activePath || '文件内容' }}</div>
-            <div class="panelSub">这里只做预览，后续再接项目代码编辑能力。</div>
-          </div>
-        </div>
         <div class="contentWrap">
-          <div v-if="!activePath" class="empty">从左侧选择一个文件预览内容。</div>
-          <pre v-else class="codeBlock">{{ content }}</pre>
+          <CodeMirrorFileEditor
+            v-if="activePath"
+            :path="activePath"
+            :content="activeContent"
+            :dirty="isActiveDirty"
+            @update:content="updateActiveContent"
+            @reset="resetActiveContent"
+            @copy="copyActiveContent"
+          />
+          <div v-else class="empty">从左侧选择一个文件开始编辑。</div>
         </div>
       </section>
     </div>
@@ -57,8 +69,9 @@
 </template>
 
 <script setup lang="ts">
-import { computed, onMounted, ref, watch } from 'vue'
+import { computed, defineAsyncComponent, onMounted, ref, watch } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
+import { ArrowDown, RefreshRight } from '@element-plus/icons-vue'
 import {
   apiListGroups,
   apiListProjectCode,
@@ -68,6 +81,8 @@ import {
 } from '../api/agenthub'
 import AgentFileTreeNode, { type FileTreeNode } from '../components/AgentFileTreeNode.vue'
 
+const CodeMirrorFileEditor = defineAsyncComponent(() => import('../components/CodeMirrorFileEditor.vue'))
+
 const route = useRoute()
 const router = useRouter()
 const groups = ref<Group[]>([])
@@ -76,16 +91,65 @@ const entries = ref<ProjectCodeEntry[]>([])
 const loading = ref(false)
 const filter = ref('')
 const activePath = ref('')
-const content = ref('')
 const openDirs = ref<Record<string, boolean>>({})
+const serverContents = ref<Record<string, string>>({})
+const draftContents = ref<Record<string, string>>({})
+const projectMenuOpen = ref(false)
 
 const projectGroups = computed(() => groups.value.filter((g) => g.type === 'project'))
 const activeGroup = computed(() => projectGroups.value.find((g) => g.id === activeGroupId.value) || null)
-
 const filteredEntries = computed(() => {
-  const q = filter.value.trim().toLowerCase()
-  if (!q) return entries.value
-  return entries.value.filter((item) => item.path.toLowerCase().includes(q))
+  const query = filter.value.trim().toLowerCase()
+  if (!query) return entries.value
+  return entries.value.filter((item) => item.path.toLowerCase().includes(query))
+})
+const activeContentKey = computed(() =>
+  activeGroupId.value && activePath.value ? `${activeGroupId.value}::${activePath.value}` : '',
+)
+
+function draftStorageKey(groupId: string, path: string) {
+  return `agenthub.project-code.draft::${groupId}::${path}`
+}
+
+function loadDraftFromStorage(groupId: string, path: string) {
+  if (typeof window === 'undefined') return null
+  return window.localStorage.getItem(draftStorageKey(groupId, path))
+}
+
+function saveDraftToStorage(groupId: string, path: string, content: string) {
+  if (typeof window === 'undefined') return
+  window.localStorage.setItem(draftStorageKey(groupId, path), content)
+}
+
+function removeDraftFromStorage(groupId: string, path: string) {
+  if (typeof window === 'undefined') return
+  window.localStorage.removeItem(draftStorageKey(groupId, path))
+}
+
+const activeContent = computed({
+  get() {
+    const key = activeContentKey.value
+    if (!key) return ''
+    return draftContents.value[key] ?? serverContents.value[key] ?? ''
+  },
+  set(value: string) {
+    if (!activeContentKey.value) return
+    draftContents.value = {
+      ...draftContents.value,
+      [activeContentKey.value]: value,
+    }
+    const dividerIndex = activeContentKey.value.indexOf('::')
+    if (dividerIndex < 0) return
+    const groupId = activeContentKey.value.slice(0, dividerIndex)
+    const path = activeContentKey.value.slice(dividerIndex + 2)
+    saveDraftToStorage(groupId, path, value)
+  },
+})
+
+const isActiveDirty = computed(() => {
+  const key = activeContentKey.value
+  if (!key) return false
+  return (draftContents.value[key] ?? '') !== (serverContents.value[key] ?? '')
 })
 
 function splitPath(path: string) {
@@ -163,7 +227,8 @@ async function reload() {
     entries.value = res.data
     if (activePath.value && !entries.value.some((item) => item.path === activePath.value)) {
       activePath.value = ''
-      content.value = ''
+    } else if (activePath.value) {
+      await openFile(activePath.value)
     }
   } finally {
     loading.value = false
@@ -172,21 +237,54 @@ async function reload() {
 
 async function onGroupChange() {
   activePath.value = ''
-  content.value = ''
   openDirs.value = {}
+  projectMenuOpen.value = false
   await router.replace({ name: 'project-code', query: activeGroupId.value ? { groupId: activeGroupId.value } : {} })
   await reload()
+}
+
+async function selectProject(groupId: string) {
+  if (groupId === activeGroupId.value) {
+    projectMenuOpen.value = false
+    return
+  }
+  activeGroupId.value = groupId
+  await onGroupChange()
 }
 
 async function openFile(path: string) {
   if (!activeGroupId.value) return
   activePath.value = path
+  const storageDraft = loadDraftFromStorage(activeGroupId.value, path)
+  const key = `${activeGroupId.value}::${path}`
+  if (storageDraft !== null) {
+    draftContents.value = { ...draftContents.value, [key]: storageDraft }
+  }
   const res = await apiReadProjectCodeFile(activeGroupId.value, path)
-  content.value = res.data.content
+  serverContents.value = { ...serverContents.value, [key]: res.data.content }
+  if (!(key in draftContents.value)) {
+    draftContents.value = { ...draftContents.value, [key]: res.data.content }
+  }
 }
 
 function toggleDir(path: string) {
   openDirs.value = { ...openDirs.value, [path]: !openDirs.value[path] }
+}
+
+function updateActiveContent(value: string) {
+  activeContent.value = value
+}
+
+function resetActiveContent() {
+  if (!activeContentKey.value || !activeGroupId.value || !activePath.value) return
+  const key = activeContentKey.value
+  const serverContent = serverContents.value[key] ?? ''
+  draftContents.value = { ...draftContents.value, [key]: serverContent }
+  removeDraftFromStorage(activeGroupId.value, activePath.value)
+}
+
+async function copyActiveContent() {
+  await navigator.clipboard.writeText(activeContent.value || '')
 }
 
 onMounted(async () => {
@@ -208,7 +306,6 @@ watch(
     if (!projectGroups.value.some((item) => item.id === next)) return
     activeGroupId.value = next
     activePath.value = ''
-    content.value = ''
     openDirs.value = {}
     await reload()
   },
@@ -220,88 +317,104 @@ watch(
   height: calc(100vh - 36px);
   display: flex;
   flex-direction: column;
-  gap: 16px;
+  min-height: 0;
 }
 
-.hero {
+.panelHead {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 10px;
+  padding: 14px 12px 10px;
+  border-bottom: 1px solid rgba(31, 35, 41, 0.06);
+}
+
+.panelHeadActions {
+  display: flex;
+  gap: 8px;
+  align-items: center;
+}
+
+.heroRefresh {
+  flex: 0 0 auto;
+}
+
+.toggleBtn {
+  flex: 0 0 auto;
+}
+
+.projectMenuCard {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+
+:global(.projectMenuPopover) {
+  padding: 10px;
+  border-radius: 16px;
+}
+
+.panelTitle {
+  font-size: 15px;
+  font-weight: 800;
+  color: rgba(31, 35, 41, 0.86);
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.projectOption {
+  width: 100%;
   display: flex;
   justify-content: space-between;
-  gap: 16px;
   align-items: center;
-  padding: 20px 22px;
-  border-radius: 24px;
-  background:
-    radial-gradient(circle at left top, rgba(82, 183, 255, 0.2), transparent 30%),
-    radial-gradient(circle at right bottom, rgba(255, 212, 120, 0.22), transparent 26%),
-    linear-gradient(135deg, #f6fbff 0%, #fff8ef 100%);
-  border: 1px solid rgba(31, 35, 41, 0.08);
-}
-
-.eyebrow {
-  font-size: 12px;
-  text-transform: uppercase;
-  letter-spacing: 0.14em;
-  color: #5f7ea7;
-  font-weight: 800;
-}
-
-.title {
-  margin-top: 8px;
-  font-size: 28px;
-  font-weight: 900;
-}
-
-.sub {
-  margin-top: 8px;
-  font-size: 14px;
-  line-height: 1.7;
-  color: rgba(31, 35, 41, 0.7);
-  max-width: 760px;
-}
-
-.heroActions {
-  display: flex;
   gap: 10px;
-  align-items: center;
+  border: 0;
+  border-radius: 12px;
+  padding: 10px 12px;
+  background: rgba(31, 35, 41, 0.03);
+  color: rgba(31, 35, 41, 0.78);
+  cursor: pointer;
+  text-align: left;
+}
+
+.projectOption:hover,
+.projectOption.active {
+  background: rgba(64, 158, 255, 0.1);
+  color: rgba(31, 35, 41, 0.92);
+}
+
+.projectName {
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.projectMark {
+  flex: 0 0 auto;
+  font-size: 12px;
+  color: rgba(31, 35, 41, 0.45);
 }
 
 .shell {
   flex: 1;
   min-height: 0;
   display: grid;
-  grid-template-columns: 380px 1fr;
-  gap: 16px;
+  grid-template-columns: 340px minmax(0, 1fr);
+  gap: 12px;
 }
 
 .treePanel,
 .contentPanel {
+  height: 100%;
   min-height: 0;
   display: flex;
   flex-direction: column;
-  border-radius: 22px;
-  background: rgba(255, 255, 255, 0.82);
+  border-radius: 18px;
+  background: rgba(255, 255, 255, 0.84);
   border: 1px solid rgba(31, 35, 41, 0.08);
-  backdrop-filter: blur(12px);
-}
-
-.panelHead {
-  display: flex;
-  justify-content: space-between;
-  align-items: flex-start;
-  gap: 12px;
-  padding: 16px 18px;
-  border-bottom: 1px solid rgba(31, 35, 41, 0.06);
-}
-
-.panelTitle {
-  font-size: 18px;
-  font-weight: 900;
-}
-
-.panelSub {
-  margin-top: 4px;
-  font-size: 12px;
-  color: rgba(31, 35, 41, 0.58);
+  backdrop-filter: blur(10px);
 }
 
 .treeWrap,
@@ -309,18 +422,12 @@ watch(
   flex: 1;
   min-height: 0;
   overflow: auto;
-  padding: 14px;
+  padding: 12px;
 }
 
-.codeBlock {
-  margin: 0;
-  min-height: 100%;
-  white-space: pre-wrap;
-  word-break: break-word;
-  font-family: 'SFMono-Regular', 'Consolas', monospace;
-  font-size: 13px;
-  line-height: 1.7;
-  color: #1d2433;
+.contentWrap {
+  min-height: 0;
+  display: flex;
 }
 
 .empty {
@@ -329,10 +436,15 @@ watch(
 }
 
 @media (max-width: 1100px) {
-  .hero,
   .shell {
     display: grid;
     grid-template-columns: 1fr;
+  }
+
+  .treePanel,
+  .contentPanel {
+    height: auto;
+    min-height: 0;
   }
 }
 </style>
