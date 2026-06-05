@@ -5,14 +5,10 @@
         <div class="sideTitle">聊天管理</div>
         <div class="sideSubtitle">{{ activeGroup?.name || '未选择会话' }}</div>
       </div>
-      <button class="sideCloseBtn" type="button" aria-label="关闭聊天管理" @click="$emit('close')">
-        <el-icon>
-          <Close />
-        </el-icon>
-      </button>
+      <el-button class="sideCloseBtn" :icon="Close" circle text @click="$emit('close')" aria-label="关闭聊天管理" />
     </div>
 
-  <div class="sideBody" v-if="activeGroup">
+    <el-scrollbar class="sideBody" v-if="activeGroup">
       <ManageGroupInfoCard :active-group="activeGroup" @delete-group="$emit('delete-group')" />
 
       <ManageMemberListCard
@@ -46,13 +42,13 @@
       />
 
       <div v-if="manageErr" class="errBox">{{ manageErr }}</div>
-    </div>
+    </el-scrollbar>
 
-    <div v-else class="sideBody">
+    <el-scrollbar v-else class="sideBody">
       <div class="sideEmpty">
         <div class="empty">未选择会话</div>
       </div>
-    </div>
+    </el-scrollbar>
   </div>
 </template>
 
@@ -145,24 +141,14 @@ defineEmits<{
   color: rgba(31, 35, 41, 0.58);
 }
 .sideCloseBtn {
-  border: 0;
   width: 32px;
   height: 32px;
   border-radius: 10px;
-  background: rgba(31, 35, 41, 0.06);
-  cursor: pointer;
-  display: inline-flex;
-  align-items: center;
-  justify-content: center;
   color: rgba(31, 35, 41, 0.8);
-}
-.sideCloseBtn:hover {
-  background: rgba(31, 35, 41, 0.1);
 }
 .sideBody {
   flex: 1;
   min-height: 0;
-  overflow: auto;
   padding: 12px;
 }
 .sideEmpty {

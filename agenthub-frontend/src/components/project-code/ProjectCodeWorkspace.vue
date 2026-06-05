@@ -5,31 +5,23 @@
         <div class="panelHead">
           <div class="panelTitle">{{ activeGroup?.name || '请选择项目' }}</div>
           <div class="panelHeadActions">
-            <el-button class="heroRefresh" :icon="RefreshRight" circle @click="$emit('reload')" :disabled="!activeGroupId" :loading="loading" />
-            <el-popover
-              v-model:visible="projectMenuOpenModel"
-              placement="bottom-end"
-              trigger="click"
-              :width="260"
-              :teleported="false"
-              popper-class="projectMenuPopover"
-            >
-              <div class="projectMenuCard">
-                <button
-                  v-for="g in projectGroups"
-                  :key="g.id"
-                  class="projectOption"
-                  :class="{ active: g.id === activeGroupId }"
-                  @click="$emit('select-project', g.id)"
-                >
-                  <span class="projectName">{{ g.name }}</span>
-                  <span class="projectMark" v-if="g.id === activeGroupId">当前</span>
-                </button>
-              </div>
-              <template #reference>
-                <el-button class="toggleBtn" :icon="ArrowDown" circle />
+            <el-button class="heroRefresh" text :icon="RefreshRight" @click="$emit('reload')" :disabled="!activeGroupId" :loading="loading" />
+            <el-dropdown trigger="click" @visible-change="projectMenuOpenModel = $event">
+              <el-button class="toggleBtn" text :icon="ArrowDown" />
+              <template #dropdown>
+                <el-dropdown-menu class="projectMenuCard">
+                  <el-dropdown-item
+                    v-for="g in projectGroups"
+                    :key="g.id"
+                    :class="{ active: g.id === activeGroupId }"
+                    @click="$emit('select-project', g.id)"
+                  >
+                    <span class="projectName">{{ g.name }}</span>
+                    <span class="projectMark" v-if="g.id === activeGroupId">当前</span>
+                  </el-dropdown-item>
+                </el-dropdown-menu>
               </template>
-            </el-popover>
+            </el-dropdown>
           </div>
         </div>
 
@@ -69,10 +61,10 @@
 </template>
 
 <script setup lang="ts">
+import { defineAsyncComponent } from 'vue'
 import { ArrowDown, RefreshRight } from '@element-plus/icons-vue'
 import type { Group } from '@/api/models.ts'
 import AgentFileTreeNode, { type FileTreeNode } from '../AgentFileTreeNode.vue'
-import { defineAsyncComponent } from 'vue'
 
 const CodeMirrorFileEditor = defineAsyncComponent(() => import('../CodeMirrorFileEditor.vue'))
 
@@ -102,14 +94,21 @@ defineEmits<{
 </script>
 
 <style scoped>
-.page { height: calc(100vh - 36px); display:flex; flex-direction:column; min-height:0; }
+.page { height: 100%; display:flex; flex-direction:column; min-height:0; }
 .panelHead { display:flex; align-items:center; justify-content:space-between; gap:10px; padding:14px 12px 10px; border-bottom:1px solid rgba(31,35,41,.06); }
 .panelHeadActions { display:flex; gap:8px; align-items:center; }
 .panelTitle { font-size:15px; font-weight:800; color:rgba(31,35,41,.86); overflow:hidden; text-overflow:ellipsis; white-space:nowrap; }
-.projectMenuCard { display:flex; flex-direction:column; gap:6px; }
-:global() { padding:10px; border-radius:16px; }
-.projectOption { width:100%; display:flex; justify-content:space-between; align-items:center; gap:10px; border:0; border-radius:12px; padding:10px 12px; background:rgba(31,35,41,.03); color:rgba(31,35,41,.78); cursor:pointer; text-align:left; }
-.projectOption:hover, .projectOption.active { background:rgba(64,158,255,.1); color:rgba(31,35,41,.92); }
+.projectMenuCard { min-width: 240px; padding: 6px; }
+.projectMenuCard :deep(.el-dropdown-menu__item) {
+  display:flex;
+  justify-content:space-between;
+  align-items:center;
+  gap:10px;
+  border-radius:12px;
+  margin: 4px 0;
+}
+.projectMenuCard :deep(.el-dropdown-menu__item:hover),
+.projectMenuCard :deep(.el-dropdown-menu__item.active) { background:rgba(64,158,255,.1); color:rgba(31,35,41,.92); }
 .projectName { min-width:0; overflow:hidden; text-overflow:ellipsis; white-space:nowrap; }
 .projectMark { flex:0 0 auto; font-size:12px; color:rgba(31,35,41,.45); }
 .shell { flex:1; min-height:0; display:grid; grid-template-columns:340px minmax(0,1fr); gap:12px; }

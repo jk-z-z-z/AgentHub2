@@ -15,36 +15,30 @@
       <div class="chatHeader">
         <div class="chatTitle">{{ activeGroup?.name || '选择一个会话' }}</div>
         <div class="chatActions">
-          <button
+          <el-button
             v-if="activeGroup?.type === 'project'"
             class="iconBtn iconBtnLarge"
+            text
+            :icon="FolderOpened"
             @click="openProjectCode"
             aria-label="查看代码"
-          >
-            <el-icon>
-              <FolderOpened />
-            </el-icon>
-          </button>
-          <button
+          />
+          <el-button
             v-if="activeGroup?.type === 'project'"
             class="iconBtn iconBtnLarge"
+            text
+            :icon="Operation"
             @click="openTaskPlanner"
             aria-label="任务规划"
-          >
-            <el-icon>
-              <Operation />
-            </el-icon>
-          </button>
-          <button
+          />
+          <el-button
             class="iconBtn"
             :disabled="!activeGroup"
+            text
+            :icon="Setting"
             @click="openManage"
             aria-label="聊天管理"
-          >
-            <el-icon>
-              <Setting />
-            </el-icon>
-          </button>
+          />
         </div>
       </div>
 
@@ -1043,7 +1037,7 @@ async function createGroup() {
 
 <style scoped>
 .shell {
-  height: calc(100vh - 36px);
+  height: 100%;
   display: grid;
   grid-template-columns: 340px minmax(0, 1fr);
   gap: 12px;
@@ -1116,16 +1110,11 @@ async function createGroup() {
   align-items: center;
 }
 .iconBtn {
-  border: 0;
   width: 34px;
   height: 34px;
   border-radius: 10px;
-  background: rgba(31, 35, 41, 0.06);
-  cursor: pointer;
-  display: inline-flex;
-  align-items: center;
-  justify-content: center;
   font-size: 16px;
+  padding: 0;
 }
 .iconBtnLarge {
   font-size: 17px;
@@ -1135,7 +1124,6 @@ async function createGroup() {
 }
 .iconBtn:disabled {
   opacity: 0.45;
-  cursor: not-allowed;
 }
 
 .mentionList {

@@ -8,11 +8,7 @@
           </el-icon>
         </template>
       </el-input>
-      <button class="addBtn" @click="$emit('create')" aria-label="新建会话">
-        <el-icon>
-          <CirclePlus />
-        </el-icon>
-      </button>
+      <el-button class="addBtn" :icon="CirclePlus" circle plain @click="$emit('create')" aria-label="新建会话" />
     </div>
 
     <div class="convList">
@@ -87,14 +83,14 @@ function avatarText(name: string) {
 .searchInput {
   flex: 1;
 }
-.searchInput :deep() {
+.searchInput :deep(.el-input__wrapper) {
   height: 38px;
   border-radius: 12px;
   background: rgba(255, 255, 255, 0.92);
   box-shadow: none;
 }
-.searchInput :deep() {
-  color: rgba(31, 35, 41, 0.42);
+.searchInput :deep(.el-input__inner) {
+  color: rgba(31, 35, 41, 0.92);
 }
 .searchIcon {
   font-size: 18px;
@@ -102,17 +98,7 @@ function avatarText(name: string) {
 .addBtn {
   width: 38px;
   height: 38px;
-  border: 0;
-  border-radius: 12px;
-  cursor: pointer;
-  background: transparent;
-  display: inline-flex;
-  align-items: center;
-  justify-content: center;
   color: rgba(31, 35, 41, 0.88);
-}
-.addBtn:hover {
-  background: rgba(31, 35, 41, 0.06);
 }
 .convList {
   padding: 8px;

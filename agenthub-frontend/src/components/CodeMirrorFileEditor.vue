@@ -10,35 +10,11 @@
       </div>
 
       <div class="toolbarActions">
-        <el-popover
-          v-model:visible="fontMenuOpen"
-          placement="bottom-end"
-          :show-after="0"
-          :hide-after="0"
-          trigger="click"
-          :width="120"
-        >
-          <template #reference>
-            <button class="actionBtn" type="button" aria-label="选择字体大小">
-              {{ fontSize }}px
-              <span class="chevron">▾</span>
-            </button>
-          </template>
-          <div class="fontMenu">
-            <button
-              v-for="size in fontSizes"
-              :key="size"
-              class="fontMenuItem"
-              :class="{ active: size === fontSize }"
-              type="button"
-              @click="chooseFontSize(size)"
-            >
-              {{ size }}px
-            </button>
-          </div>
-        </el-popover>
-        <button class="actionBtn" type="button" :disabled="!dirty" @click="$emit('reset')">还原</button>
-        <button class="actionBtn" type="button" @click="$emit('copy')">复制</button>
+        <el-select v-model="fontSize" class="fontSelect" size="small" aria-label="选择字体大小">
+          <el-option v-for="size in fontSizes" :key="size" :label="`${size}px`" :value="size" />
+        </el-select>
+        <el-button class="actionBtn" size="small" :disabled="!dirty" @click="$emit('reset')">还原</el-button>
+        <el-button class="actionBtn" size="small" @click="$emit('copy')">复制</el-button>
       </div>
     </div>
 
@@ -72,8 +48,7 @@ const emit = defineEmits<{
 const mountEl = ref<HTMLElement | null>(null)
 const editorView = ref<EditorView | null>(null)
 const loading = ref(false)
-const fontSize = ref(12)
-const fontMenuOpen = ref(false)
+const fontSize = ref(11)
 const fontSizes = [11, 12, 13, 14, 15, 16, 18]
 
 const language = computed(() => detectLanguage(props.path))
@@ -227,11 +202,6 @@ function syncContent() {
   })
 }
 
-function chooseFontSize(size: number) {
-  fontSize.value = size
-  fontMenuOpen.value = false
-}
-
 watch(
   () => props.path,
   () => {
@@ -307,52 +277,9 @@ onBeforeUnmount(() => {
 
 .actionBtn {
   height: 30px;
-  border-radius: 10px;
-  border: 1px solid rgba(31, 35, 41, 0.08);
-  background: rgba(31, 35, 41, 0.04);
-  color: rgba(31, 35, 41, 0.8);
-  padding: 0 12px;
-  cursor: pointer;
-  font-size: 12px;
-  font-weight: 700;
 }
-
-.chevron {
-  margin-left: 4px;
-  font-size: 10px;
-  opacity: 0.7;
-}
-
-.fontMenu {
-  display: grid;
-  gap: 4px;
-}
-
-.fontMenuItem {
-  width: 100%;
-  border: 0;
-  border-radius: 8px;
-  padding: 8px 10px;
-  background: transparent;
-  text-align: left;
-  cursor: pointer;
-  color: rgba(31, 35, 41, 0.8);
-}
-
-.fontMenuItem:hover,
-.fontMenuItem.active {
-  background: rgba(79, 140, 255, 0.08);
-  color: #2563eb;
-}
-
-.actionBtn:disabled {
-  cursor: not-allowed;
-  opacity: 0.45;
-}
-
-.actionBtn:hover:not(:disabled) {
-  background: rgba(79, 140, 255, 0.08);
-  color: #2563eb;
+.fontSelect {
+  width: 110px;
 }
 
 .editorMount {
@@ -380,9 +307,6 @@ onBeforeUnmount(() => {
 .editorMount :deep() {
   width: 100%;
   height: 100%;
-}
-
-.editorMount :deep() {
   overflow: auto;
 }
 </style>

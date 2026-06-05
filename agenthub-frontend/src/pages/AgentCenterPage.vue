@@ -65,16 +65,8 @@
           <el-input v-model="toolFilterName" placeholder="按名称/Code筛选" clearable />
           <div></div>
           <div class="viewToggles">
-            <button class="viewBtn" :class="{ active: toolView === 'grid' }" @click="toolView = 'grid'">
-              <el-icon>
-                <Grid />
-              </el-icon>
-            </button>
-            <button class="viewBtn" :class="{ active: toolView === 'list' }" @click="toolView = 'list'">
-              <el-icon>
-                <List />
-              </el-icon>
-            </button>
+            <el-button class="viewBtn" :class="{ active: toolView === 'grid' }" text :icon="Grid" @click="toolView = 'grid'" />
+            <el-button class="viewBtn" :class="{ active: toolView === 'list' }" text :icon="List" @click="toolView = 'list'" />
           </div>
         </div>
 
@@ -129,16 +121,8 @@
           <el-input v-model="mcpFilterName" placeholder="按名称/Code筛选" clearable />
           <div></div>
           <div class="viewToggles">
-            <button class="viewBtn" :class="{ active: mcpView === 'grid' }" @click="mcpView = 'grid'">
-              <el-icon>
-                <Grid />
-              </el-icon>
-            </button>
-            <button class="viewBtn" :class="{ active: mcpView === 'list' }" @click="mcpView = 'list'">
-              <el-icon>
-                <List />
-              </el-icon>
-            </button>
+            <el-button class="viewBtn" :class="{ active: mcpView === 'grid' }" text :icon="Grid" @click="mcpView = 'grid'" />
+            <el-button class="viewBtn" :class="{ active: mcpView === 'list' }" text :icon="List" @click="mcpView = 'list'" />
           </div>
         </div>
 
@@ -194,16 +178,8 @@
           <el-input v-model="skillFilterName" placeholder="按名称/Code筛选" clearable />
           <div></div>
           <div class="viewToggles">
-            <button class="viewBtn" :class="{ active: skillView === 'grid' }" @click="skillView = 'grid'">
-              <el-icon>
-                <Grid />
-              </el-icon>
-            </button>
-            <button class="viewBtn" :class="{ active: skillView === 'list' }" @click="skillView = 'list'">
-              <el-icon>
-                <List />
-              </el-icon>
-            </button>
+            <el-button class="viewBtn" :class="{ active: skillView === 'grid' }" text :icon="Grid" @click="skillView = 'grid'" />
+            <el-button class="viewBtn" :class="{ active: skillView === 'list' }" text :icon="List" @click="skillView = 'list'" />
           </div>
         </div>
 
@@ -679,7 +655,7 @@ onMounted(async () => {
 
 <style scoped>
 .shell {
-  height: calc(100vh - 36px);
+  height: 100%;
   display: grid;
   grid-template-columns: 340px minmax(0, 1fr);
   gap: 12px;

@@ -4,15 +4,16 @@
       <div v-if="canMentionAgents && selectedMentions.size > 0" class="mentionChips">
         <span v-for="id in Array.from(selectedMentions)" :key="id" class="chip">
           @{{ mentionNames[id] || id }}
-          <button class="chipX" @click="$emit('remove-mention', id)">×</button>
+          <el-button class="chipX" text @click="$emit('remove-mention', id)">×</el-button>
         </span>
       </div>
-      <textarea
-        :value="draft"
+      <el-input
+        :model-value="draft"
         class="input"
+        type="textarea"
+        :autosize="{ minRows: 4, maxRows: 8 }"
         placeholder="输入消息…"
-        rows="1"
-        @input="$emit('update:draft', ($event.target as HTMLTextAreaElement).value)"
+        @update:model-value="$emit('update:draft', $event)"
         @keydown="$emit('keydown', $event as KeyboardEvent)"
       />
 
@@ -37,14 +38,14 @@
       </div>
     </div>
     <div class="composerActions">
-      <button v-if="canMentionAgents" class="toolBtn" @click="$emit('open-mention')" aria-label="选择要@的智能体">
+      <el-button v-if="canMentionAgents" class="toolBtn" circle plain @click="$emit('open-mention')" aria-label="选择要@的智能体">
         @
-      </button>
-      <button class="sendBtn" :disabled="!canSend" @click="$emit('send')" aria-label="发送消息">
+      </el-button>
+      <el-button class="sendBtn" type="primary" :disabled="!canSend" circle @click="$emit('send')" aria-label="发送消息">
         <el-icon>
           <ArrowUp />
         </el-icon>
-      </button>
+      </el-button>
     </div>
   </div>
 </template>
@@ -104,29 +105,21 @@ defineEmits<{
 .toolBtn {
   width: 34px;
   height: 34px;
-  border: 0;
-  border-radius: 999px;
-  background: rgba(31, 35, 41, 0.05);
-  cursor: pointer;
-  display: inline-flex;
-  align-items: center;
-  justify-content: center;
   font-size: 16px;
 }
 .input {
-  resize: none;
   width: 100%;
+  flex: 1;
+}
+.input :deep(.el-textarea__inner) {
   min-height: 118px;
   border: 0;
   border-radius: 16px;
   padding: 10px 2px 4px 2px;
-  outline: none;
+  box-shadow: none;
   background: transparent;
   font-size: 14px;
   line-height: 1.6;
-  box-sizing: border-box;
-  align-self: stretch;
-  flex: 1;
 }
 .mentionChips {
   display: flex;
@@ -146,14 +139,9 @@ defineEmits<{
   font-weight: 800;
 }
 .chipX {
-  border: 0;
-  background: transparent;
-  cursor: pointer;
-  opacity: 0.7;
   font-weight: 900;
-}
-.chipX:hover {
-  opacity: 1;
+  padding: 0;
+  min-width: 0;
 }
 .mentionSuggest {
   position: absolute;
@@ -212,19 +200,6 @@ defineEmits<{
 .sendBtn {
   width: 40px;
   height: 40px;
-  border: 0;
-  border-radius: 999px;
-  background: linear-gradient(135deg, #4f8cff, #6d9dff);
-  color: #fff;
-  cursor: pointer;
-  display: inline-flex;
-  align-items: center;
-  justify-content: center;
   box-shadow: 0 8px 18px rgba(79, 140, 255, 0.28);
-}
-.sendBtn:disabled {
-  opacity: 0.45;
-  cursor: not-allowed;
-  box-shadow: none;
 }
 </style>

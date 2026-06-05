@@ -5,14 +5,10 @@
         <div class="sideTitle">文件目录</div>
         <div class="sideSubtitle">{{ activeGroup?.name || '未选择会话' }}</div>
       </div>
-      <button class="sideCloseBtn" type="button" aria-label="关闭文件目录" @click="$emit('close')">
-        <el-icon>
-          <Close />
-        </el-icon>
-      </button>
+      <el-button class="sideCloseBtn" :icon="Close" circle text @click="$emit('close')" aria-label="关闭文件目录" />
     </div>
 
-    <div class="sideBody">
+    <el-scrollbar class="sideBody">
       <div v-if="activeGroup?.type === 'project'" class="fileShell">
         <div class="fileToolbar">
           <el-button size="small" type="primary" @click="$emit('refresh')" :loading="loading">刷新</el-button>
@@ -39,7 +35,7 @@
       <div v-else class="sideEmpty">
         <div class="empty">仅项目群聊支持文件目录</div>
       </div>
-    </div>
+    </el-scrollbar>
   </div>
 </template>
 
@@ -156,24 +152,14 @@ function buildProjectTree(rows: ProjectCodeEntry[]): FileTreeNode[] {
   color: rgba(31, 35, 41, 0.58);
 }
 .sideCloseBtn {
-  border: 0;
   width: 32px;
   height: 32px;
   border-radius: 10px;
-  background: rgba(31, 35, 41, 0.06);
-  cursor: pointer;
-  display: inline-flex;
-  align-items: center;
-  justify-content: center;
   color: rgba(31, 35, 41, 0.8);
-}
-.sideCloseBtn:hover {
-  background: rgba(31, 35, 41, 0.1);
 }
 .sideBody {
   flex: 1;
   min-height: 0;
-  overflow: auto;
   padding: 12px;
 }
 .fileShell {

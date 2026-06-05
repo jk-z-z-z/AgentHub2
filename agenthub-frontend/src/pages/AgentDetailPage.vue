@@ -455,7 +455,7 @@ onMounted(async () => {
 
 <style scoped>
 .shell {
-  height: calc(100vh - 36px);
+  height: 100%;
   display: flex;
   flex-direction: column;
   gap: 14px;

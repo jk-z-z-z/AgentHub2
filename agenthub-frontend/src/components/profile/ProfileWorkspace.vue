@@ -99,7 +99,7 @@ defineEmits<{
 
 <style scoped>
 .page {
-  height: calc(100vh - 36px);
+  height: 100%;
   display: flex;
   flex-direction: column;
   gap: 16px;

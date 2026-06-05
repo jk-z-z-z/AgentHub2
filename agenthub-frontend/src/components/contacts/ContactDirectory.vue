@@ -36,7 +36,7 @@
         <el-empty description="没有匹配的联系人" />
       </div>
       <div v-else class="contactList">
-        <button
+        <el-button
           v-for="user in visibleUsers"
           :key="user.id"
           class="contactRow"
@@ -55,7 +55,7 @@
               <span class="contactLine">{{ user.role }}</span>
             </div>
           </div>
-        </button>
+        </el-button>
       </div>
     </section>
 
@@ -72,11 +72,7 @@
               <div class="detailUser">{{ selectedUser.username }}</div>
               <div class="detailEmail">{{ selectedUser.email }}</div>
             </div>
-            <button class="detailArrowBtn" type="button" aria-label="进入详细信息" @click="detailOpenModel = true">
-              <el-icon>
-                <ArrowRight />
-              </el-icon>
-            </button>
+            <el-button class="detailArrowBtn" text circle :icon="ArrowRight" @click="detailOpenModel = true" aria-label="进入详细信息" />
           </div>
 
           <div class="detailSection">
@@ -214,7 +210,7 @@ function formatDate(value: string) {
 
 <style scoped>
 .contactsPage {
-  height: calc(100vh - 36px);
+  height: 100%;
   display: grid;
   grid-template-columns: 340px minmax(0, 1fr);
   gap: 12px;
@@ -251,7 +247,7 @@ function formatDate(value: string) {
 .stateText { font-size:13px; line-height:1.6; color:rgba(31,35,41,.58); word-break:break-all; }
 .stateAction { justify-self:start; }
 .contactList { display:grid; gap:8px; overflow:auto; padding-right:2px; }
-.contactRow { width:100%; border:0; border-radius:14px; background:rgba(255,255,255,.7); padding:12px 12px 12px 10px; cursor:pointer; display:flex; align-items:center; gap:12px; text-align:left; color:inherit; transition:background .14s ease, transform .14s ease, box-shadow .14s ease; }
+.contactRow { width:100%; border-radius:14px; background:rgba(255,255,255,.7); padding:0; display:flex; align-items:center; gap:12px; text-align:left; color:inherit; transition:background .14s ease, transform .14s ease, box-shadow .14s ease; }
 .contactRow:hover { background:rgba(79,140,255,.08); transform:translateY(-1px); }
 .contactRow.active { background:linear-gradient(135deg, rgba(79,140,255,.14), rgba(79,140,255,.06)); box-shadow:inset 0 0 0 1px rgba(79,140,255,.18); }
 .contactRow.self { opacity:.9; }
@@ -269,7 +265,7 @@ function formatDate(value: string) {
 .detailHero { display:grid; grid-template-columns:56px minmax(0,1fr) auto; gap:12px; align-items:center; padding:14px 14px 12px; border-radius:18px; background:linear-gradient(135deg, rgba(79,140,255,.12), rgba(255,255,255,.92)); border:1px solid rgba(79,140,255,.12); }
 .detailAvatar { width:56px; height:56px; font-size:20px; }
 .detailNameRow { justify-content:flex-start; }
-.detailArrowBtn { width:36px; height:36px; border:0; border-radius:12px; background:rgba(31,35,41,.06); cursor:pointer; display:inline-flex; align-items:center; justify-content:center; color:rgba(31,35,41,.78); }
+.detailArrowBtn { width:36px; height:36px; color:rgba(31,35,41,.78); }
 .detailSection { padding:14px; border-radius:16px; background:rgba(255,255,255,.72); border:1px solid rgba(31,35,41,.06); }
 .detailSectionTitle { font-size:13px; font-weight:900; }
 .detailGrid { display:grid; grid-template-columns:repeat(2,minmax(0,1fr)); gap:10px; margin-top:12px; }

@@ -70,7 +70,7 @@ defineEmits<{
 </script>
 
 <style scoped>
-.page { height: calc(100vh - 36px); display:flex; flex-direction:column; gap:14px; }
+.page { height: 100%; display:flex; flex-direction:column; gap:14px; }
 .header { padding:10px 6px; }
 .title { font-size:18px; font-weight:900; }
 .sub { font-size:12px; opacity:.65; margin-top:2px; }

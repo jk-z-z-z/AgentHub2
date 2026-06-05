@@ -84,7 +84,7 @@ defineEmits<{
 </script>
 
 <style scoped>
-.shell { height: calc(100vh - 36px); display:flex; flex-direction:column; gap:14px; }
+.shell { height: 100%; display:flex; flex-direction:column; gap:14px; }
 .header { height:64px; padding:0 10px; display:flex; align-items:center; justify-content:space-between; }
 .title { font-weight:900; font-size:16px; }
 .actions { display:flex; gap:10px; }

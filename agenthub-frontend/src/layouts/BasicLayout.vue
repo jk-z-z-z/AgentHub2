@@ -75,11 +75,11 @@
           popper-class="profilePopover"
         >
           <template #reference>
-            <button class="profileBtn" aria-label="个人信息">
+            <el-button class="profileBtn" text circle aria-label="个人信息">
               <el-icon>
                 <UserFilled />
               </el-icon>
-            </button>
+            </el-button>
           </template>
 
           <div class="profileCard">
@@ -89,11 +89,11 @@
                 <div class="profileName">{{ profileName }}</div>
                 <div class="profileSub">{{ currentUser?.role || 'member' }}</div>
               </div>
-              <button class="profileDetailBtn" @click="goProfile" aria-label="进入个人信息详情">
+              <el-button class="profileDetailBtn" text circle @click="goProfile" aria-label="进入个人信息详情">
                 <el-icon>
                   <ArrowRightBold />
                 </el-icon>
-              </button>
+              </el-button>
             </div>
 
             <div v-if="userLoading" class="profileLoading">加载个人信息中…</div>
@@ -115,10 +115,10 @@
               </div>
             </template>
 
-            <button class="logoutRow" @click="logout">
+            <el-button class="logoutRow" plain type="danger" @click="logout">
               <span>退出登录</span>
               <el-icon><SwitchButton /></el-icon>
-            </button>
+            </el-button>
           </div>
         </el-popover>
       </div>
@@ -239,11 +239,9 @@ onMounted(loadCurrentUser)
 .profileBtn {
   width: 46px;
   height: 46px;
-  border: 0;
   border-radius: 14px;
   background: transparent;
   color: rgba(31, 35, 41, 0.42);
-  cursor: pointer;
   display: inline-flex;
   align-items: center;
   justify-content: center;
@@ -263,9 +261,11 @@ onMounted(loadCurrentUser)
 }
 
 .main {
+  height: 100%;
   overflow: hidden;
   padding: 18px;
   min-width: 0;
+  min-height: 0;
 }
 
 .tooltipContent {
@@ -311,22 +311,11 @@ onMounted(loadCurrentUser)
   flex: 1;
 }
 .profileDetailBtn {
-  margin-left: auto;
   width: 40px;
   height: 40px;
   border-radius: 12px;
-  border: 1px solid rgba(31, 35, 41, 0.08);
-  background: rgba(255, 255, 255, 0.9);
   color: rgba(31, 35, 41, 0.76);
-  display: inline-flex;
-  align-items: center;
-  justify-content: center;
-  cursor: pointer;
   flex: 0 0 auto;
-}
-.profileDetailBtn:hover {
-  background: rgba(79, 140, 255, 0.08);
-  color: #2563eb;
 }
 .profileName {
   font-size: 14px;
@@ -369,20 +358,9 @@ onMounted(loadCurrentUser)
 .logoutRow {
   margin-top: auto;
   height: 42px;
-  border: 0;
   border-radius: 12px;
-  padding: 0 12px;
-  display: flex;
-  align-items: center;
   justify-content: space-between;
-  cursor: pointer;
-  background: rgba(217, 45, 32, 0.08);
-  color: #d92d20;
   font-size: 13px;
   font-weight: 700;
 }
-.logoutRow:hover {
-  background: rgba(217, 45, 32, 0.12);
-}
-
 </style>

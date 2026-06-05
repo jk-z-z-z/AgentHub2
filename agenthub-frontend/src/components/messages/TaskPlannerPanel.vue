@@ -5,14 +5,10 @@
         <div class="sideTitle">任务规划</div>
         <div class="sideSubtitle">{{ activeGroup?.name || '未选择会话' }}</div>
       </div>
-      <button class="sideCloseBtn" type="button" aria-label="关闭任务规划" @click="$emit('close')">
-        <el-icon>
-          <Close />
-        </el-icon>
-      </button>
+      <el-button class="sideCloseBtn" :icon="Close" circle text @click="$emit('close')" aria-label="关闭任务规划" />
     </div>
 
-    <div class="sideBody">
+    <el-scrollbar class="sideBody">
       <div v-if="activeGroup?.type === 'project'" class="taskShell">
         <section class="taskSidebar">
           <div class="panelCard">
@@ -24,11 +20,12 @@
           </div>
 
           <div class="taskRunList">
-            <button
+            <el-button
               v-for="run in runs"
               :key="run.id"
               class="taskRunItem"
               :class="{ active: String(run.id) === String(activeRunId) }"
+              text
               @click="$emit('select-run', String(run.id))"
             >
               <div class="taskRunTop">
@@ -37,7 +34,7 @@
               </div>
               <div class="taskRunGoal">{{ run.goal_text }}</div>
               <div class="taskRunMeta">{{ new Date(run.created_at).toLocaleDateString() }} · Run #{{ run.id }}</div>
-            </button>
+            </el-button>
             <div v-if="!runsLoading && runs.length === 0" class="taskEmpty">还没有 Run，先点“新建 Run”</div>
           </div>
         </section>
@@ -135,7 +132,7 @@
       </div>
 
       <div v-if="manageErr" class="panelError">{{ manageErr }}</div>
-    </div>
+    </el-scrollbar>
   </div>
 </template>
 
@@ -225,24 +222,14 @@ function isNodeMine(node: GroupTaskNode) {
   color: rgba(31, 35, 41, 0.58);
 }
 .sideCloseBtn {
-  border: 0;
   width: 32px;
   height: 32px;
   border-radius: 10px;
-  background: rgba(31, 35, 41, 0.06);
-  cursor: pointer;
-  display: inline-flex;
-  align-items: center;
-  justify-content: center;
   color: rgba(31, 35, 41, 0.8);
-}
-.sideCloseBtn:hover {
-  background: rgba(31, 35, 41, 0.1);
 }
 .sideBody {
   flex: 1;
   min-height: 0;
-  overflow: auto;
   padding: 12px;
 }
 .taskShell {
@@ -281,12 +268,14 @@ function isNodeMine(node: GroupTaskNode) {
   gap: 8px;
 }
 .taskRunItem {
+  width: 100%;
+  height: auto;
   border: 1px solid rgba(31, 35, 41, 0.06);
   border-radius: 14px;
   padding: 12px;
   background: rgba(255, 255, 255, 0.8);
-  cursor: pointer;
   text-align: left;
+  align-items: stretch;
 }
 .taskRunItem:hover {
   background: rgba(79, 140, 255, 0.06);
