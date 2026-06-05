@@ -19,24 +19,31 @@
             <div class="taskHint">只保留常用操作：创建 Run、查看节点状态、认领、完成、复核。</div>
           </div>
 
-          <div class="taskRunList">
-            <el-button
-              v-for="run in runs"
-              :key="run.id"
-              class="taskRunItem"
-              :class="{ active: String(run.id) === String(activeRunId) }"
-              text
-              @click="$emit('select-run', String(run.id))"
-            >
-              <div class="taskRunTop">
-                <div class="taskRunTitle">{{ run.title }}</div>
-                <div class="taskRunStatus">{{ run.status }}</div>
-              </div>
-              <div class="taskRunGoal">{{ run.goal_text }}</div>
-              <div class="taskRunMeta">{{ new Date(run.created_at).toLocaleDateString() }} · Run #{{ run.id }}</div>
-            </el-button>
-            <div v-if="!runsLoading && runs.length === 0" class="taskEmpty">还没有 Run，先点“新建 Run”</div>
-          </div>
+          <el-table
+            class="taskRunTable"
+            :data="runs"
+            :row-key="runRowKey"
+            :show-header="false"
+            highlight-current-row
+            :current-row-key="activeRunId"
+            empty-text="还没有 Run，先点“新建 Run”"
+            @row-click="selectRun"
+          >
+            <el-table-column label="Run" min-width="0">
+              <template #default="{ row }">
+                <div class="taskRunItem" :class="{ active: String(row.id) === String(activeRunId) }">
+                  <div class="taskRunTop">
+                    <div class="taskRunTitle">{{ row.title }}</div>
+                    <el-tag size="small" effect="plain">{{ row.status }}</el-tag>
+                  </div>
+                  <div class="taskRunGoal">{{ row.goal_text }}</div>
+                  <div class="taskRunMeta">
+                    {{ new Date(row.created_at).toLocaleDateString() }} · Run #{{ row.id }}
+                  </div>
+                </div>
+              </template>
+            </el-table-column>
+          </el-table>
         </section>
 
         <section class="taskMain">
@@ -69,55 +76,73 @@
                 <el-button size="small" :loading="nodesLoading" @click="$emit('refresh-run-details', String(activeRunId))">刷新节点</el-button>
               </div>
 
-              <div v-if="nodesLoading" class="taskLoading">加载节点中…</div>
-              <div v-else class="taskNodeList">
-                <div v-for="node in nodes" :key="node.id" class="taskNodeCard" :class="nodeStatusClass(node.status)">
-                  <div class="taskNodeTop">
-                    <div>
-                      <div class="taskNodeTitle">{{ node.title }}</div>
-                      <div class="taskNodeMeta">{{ node.node_key }} · {{ node.role_required || '未指定角色' }}</div>
+              <el-table
+                v-if="!nodesLoading"
+                class="taskNodeTable"
+                :data="nodes"
+                row-key="id"
+                empty-text="当前 Run 还没有节点"
+              >
+                <el-table-column label="节点" min-width="260">
+                  <template #default="{ row }">
+                    <div class="taskNodeTop">
+                      <div>
+                        <div class="taskNodeTitle">{{ row.title }}</div>
+                        <div class="taskNodeMeta">{{ row.node_key }} · {{ row.role_required || '未指定角色' }}</div>
+                      </div>
                     </div>
-                    <span class="taskNodeBadge">{{ taskStatusLabel(node.status) }}</span>
-                  </div>
-
-                  <div class="taskNodeDetail">{{ node.detail || '暂无说明' }}</div>
-
-                  <div class="taskNodeInfo">
-                    <span>依赖：{{ (node.deps || []).join(', ') || '无' }}</span>
-                    <span>负责人：{{ node.assignee_member_id ? senderName(node.assignee_member_id) : '待认领' }}</span>
-                    <span>复核：{{ node.manager_review_status }}</span>
-                  </div>
-
-                  <div class="taskNodeActions">
-                    <el-button size="small" v-if="node.status === 'pending'" @click="$emit('claim-node', node)">认领</el-button>
-                    <el-button
-                      size="small"
-                      type="primary"
-                      v-if="node.status === 'running' && isNodeMine(node)"
-                      @click="$emit('complete-node', node)"
-                    >
-                      完成
-                    </el-button>
-                    <el-button
-                      size="small"
-                      v-if="node.status === 'completed' && node.manager_review_status === 'pending'"
-                      @click="$emit('review-node', node, 'approved')"
-                    >
-                      复核通过
-                    </el-button>
-                    <el-button
-                      size="small"
-                      type="danger"
-                      plain
-                      v-if="node.status === 'completed' && node.manager_review_status === 'pending'"
-                      @click="$emit('review-node', node, 'rework')"
-                    >
-                      要求返工
-                    </el-button>
-                  </div>
-                </div>
-                <div v-if="nodes.length === 0" class="taskEmpty">当前 Run 还没有节点</div>
-              </div>
+                    <div class="taskNodeDetail">{{ row.detail || '暂无说明' }}</div>
+                  </template>
+                </el-table-column>
+                <el-table-column label="状态" width="110" align="center">
+                  <template #default="{ row }">
+                    <el-tag size="small" :type="nodeTagType(row.status)">{{ taskStatusLabel(row.status) }}</el-tag>
+                    <div class="taskNodeBadgeMeta">{{ row.manager_review_status }}</div>
+                  </template>
+                </el-table-column>
+                <el-table-column label="责任人" width="160">
+                  <template #default="{ row }">
+                    {{ row.assignee_member_id ? senderName(row.assignee_member_id) : '待认领' }}
+                  </template>
+                </el-table-column>
+                <el-table-column label="依赖" min-width="160">
+                  <template #default="{ row }">
+                    {{ (row.deps || []).join(', ') || '无' }}
+                  </template>
+                </el-table-column>
+                <el-table-column label="操作" width="240" align="right">
+                  <template #default="{ row }">
+                    <div class="taskNodeActions">
+                      <el-button size="small" v-if="row.status === 'pending'" @click="$emit('claim-node', row)">认领</el-button>
+                      <el-button
+                        size="small"
+                        type="primary"
+                        v-if="row.status === 'running' && isNodeMine(row)"
+                        @click="$emit('complete-node', row)"
+                      >
+                        完成
+                      </el-button>
+                      <el-button
+                        size="small"
+                        v-if="row.status === 'completed' && row.manager_review_status === 'pending'"
+                        @click="$emit('review-node', row, 'approved')"
+                      >
+                        通过
+                      </el-button>
+                      <el-button
+                        size="small"
+                        type="danger"
+                        plain
+                        v-if="row.status === 'completed' && row.manager_review_status === 'pending'"
+                        @click="$emit('review-node', row, 'rework')"
+                      >
+                        返工
+                      </el-button>
+                    </div>
+                  </template>
+                </el-table-column>
+              </el-table>
+              <div v-else class="taskLoading">加载节点中…</div>
             </div>
           </template>
 
@@ -154,7 +179,7 @@ const props = defineProps<{
   manageErr: string
 }>()
 
-defineEmits<{
+const emit = defineEmits<{
   (e: 'close'): void
   (e: 'refresh-runs'): void
   (e: 'select-run', runId: string): void
@@ -164,6 +189,14 @@ defineEmits<{
   (e: 'complete-node', node: GroupTaskNode): void
   (e: 'review-node', node: GroupTaskNode, status: 'approved' | 'rework'): void
 }>()
+
+function runRowKey(row: GroupTaskRun) {
+  return String(row.id)
+}
+
+function selectRun(row: GroupTaskRun) {
+  emit('select-run', String(row.id))
+}
 
 function senderName(memberId: string) {
   const member = props.members.find((item) => String(item.id) === String(memberId))
@@ -177,11 +210,11 @@ function taskStatusLabel(status: string) {
   return '待处理'
 }
 
-function nodeStatusClass(status: string) {
-  if (status === 'completed') return 'statusDone'
-  if (status === 'running') return 'statusRun'
-  if (status === 'blocked') return 'statusBlocked'
-  return 'statusPending'
+function nodeTagType(status: string) {
+  if (status === 'completed') return 'success'
+  if (status === 'running') return 'primary'
+  if (status === 'blocked') return 'danger'
+  return 'info'
 }
 
 function isNodeMine(node: GroupTaskNode) {
@@ -267,22 +300,16 @@ function isNodeMine(node: GroupTaskNode) {
   display: grid;
   gap: 8px;
 }
+.taskRunTable,
+.taskNodeTable {
+  margin-top: 12px;
+}
 .taskRunItem {
   width: 100%;
-  height: auto;
   border: 1px solid rgba(31, 35, 41, 0.06);
   border-radius: 14px;
   padding: 12px;
   background: rgba(255, 255, 255, 0.8);
-  text-align: left;
-  align-items: stretch;
-}
-.taskRunItem:hover {
-  background: rgba(79, 140, 255, 0.06);
-}
-.taskRunItem.active {
-  background: rgba(79, 140, 255, 0.12);
-  border-color: rgba(79, 140, 255, 0.18);
 }
 .taskRunTop {
   display: flex;
@@ -375,24 +402,6 @@ function isNodeMine(node: GroupTaskNode) {
   display: grid;
   gap: 10px;
 }
-.taskNodeCard {
-  border: 1px solid rgba(31, 35, 41, 0.06);
-  border-radius: 14px;
-  padding: 12px;
-  background: rgba(255, 255, 255, 0.8);
-}
-.taskNodeCard{
-  background: rgba(82, 183, 255, 0.08);
-  border-color: rgba(82, 183, 255, 0.24);
-}
-.taskNodeCard{
-  background: rgba(49, 175, 111, 0.08);
-  border-color: rgba(49, 175, 111, 0.24);
-}
-.taskNodeCard{
-  background: rgba(217, 45, 32, 0.08);
-  border-color: rgba(217, 45, 32, 0.24);
-}
 .taskNodeTop {
   display: flex;
   align-items: flex-start;
@@ -413,6 +422,11 @@ function isNodeMine(node: GroupTaskNode) {
   padding: 4px 8px;
   border-radius: 999px;
   background: rgba(31, 35, 41, 0.06);
+}
+.taskNodeBadgeMeta {
+  margin-top: 6px;
+  font-size: 12px;
+  color: rgba(31, 35, 41, 0.58);
 }
 .taskNodeDetail {
   margin-top: 8px;

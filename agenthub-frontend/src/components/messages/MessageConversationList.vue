@@ -11,28 +11,36 @@
       <el-button class="addBtn" :icon="CirclePlus" circle plain @click="$emit('create')" aria-label="新建会话" />
     </div>
 
-    <div class="convList">
-      <div
-        v-for="g in groups"
-        :key="g.id"
-        class="convItem"
-        :class="{ active: g.id === activeGroupId }"
-        @click="$emit('select', g.id)"
-      >
-        <div class="avatar">{{ avatarText(g.name) }}</div>
-        <div class="meta">
-          <div class="row1">
-            <div class="name">{{ g.name }}</div>
-            <div class="time">{{ lastTimeMap[g.id] || '' }}</div>
-          </div>
-          <div class="row2">
-            <div class="preview">{{ lastPreviewMap[g.id] || '' }}</div>
-            <div class="badge">{{ g.type === 'project' ? '项目组' : '单聊' }}</div>
-          </div>
-        </div>
-      </div>
-      <div v-if="!loading && groups.length === 0" class="emptyState">暂无会话</div>
-    </div>
+    <el-table
+      :data="groups"
+      class="convList"
+      height="100%"
+      empty-text="暂无会话"
+      :row-class-name="tableRowClassName"
+      @row-click="handleRowClick"
+    >
+      <el-table-column label="" width="64">
+        <template #default="{ row }">
+          <div class="avatar">{{ avatarText(row.name) }}</div>
+        </template>
+      </el-table-column>
+      <el-table-column label="会话" min-width="160">
+        <template #default="{ row }">
+          <div class="name">{{ row.name }}</div>
+          <div class="preview">{{ lastPreviewMap[row.id] || '' }}</div>
+        </template>
+      </el-table-column>
+      <el-table-column label="时间" width="88" align="right">
+        <template #default="{ row }">
+          <span class="time">{{ lastTimeMap[row.id] || '' }}</span>
+        </template>
+      </el-table-column>
+      <el-table-column label="类型" width="90" align="right">
+        <template #default="{ row }">
+          <span class="badge">{{ row.type === 'project' ? '项目组' : '单聊' }}</span>
+        </template>
+      </el-table-column>
+    </el-table>
   </section>
 </template>
 
@@ -42,7 +50,7 @@ import type { Group } from '@/api/models.ts'
 
 const searchModel = defineModel<string>('search', { default: '' })
 
-defineProps<{
+const props = defineProps<{
   groups: Group[]
   activeGroupId: string
   lastPreviewMap: Record<string, string>
@@ -50,7 +58,7 @@ defineProps<{
   loading: boolean
 }>()
 
-defineEmits<{
+const emit = defineEmits<{
   (e: 'select', id: string): void
   (e: 'create'): void
 }>()
@@ -58,6 +66,14 @@ defineEmits<{
 function avatarText(name: string) {
   const t = (name || '').trim()
   return t ? t.slice(0, 1) : '群'
+}
+
+function handleRowClick(row: Group) {
+  emit('select', row.id)
+}
+
+function tableRowClassName({ row }: { row: Group }) {
+  return row.id === props.activeGroupId ? 'active' : ''
 }
 </script>
 
@@ -101,24 +117,12 @@ function avatarText(name: string) {
   color: rgba(31, 35, 41, 0.88);
 }
 .convList {
-  padding: 8px;
-  display: grid;
-  gap: 6px;
-  overflow: auto;
-  max-height: calc(100% - 60px);
+  height: 100%;
 }
-.convItem {
-  display: grid;
-  grid-template-columns: 52px 1fr;
-  gap: 10px;
-  padding: 12px 10px;
-  border-radius: 14px;
+.convList :deep(.el-table__row) {
   cursor: pointer;
 }
-.convItem:hover {
-  background: rgba(79, 140, 255, 0.06);
-}
-.convItem.active {
+.convList :deep(.el-table__row.active) {
   background: rgba(79, 140, 255, 0.12);
 }
 .avatar {
@@ -132,11 +136,6 @@ function avatarText(name: string) {
   font-weight: 800;
   font-size: 16px;
 }
-.meta .row1 {
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-}
 .name {
   font-weight: 800;
   font-size: 16px;
@@ -144,13 +143,6 @@ function avatarText(name: string) {
 .time {
   font-size: 12px;
   opacity: 0.55;
-}
-.row2 {
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  gap: 10px;
-  margin-top: 5px;
 }
 .preview {
   font-size: 13px;
@@ -167,10 +159,5 @@ function avatarText(name: string) {
   color: #2563eb;
   font-weight: 700;
   white-space: nowrap;
-}
-.emptyState {
-  padding: 16px 4px;
-  opacity: 0.6;
-  text-align: center;
 }
 </style>

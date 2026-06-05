@@ -11,12 +11,23 @@
     <el-scrollbar class="sideBody">
       <div v-if="activeGroup?.type === 'project'" class="fileShell">
         <div class="fileToolbar">
-          <el-button size="small" type="primary" @click="$emit('refresh')" :loading="loading">刷新</el-button>
+          <el-button
+            class="refreshBtn"
+            size="small"
+            :icon="RefreshRight"
+            @click="$emit('refresh')"
+            :loading="loading"
+            aria-label="刷新文件目录"
+          />
         </div>
-        <div class="fileHint">
-          这里直接展示当前项目的文件目录树，不跳转到新页面。
-        </div>
-        <div class="fileTreeWrap">
+        <el-alert
+          class="fileHint"
+          type="info"
+          :closable="false"
+          show-icon
+          title="这里直接展示当前项目的文件目录树，不跳转到新页面。"
+        />
+        <el-card class="fileTreeWrap" shadow="never">
           <div v-if="loading" class="taskEmpty">加载文件目录中…</div>
           <div v-else-if="projectRoots.length === 0" class="taskEmpty">当前项目还没有可展示的文件</div>
           <template v-else>
@@ -30,7 +41,7 @@
               @toggle="$emit('toggle-dir', $event)"
             />
           </template>
-        </div>
+        </el-card>
       </div>
       <div v-else class="sideEmpty">
         <div class="empty">仅项目群聊支持文件目录</div>
@@ -40,7 +51,7 @@
 </template>
 
 <script setup lang="ts">
-import { Close } from '@element-plus/icons-vue'
+import { Close, RefreshRight } from '@element-plus/icons-vue'
 import { computed } from 'vue'
 import AgentFileTreeNode, { type FileTreeNode } from '../../components/AgentFileTreeNode.vue'
 import type { Group, ProjectCodeEntry } from '@/api/models.ts'
@@ -174,22 +185,20 @@ function buildProjectTree(rows: ProjectCodeEntry[]): FileTreeNode[] {
   margin-bottom: 10px;
 }
 .fileHint {
-  padding: 10px 12px;
-  border-radius: 12px;
-  background: rgba(79, 140, 255, 0.08);
-  color: rgba(31, 35, 41, 0.68);
-  font-size: 12px;
-  line-height: 1.5;
+  margin-bottom: 12px;
 }
 .fileTreeWrap {
-  margin-top: 12px;
-  padding: 10px;
   border: 1px solid rgba(31, 35, 41, 0.06);
   border-radius: 16px;
   background: rgba(255, 255, 255, 0.76);
   overflow: auto;
   min-height: 0;
   flex: 1;
+}
+.refreshBtn {
+  width: 32px;
+  height: 32px;
+  border-radius: 10px;
 }
 .fileTreeWrap :deep() {
   margin-bottom: 4px;

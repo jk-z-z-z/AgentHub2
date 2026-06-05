@@ -1,7 +1,9 @@
 <template>
   <section v-if="activeGroup?.type === 'project'" class="projectStack">
-    <div class="card">
-      <div class="secTitle">添加成员</div>
+    <el-card class="card" shadow="never">
+      <template #header>
+        <div class="secTitle">添加成员</div>
+      </template>
       <div class="addGrid">
         <el-select v-model="addKindModel" style="width: 120px">
           <el-option label="用户" value="user" />
@@ -15,10 +17,12 @@
         </el-select>
         <el-button type="primary" :loading="adding" @click="$emit('add-member')">添加</el-button>
       </div>
-    </div>
+    </el-card>
 
-    <section class="card">
-      <div class="secTitle">长期记忆自动提炼配置</div>
+    <el-card class="card" shadow="never">
+      <template #header>
+        <div class="secTitle">长期记忆自动提炼配置</div>
+      </template>
       <div v-if="memoryCfgLoading" class="loading">加载配置中…</div>
       <template v-else>
         <div class="kvRow">
@@ -49,10 +53,12 @@
           <div>是否达到阈值：{{ memoryStatus.will_trigger ? '是' : '否' }}</div>
         </div>
       </template>
-    </section>
+    </el-card>
 
-    <section class="card">
-      <div class="secTitle">群管家配置</div>
+    <el-card class="card" shadow="never">
+      <template #header>
+        <div class="secTitle">群管家配置</div>
+      </template>
       <div v-if="assistantCfgLoading" class="loading">加载中…</div>
       <template v-else>
         <div class="kvRow">
@@ -71,7 +77,7 @@
           <el-button size="small" :loading="assistantCfgSaving" @click="$emit('save-assistant-config')">保存管家配置</el-button>
         </div>
       </template>
-    </section>
+    </el-card>
   </section>
 </template>
 
@@ -127,14 +133,11 @@ defineEmits<{
   gap: 12px;
 }
 .card {
-  border: 1px solid rgba(31, 35, 41, 0.06);
   border-radius: 14px;
-  padding: 12px;
   background: rgba(255, 255, 255, 0.7);
 }
 .secTitle {
   font-weight: 900;
-  margin-bottom: 10px;
 }
 .addGrid {
   display: grid;

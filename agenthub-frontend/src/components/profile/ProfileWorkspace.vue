@@ -14,7 +14,7 @@
     </div>
 
     <div class="grid">
-      <section class="panel">
+      <el-card class="panel" shadow="never">
         <div class="panelHeader">
           <div>
             <div class="panelTitle">基础资料</div>
@@ -51,9 +51,9 @@
             placeholder="介绍你的职责、专长、沟通偏好。"
           />
         </div>
-      </section>
+      </el-card>
 
-      <section class="panel">
+      <el-card class="panel" shadow="never">
         <div class="panelHeader">
           <div>
             <div class="panelTitle">用户画像 `PROFILE.md`</div>
@@ -73,7 +73,7 @@
           :rows="22"
           placeholder="# 用户档案&#10;&#10;## 基本信息&#10;- 职业：&#10;- 擅长：&#10;&#10;## 偏好&#10;- 回答风格："
         />
-      </section>
+      </el-card>
     </div>
   </div>
 </template>
@@ -114,7 +114,7 @@ defineEmits<{
 .heroName { margin-top:8px; font-size:24px; font-weight:900; }
 .heroMeta { margin-top:6px; font-size:13px; color:rgba(29,36,51,.64); }
 .grid { flex:1; min-height:0; display:grid; grid-template-columns:minmax(360px,.92fr) minmax(420px,1.08fr); gap:16px; }
-.panel { min-height:0; display:flex; flex-direction:column; background:rgba(255,255,255,.82); border:1px solid rgba(31,35,41,.08); border-radius:22px; padding:18px; backdrop-filter:blur(12px); }
+.panel { min-height:0; display:flex; flex-direction:column; background:rgba(255,255,255,.82); border-radius:22px; backdrop-filter:blur(12px); }
 .panelHeader { display:flex; justify-content:space-between; align-items:flex-start; gap:16px; margin-bottom:16px; }
 .panelTitle { font-size:18px; font-weight:900; }
 .panelSub { margin-top:4px; font-size:12px; color:rgba(29,36,51,.6); }

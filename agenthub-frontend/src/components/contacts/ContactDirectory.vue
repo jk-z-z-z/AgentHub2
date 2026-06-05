@@ -35,28 +35,40 @@
       <div v-else-if="visibleUsers.length === 0" class="stateBlock">
         <el-empty description="没有匹配的联系人" />
       </div>
-      <div v-else class="contactList">
-        <el-button
-          v-for="user in visibleUsers"
-          :key="user.id"
-          class="contactRow"
-          :class="{ active: selectedUser?.id === user.id, self: user.id === currentUserId }"
-          @click="$emit('select-user', user.id)"
-        >
-          <div class="avatar">{{ avatarText(user) }}</div>
-          <div class="contactMeta">
-            <div class="contactTop">
-              <div class="contactName">{{ displayName(user) }}</div>
-              <span v-if="user.id === currentUserId" class="tag">我</span>
+      <el-table
+        v-else
+        :data="visibleUsers"
+        class="contactList"
+        height="100%"
+        empty-text="没有匹配的联系人"
+        highlight-current-row
+        :row-class-name="tableRowClassName"
+        @row-click="handleRowClick"
+      >
+        <el-table-column label="" width="58">
+          <template #default="{ row }">
+            <div class="avatar">{{ avatarText(row) }}</div>
+          </template>
+        </el-table-column>
+        <el-table-column label="联系人" min-width="180">
+          <template #default="{ row }">
+            <div class="contactNameRow">
+              <div class="contactName">{{ displayName(row) }}</div>
+              <span v-if="row.id === currentUserId" class="tag">我</span>
             </div>
             <div class="contactBottom">
-              <span class="contactLine">{{ user.username }}</span>
+              <span class="contactLine">{{ row.username }}</span>
               <span class="dot">·</span>
-              <span class="contactLine">{{ user.role }}</span>
+              <span class="contactLine">{{ row.role }}</span>
             </div>
-          </div>
-        </el-button>
-      </div>
+          </template>
+        </el-table-column>
+        <el-table-column label="状态" width="100">
+          <template #default="{ row }">
+            <span class="contactLine">{{ row.status }}</span>
+          </template>
+        </el-table-column>
+      </el-table>
     </section>
 
     <section class="detailPanel">
@@ -170,7 +182,7 @@ import type { User } from '../../api/users'
 const searchKeywordModel = defineModel<string>('searchKeyword', { required: true })
 const detailOpenModel = defineModel<boolean>('detailOpen', { required: true })
 
-defineProps<{
+const props = defineProps<{
   loading: boolean
   listError: string
   visibleUsers: User[]
@@ -179,7 +191,7 @@ defineProps<{
   contacting: boolean
 }>()
 
-defineEmits<{
+const emit = defineEmits<{
   (e: 'load-contacts'): void
   (e: 'select-user', userId: string): void
   (e: 'contact-now'): void
@@ -192,6 +204,17 @@ function displayName(user: User) {
 function avatarText(user: User) {
   const label = displayName(user).trim()
   return (label || 'U').slice(0, 1).toUpperCase()
+}
+
+function handleRowClick(row: User) {
+  emit('select-user', row.id)
+}
+
+function tableRowClassName({ row }: { row: User }) {
+  const classes = []
+  if (props.selectedUser?.id === row.id) classes.push('active')
+  if (row.id === props.currentUserId) classes.push('self')
+  return classes.join(' ')
 }
 
 function formatDate(value: string) {
@@ -246,16 +269,15 @@ function formatDate(value: string) {
 .stateTitle { font-size:14px; font-weight:800; color:rgba(31,35,41,.9); }
 .stateText { font-size:13px; line-height:1.6; color:rgba(31,35,41,.58); word-break:break-all; }
 .stateAction { justify-self:start; }
-.contactList { display:grid; gap:8px; overflow:auto; padding-right:2px; }
-.contactRow { width:100%; border-radius:14px; background:rgba(255,255,255,.7); padding:0; display:flex; align-items:center; gap:12px; text-align:left; color:inherit; transition:background .14s ease, transform .14s ease, box-shadow .14s ease; }
-.contactRow:hover { background:rgba(79,140,255,.08); transform:translateY(-1px); }
-.contactRow.active { background:linear-gradient(135deg, rgba(79,140,255,.14), rgba(79,140,255,.06)); box-shadow:inset 0 0 0 1px rgba(79,140,255,.18); }
-.contactRow.self { opacity:.9; }
+.contactList { height: 100%; }
+.contactList :deep(.el-table__row) { cursor: pointer; }
+.contactList :deep(.el-table__row.self) { opacity: .9; }
+.contactList :deep(.el-table__row.active) { background: rgba(79,140,255,.12); }
 .avatar,.detailAvatar,.drawerAvatar { flex:0 0 auto; display:grid; place-items:center; border-radius:50%; background:linear-gradient(135deg,#4f8cff,#78a7ff); color:#fff; font-weight:900; }
 .avatar { width:40px; height:40px; font-size:15px; }
 .contactMeta { min-width:0; flex:1; }
-.contactTop,.contactBottom,.detailNameRow { display:flex; align-items:center; gap:8px; }
-.contactTop { justify-content:space-between; }
+.contactTop,.contactBottom,.detailNameRow,.contactNameRow { display:flex; align-items:center; gap:8px; }
+.contactNameRow { justify-content:space-between; }
 .contactName,.detailName { font-size:14px; font-weight:800; color:rgba(31,35,41,.94); overflow:hidden; text-overflow:ellipsis; white-space:nowrap; }
 .tag,.heroTag { flex:0 0 auto; height:20px; padding:0 8px; border-radius:999px; display:inline-flex; align-items:center; justify-content:center; font-size:11px; font-weight:800; background:rgba(31,35,41,.06); color:rgba(31,35,41,.62); }
 .contactBottom,.detailUser,.detailEmail { margin-top:4px; color:rgba(31,35,41,.56); font-size:12px; }

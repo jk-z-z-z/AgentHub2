@@ -135,24 +135,36 @@
   </div>
 
   <el-dialog v-model="mentionOpen" title="选择要@的智能体" width="420px">
-    <div class="mentionList">
-      <div v-for="m in agentMembers" :key="m.id" class="mentionItem" @click="toggleMention(m.id)">
-        <div class="mAvatar">
-          <el-icon>
-            <Monitor />
-          </el-icon>
-        </div>
-        <div class="mName">{{ m.display_name }}</div>
-        <div class="mCheck">
-          <el-icon v-if="selectedMentions.has(m.id)">
+    <el-table
+      :data="agentMembers"
+      class="mentionList"
+      height="320"
+      empty-text="该会话没有智能体成员"
+      :row-class-name="mentionRowClassName"
+      @row-click="handleMentionRowClick"
+    >
+      <el-table-column label="" width="58">
+        <template #default>
+          <div class="mAvatar">
+            <el-icon>
+              <Monitor />
+            </el-icon>
+          </div>
+        </template>
+      </el-table-column>
+      <el-table-column label="智能体" min-width="180">
+        <template #default="{ row }">
+          <div class="mName">{{ row.display_name }}</div>
+        </template>
+      </el-table-column>
+      <el-table-column label="" width="48" align="right">
+        <template #default="{ row }">
+          <el-icon v-if="selectedMentions.has(row.id)">
             <Select />
           </el-icon>
-        </div>
-      </div>
-      <div v-if="agentMembers.length === 0" style="opacity: 0.6; padding: 8px 2px">
-        该会话没有智能体成员
-      </div>
-    </div>
+        </template>
+      </el-table-column>
+    </el-table>
     <template #footer>
       <el-button @click="mentionOpen = false">关闭</el-button>
       <el-button type="primary" @click="mentionOpen = false">确定</el-button>
@@ -556,6 +568,14 @@ function toggleMention(memberId: string) {
   if (next.has(memberId)) next.delete(memberId)
   else next.add(memberId)
   selectedMentions.value = next
+}
+
+function handleMentionRowClick(row: Member) {
+  toggleMention(row.id)
+}
+
+function mentionRowClassName({ row }: { row: Member }) {
+  return selectedMentions.value.has(row.id) ? 'active' : ''
 }
 
 function onDraftKeydown(event: KeyboardEvent) {
@@ -1127,20 +1147,13 @@ async function createGroup() {
 }
 
 .mentionList {
-  display: grid;
-  gap: 8px;
+  width: 100%;
 }
-.mentionItem {
-  display: grid;
-  grid-template-columns: 36px 1fr 20px;
-  align-items: center;
-  gap: 10px;
-  padding: 10px 10px;
-  border-radius: 12px;
+.mentionList :deep(.el-table__row) {
   cursor: pointer;
 }
-.mentionItem:hover {
-  background: rgba(79, 140, 255, 0.06);
+.mentionList :deep(.el-table__row.active) {
+  background: rgba(79, 140, 255, 0.12);
 }
 .mAvatar {
   width: 36px;

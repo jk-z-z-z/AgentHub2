@@ -2,15 +2,13 @@
   <div class="shell">
     <aside class="centerNav">
       <div class="title">智能体中心</div>
-      <div class="navItem" :class="{ active: section === 'instances' }" @click="section = 'instances'">
-        智能体管理
-      </div>
-      <div class="navItem" :class="{ active: section === 'templates' }" @click="section = 'templates'">
-        模版管理
-      </div>
-      <div class="navItem" :class="{ active: section === 'tools' }" @click="section = 'tools'">工具（全局）</div>
-      <div class="navItem" :class="{ active: section === 'mcps' }" @click="section = 'mcps'">MCP（全局）</div>
-      <div class="navItem" :class="{ active: section === 'skills' }" @click="section = 'skills'">技能（全局）</div>
+      <el-menu class="navMenu" :default-active="section" @select="section = $event">
+        <el-menu-item index="instances">智能体管理</el-menu-item>
+        <el-menu-item index="templates">模版管理</el-menu-item>
+        <el-menu-item index="tools">工具（全局）</el-menu-item>
+        <el-menu-item index="mcps">MCP（全局）</el-menu-item>
+        <el-menu-item index="skills">技能（全局）</el-menu-item>
+      </el-menu>
     </aside>
 
     <main class="content">
@@ -22,16 +20,26 @@
           </div>
         </div>
         <div v-if="agentErr" class="err">{{ agentErr }}</div>
-        <div class="list">
-          <div v-for="a in agents" :key="a.id" class="row" @click="goAgent(String(a.id))">
-            <div class="left">
-              <div class="name">{{ a.display_name }}</div>
-              <div class="meta">#{{ a.id }} · {{ a.status }}</div>
-            </div>
-            <div class="right">编辑 ›</div>
-          </div>
-          <div v-if="!loadingAgents && agents.length === 0" class="empty">暂无智能体</div>
-        </div>
+        <el-table
+          :data="agents"
+          class="table"
+          height="100%"
+          empty-text="暂无智能体"
+          @row-click="handleAgentRowClick"
+        >
+          <el-table-column label="智能体" min-width="220">
+            <template #default="{ row }">
+              <div class="name">{{ row.display_name }}</div>
+              <div class="meta">#{{ row.id }}</div>
+            </template>
+          </el-table-column>
+          <el-table-column prop="status" label="状态" width="120" />
+          <el-table-column label="操作" width="90" align="right">
+            <template #default>
+              <span class="right">编辑 ›</span>
+            </template>
+          </el-table-column>
+        </el-table>
       </section>
 
       <section v-else-if="section === 'templates'" class="panel">
@@ -42,16 +50,26 @@
             <el-button type="primary" @click="createProfileOpen = true">新建模版</el-button>
           </div>
         </div>
-        <div class="list">
-          <div v-for="p in profiles" :key="p.id" class="row" @click="goProfile(String(p.id))">
-            <div class="left">
-              <div class="name">{{ p.name }}</div>
-              <div class="meta">{{ p.role }} · {{ p.model_name }}</div>
-            </div>
-            <div class="right">在详情页编辑</div>
-          </div>
-          <div v-if="!loadingProfiles && profiles.length === 0" class="empty">暂无模版</div>
-        </div>
+        <el-table
+          :data="profiles"
+          class="table"
+          height="100%"
+          empty-text="暂无模版"
+          @row-click="handleProfileRowClick"
+        >
+          <el-table-column label="模版" min-width="220">
+            <template #default="{ row }">
+              <div class="name">{{ row.name }}</div>
+              <div class="meta">{{ row.role }} · {{ row.model_name }}</div>
+            </template>
+          </el-table-column>
+          <el-table-column prop="role" label="角色" width="120" />
+          <el-table-column label="操作" width="120" align="right">
+            <template #default>
+              <span class="right">在详情页编辑</span>
+            </template>
+          </el-table-column>
+        </el-table>
       </section>
 
       <section v-else-if="section === 'tools'" class="panel">
@@ -71,7 +89,7 @@
         </div>
 
         <div v-if="toolView === 'grid'" class="skillsGrid">
-          <div v-for="t in filteredTools" :key="t.id" class="skillCard">
+          <el-card v-for="t in filteredTools" :key="t.id" class="skillCard" shadow="never">
             <div class="cardTop">
               <div class="docIcon">
                 <el-icon>
@@ -92,20 +110,24 @@
               <div class="kv"><span class="k">描述</span><span class="v">{{ t.description || '-' }}</span></div>
             </div>
             <div class="cardDesc">内置工具（不可由用户创建/编辑；由智能体决定是否启用）</div>
-          </div>
-          <div v-if="!loadingTools && filteredTools.length === 0" class="empty">暂无工具</div>
+          </el-card>
+          <el-empty v-if="!loadingTools && filteredTools.length === 0" description="暂无工具" />
         </div>
 
-        <div v-else class="list">
-          <div v-for="t in filteredTools" :key="t.id" class="row">
-            <div class="left">
-              <div class="name">{{ t.name }}</div>
-              <div class="meta">{{ t.code }} · {{ t.source_type }}</div>
-            </div>
-            <div class="right">内置</div>
-          </div>
-          <div v-if="!loadingTools && filteredTools.length === 0" class="empty">暂无工具</div>
-        </div>
+        <el-table v-else :data="filteredTools" class="table" height="100%" empty-text="暂无工具">
+          <el-table-column label="工具" min-width="220">
+            <template #default="{ row }">
+              <div class="name">{{ row.name }}</div>
+              <div class="meta">{{ row.code }}</div>
+            </template>
+          </el-table-column>
+          <el-table-column prop="source_type" label="来源" width="140" />
+          <el-table-column label="说明" min-width="240">
+            <template #default>
+              内置
+            </template>
+          </el-table-column>
+        </el-table>
       </section>
 
       <section v-else-if="section === 'mcps'" class="panel">
@@ -127,7 +149,7 @@
         </div>
 
         <div v-if="mcpView === 'grid'" class="skillsGrid">
-          <div v-for="m in filteredMcps" :key="m.id" class="skillCard clickable" @click="openMcp(m)">
+          <el-card v-for="m in filteredMcps" :key="m.id" class="skillCard clickable" shadow="never" @click="openMcp(m)">
             <div class="cardTop">
               <div class="docIcon">
                 <el-icon>
@@ -148,20 +170,35 @@
               <div class="kv"><span class="k">描述</span><span class="v">{{ m.description || '-' }}</span></div>
             </div>
             <div class="cardDesc">点击查看/编辑</div>
-          </div>
-          <div v-if="!loadingMcps && filteredMcps.length === 0" class="empty">暂无 MCP</div>
+          </el-card>
+          <el-empty v-if="!loadingMcps && filteredMcps.length === 0" description="暂无 MCP" />
         </div>
 
-        <div v-else class="list">
-          <div v-for="m in filteredMcps" :key="m.id" class="row" @click="openMcp(m)">
-            <div class="left">
-              <div class="name">{{ m.name }}</div>
-              <div class="meta">{{ m.server_code }}</div>
-            </div>
-            <div class="right">编辑</div>
-          </div>
-          <div v-if="!loadingMcps && filteredMcps.length === 0" class="empty">暂无 MCP</div>
-        </div>
+        <el-table
+          v-else
+          :data="filteredMcps"
+          class="table"
+          height="100%"
+          empty-text="暂无 MCP"
+          @row-click="openMcp"
+        >
+          <el-table-column label="MCP" min-width="220">
+            <template #default="{ row }">
+              <div class="name">{{ row.name }}</div>
+              <div class="meta">{{ row.server_code }}</div>
+            </template>
+          </el-table-column>
+          <el-table-column prop="is_active" label="启用" width="120">
+            <template #default="{ row }">
+              {{ row.is_active ? '已启用' : '未启用' }}
+            </template>
+          </el-table-column>
+          <el-table-column label="操作" width="90" align="right">
+            <template #default>
+              <span class="right">编辑</span>
+            </template>
+          </el-table-column>
+        </el-table>
       </section>
 
       <section v-else-if="section === 'skills'" class="panel">
@@ -185,7 +222,7 @@
 
         <div v-if="skillErr" class="err">{{ skillErr }}</div>
         <div v-if="skillView === 'grid'" class="skillsGrid">
-          <div v-for="s in filteredSkills" :key="s.code" class="skillCard">
+          <el-card v-for="s in filteredSkills" :key="s.code" class="skillCard" shadow="never">
             <div class="cardTop">
               <div class="docIcon">
                 <el-icon>
@@ -207,20 +244,24 @@
               <div class="kv"><span class="k">目录</span><span class="v">{{ s.dir }}</span></div>
             </div>
             <div class="cardDesc">在后端 Skill Pool 目录维护 `SKILL.md` 后，Agent 即可按配置加载。</div>
-          </div>
-          <div v-if="!loadingSkillPool && filteredSkills.length === 0" class="empty">暂无技能</div>
+          </el-card>
+          <el-empty v-if="!loadingSkillPool && filteredSkills.length === 0" description="暂无技能" />
         </div>
 
-        <div v-else class="list">
-          <div v-for="s in filteredSkills" :key="s.code" class="row">
-            <div class="left">
-              <div class="name">{{ s.code }}</div>
-              <div class="meta">{{ s.name }}</div>
-            </div>
-            <div class="right">目录技能</div>
-          </div>
-          <div v-if="!loadingSkillPool && filteredSkills.length === 0" class="empty">暂无技能</div>
-        </div>
+        <el-table v-else :data="filteredSkills" class="table" height="100%" empty-text="暂无技能">
+          <el-table-column label="技能" min-width="220">
+            <template #default="{ row }">
+              <div class="name">{{ row.code }}</div>
+              <div class="meta">{{ row.name }}</div>
+            </template>
+          </el-table-column>
+          <el-table-column prop="dir" label="目录" min-width="240" />
+          <el-table-column label="说明" width="100" align="right">
+            <template #default>
+              <span class="right">目录技能</span>
+            </template>
+          </el-table-column>
+        </el-table>
       </section>
 
       <section v-else class="panel">
@@ -591,6 +632,14 @@ function goProfile(id: string) {
   router.push(`/agent-profiles/${id}`)
 }
 
+function handleAgentRowClick(row: Agent) {
+  goAgent(String(row.id))
+}
+
+function handleProfileRowClick(row: AgentProfile) {
+  goProfile(String(row.id))
+}
+
 function openMcp(m: MCP) {
   activeMcp.value = m
   mcpErr.value = ''
@@ -676,22 +725,17 @@ onMounted(async () => {
   font-size: 18px;
   margin-bottom: 6px;
 }
-.navItem {
-  height: 44px;
-  border-radius: 14px;
-  display: flex;
-  align-items: center;
-  padding: 0 12px;
-  cursor: pointer;
-  font-weight: 800;
-  opacity: 0.85;
+.navMenu {
+  border-right: 0;
+  background: transparent;
 }
-.navItem:hover {
-  background: rgba(79, 140, 255, 0.06);
+.navMenu :deep(.el-menu-item) {
+  border-radius: 12px;
+  margin-bottom: 6px;
+  font-weight: 700;
 }
-.navItem.active {
+.navMenu :deep(.el-menu-item.is-active) {
   background: rgba(79, 140, 255, 0.12);
-  opacity: 1;
 }
 
 .content {
@@ -702,7 +746,6 @@ onMounted(async () => {
   height: 100%;
   background: rgba(255, 255, 255, 0.84);
   backdrop-filter: blur(10px);
-  border: 1px solid rgba(31, 35, 41, 0.08);
   border-radius: 18px;
   overflow: hidden;
   display: flex;
@@ -770,7 +813,7 @@ onMounted(async () => {
 }
 
 .skillsToolbar {
-  padding: 12px 16px;
+  padding: 12px 14px;
   display: grid;
   grid-template-columns: 1fr 180px 80px;
   gap: 10px;
@@ -808,9 +851,13 @@ onMounted(async () => {
   min-height: 0;
 }
 .skillCard {
-  border: 1px solid rgba(31, 35, 41, 0.08);
+  border: 1px solid rgba(31, 35, 41, 0.07);
   border-radius: 18px;
   background: rgba(255, 255, 255, 0.85);
+  padding: 0;
+  overflow: hidden;
+}
+.skillCard :deep(.el-card__body) {
   padding: 14px;
 }
 .skillCard.clickable {

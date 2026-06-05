@@ -1,24 +1,33 @@
 <template>
-  <section class="card">
-    <div class="secTitle">成员</div>
-    <div class="memberList">
-      <div v-for="m in members" :key="m.id" class="memberRow">
-        <div class="mLeft">
-          <div class="mName">{{ m.display_name }}</div>
-          <div class="mMeta">{{ m.kind }} · member#{{ m.id }}</div>
-        </div>
-        <div class="mRight">
-          <el-button size="small" type="danger" plain @click="$emit('remove-member', m)" :disabled="activeGroup?.type === 'personal'">
+  <el-card class="card" shadow="never">
+    <template #header>
+      <div class="secTitle">成员</div>
+    </template>
+    <el-table :data="members" size="small" table-layout="fixed" empty-text="暂无成员">
+      <el-table-column label="名称" min-width="150">
+        <template #default="{ row }">
+          <div class="mName">{{ row.display_name }}</div>
+          <div class="mMeta">{{ row.kind }} · member#{{ row.id }}</div>
+        </template>
+      </el-table-column>
+      <el-table-column label="操作" width="96" align="right">
+        <template #default="{ row }">
+          <el-button
+            size="small"
+            type="danger"
+            plain
+            @click="$emit('remove-member', row)"
+            :disabled="activeGroup?.type === 'personal'"
+          >
             移除
           </el-button>
-        </div>
-      </div>
-      <div v-if="members.length === 0" class="empty">暂无成员</div>
-    </div>
+        </template>
+      </el-table-column>
+    </el-table>
     <div class="note">
       说明：`personal` 会话固定 2 人，不支持成员变更；`project` 会话可增删成员。
     </div>
-  </section>
+  </el-card>
 </template>
 
 <script setup lang="ts">
@@ -36,27 +45,12 @@ defineEmits<{
 
 <style scoped>
 .card {
-  border: 1px solid rgba(31, 35, 41, 0.06);
   border-radius: 14px;
-  padding: 12px;
   margin-bottom: 12px;
   background: rgba(255, 255, 255, 0.7);
 }
 .secTitle {
   font-weight: 900;
-  margin-bottom: 10px;
-}
-.memberList {
-  display: grid;
-  gap: 8px;
-}
-.memberRow {
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  border: 1px solid rgba(31, 35, 41, 0.06);
-  border-radius: 12px;
-  padding: 10px;
 }
 .mName {
   font-weight: 900;
@@ -65,11 +59,6 @@ defineEmits<{
   font-size: 12px;
   opacity: 0.6;
   margin-top: 2px;
-}
-.empty {
-  padding: 6px 2px;
-  opacity: 0.6;
-  font-size: 13px;
 }
 .note {
   opacity: 0.65;

@@ -1,17 +1,17 @@
 <template>
-  <div class="chatBody">
-    <div v-if="loading" class="empty">加载中…</div>
-    <div v-else-if="!activeGroup" class="empty">从左侧选择会话</div>
+  <el-scrollbar class="chatBody">
+    <el-empty v-if="loading" description="加载中…" />
+    <el-empty v-else-if="!activeGroup" description="从左侧选择会话" />
     <template v-else>
-      <div v-if="messages.length === 0" class="empty">暂无消息</div>
+      <el-empty v-if="messages.length === 0" description="暂无消息" />
       <div v-for="m in messages" :key="m.id" class="msgRow" :class="sideClass(m)">
-        <div class="bubble">
+        <el-card class="bubble" shadow="never">
           <div class="msgMeta">{{ senderName(m.sender_member_id) }}</div>
           <div class="msgText">{{ m.content }}</div>
-        </div>
+        </el-card>
       </div>
     </template>
-  </div>
+  </el-scrollbar>
 </template>
 
 <script setup lang="ts">
@@ -48,32 +48,29 @@ function sideClass(message: Message) {
 .chatBody {
   flex: 1;
   min-height: 0;
-  overflow: auto;
   padding: 18px 18px 12px;
   display: flex;
   flex-direction: column;
   gap: 12px;
 }
-.empty {
-  margin: auto;
-  opacity: 0.6;
-}
 .msgRow {
   display: flex;
 }
-.msgRow{
+.msgRow.left {
   justify-content: flex-start;
 }
-.msgRow{
+.msgRow.right {
   justify-content: flex-end;
 }
 .bubble {
   max-width: 72%;
-  padding: 10px 12px;
   border-radius: 14px;
   background: #fff;
   border: 1px solid rgba(31, 35, 41, 0.06);
   line-height: 1.5;
+}
+.bubble :deep(.el-card__body) {
+  padding: 10px 12px;
 }
 .msgRow.right .bubble {
   background: rgba(79, 140, 255, 0.14);

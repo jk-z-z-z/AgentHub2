@@ -4,7 +4,11 @@
       <div v-if="canMentionAgents && selectedMentions.size > 0" class="mentionChips">
         <span v-for="id in Array.from(selectedMentions)" :key="id" class="chip">
           @{{ mentionNames[id] || id }}
-          <el-button class="chipX" text @click="$emit('remove-mention', id)">×</el-button>
+          <el-button class="chipX" text @click="$emit('remove-mention', id)" aria-label="移除@对象">
+            <el-icon>
+              <Close />
+            </el-icon>
+          </el-button>
         </span>
       </div>
       <el-input
@@ -51,7 +55,7 @@
 </template>
 
 <script setup lang="ts">
-import { ArrowUp, Monitor } from '@element-plus/icons-vue'
+import { ArrowUp, Close, Monitor } from '@element-plus/icons-vue'
 import type { Member } from '@/api/models.ts'
 
 defineProps<{
@@ -142,6 +146,7 @@ defineEmits<{
   font-weight: 900;
   padding: 0;
   min-width: 0;
+  height: 18px;
 }
 .mentionSuggest {
   position: absolute;

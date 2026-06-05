@@ -72,18 +72,19 @@
               <div class="toolPanel">
                 <div class="toolTitle">工具启用</div>
                 <div class="toolHint">工具为内置能力；智能体仅配置是否启用。</div>
-                <div class="toolList">
-                  <div v-for="t in tools" :key="t.id" class="toolRow">
-                    <div class="tLeft">
-                      <div class="tName">{{ t.name }}</div>
-                      <div class="tMeta">{{ t.code }} · {{ t.source_type }}</div>
-                    </div>
-                    <div class="tRight">
-                      <el-switch v-model="toolToggles[t.code]" />
-                    </div>
-                  </div>
-                  <div v-if="tools.length === 0" class="hint">暂无内置工具</div>
-                </div>
+                <el-table :data="tools" size="small" empty-text="暂无内置工具" class="toolList" height="240">
+                  <el-table-column label="工具" min-width="220">
+                    <template #default="{ row }">
+                      <div class="tName">{{ row.name }}</div>
+                      <div class="tMeta">{{ row.code }} · {{ row.source_type }}</div>
+                    </template>
+                  </el-table-column>
+                  <el-table-column label="启用" width="100" align="right">
+                    <template #default="{ row }">
+                      <el-switch v-model="toolToggles[row.code]" />
+                    </template>
+                  </el-table-column>
+                </el-table>
                 <div class="toolActions">
                   <el-button size="small" :loading="toolSaving" @click="saveToolToggles"
                     >保存工具开关</el-button
@@ -105,23 +106,22 @@
                     <el-switch v-model="skillConfig.enable_agent_local_skills" />
                   </div>
                 </div>
-                <div class="toolList">
-                  <div v-for="s in skillPool" :key="s.code" class="toolRow">
-                    <div class="tLeft">
-                      <div class="tName">{{ s.name || s.code }}</div>
-                      <div class="tMeta">{{ s.code }} · {{ s.description || '无描述' }}</div>
-                    </div>
-                    <div class="tRight">
+                <el-table :data="skillPool" size="small" empty-text="全局 Skill 池为空（请在后端 skill-pool 目录下放置 SKILL.md）" class="toolList" height="240">
+                  <el-table-column label="技能" min-width="220">
+                    <template #default="{ row }">
+                      <div class="tName">{{ row.name || row.code }}</div>
+                      <div class="tMeta">{{ row.code }} · {{ row.description || '无描述' }}</div>
+                    </template>
+                  </el-table-column>
+                  <el-table-column label="选择" width="100" align="right">
+                    <template #default="{ row }">
                       <el-checkbox
-                        :model-value="skillConfig.pool_skill_codes.includes(s.code)"
-                        @change="(v: boolean) => togglePoolSkill(s.code, v)"
+                        :model-value="skillConfig.pool_skill_codes.includes(row.code)"
+                        @change="(v: boolean) => togglePoolSkill(row.code, v)"
                       />
-                    </div>
-                  </div>
-                  <div v-if="skillPool.length === 0" class="hint">
-                    全局 Skill 池为空（请在后端 skill-pool 目录下放置 SKILL.md）
-                  </div>
-                </div>
+                    </template>
+                  </el-table-column>
+                </el-table>
                 <div class="toolActions">
                   <el-button size="small" :loading="skillSaving" @click="saveSkillConfig"
                     >保存技能配置</el-button
@@ -483,7 +483,6 @@ onMounted(async () => {
   height: 100%;
   background: rgba(255, 255, 255, 0.75);
   backdrop-filter: blur(12px);
-  border: 1px solid rgba(31, 35, 41, 0.08);
   border-radius: 18px;
   overflow: hidden;
   padding: 14px;
@@ -496,7 +495,7 @@ onMounted(async () => {
   min-height: 0;
 }
 .files {
-  border: 1px solid rgba(31, 35, 41, 0.08);
+  border: 1px solid rgba(31, 35, 41, 0.06);
   border-radius: 16px;
   overflow: auto;
   padding: 10px;
@@ -511,7 +510,7 @@ onMounted(async () => {
   gap: 4px;
 }
 .editor {
-  border: 1px solid rgba(31, 35, 41, 0.08);
+  border: 1px solid rgba(31, 35, 41, 0.06);
   border-radius: 16px;
   overflow: hidden;
   display: flex;
