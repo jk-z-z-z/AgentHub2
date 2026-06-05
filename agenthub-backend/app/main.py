@@ -6,17 +6,21 @@ from fastapi.middleware.cors import CORSMiddleware
 from app.api.auth import router as auth_router
 from app.api.agents import router as agents_router
 from app.api.agent_profiles import router as agent_profiles_router
+from app.api.deployments import router as deployments_router
+from app.api.executions import router as executions_router
 from app.api.groups import router as groups_router
 from app.api.mcps import router as mcps_router
 from app.api.members import router as members_router
 from app.api.messages import router as messages_router
 from app.api.tools import router as tools_router
 from app.api.users import router as users_router
+from app.api.workspaces import router as workspaces_router
 from app.api.ws_groups import router as ws_groups_router
 from app.api.ai import router as ai_router
 from app.api.project_code import router as project_code_router
 from app.api.group_tasks import router as group_tasks_router
 from app.api.acp_providers import router as acp_providers_router
+import app.models  # noqa: F401
 from app.core.config import settings
 from app.db.base import Base
 from app.db.session import SessionLocal, engine
@@ -27,7 +31,7 @@ from app.agent_runtime.tool._registry import ensure_builtin_tools_seeded
 
 @asynccontextmanager
 async def lifespan(_: FastAPI):
-    if settings.env.lower() in {"local", "dev"}:
+    if settings.reset_db_on_startup:
         Base.metadata.drop_all(bind=engine)
     Base.metadata.create_all(bind=engine)
 
@@ -71,6 +75,9 @@ app.include_router(members_router, prefix=settings.api_prefix)
 app.include_router(messages_router, prefix=settings.api_prefix)
 app.include_router(ai_router, prefix=settings.api_prefix)
 app.include_router(project_code_router, prefix=settings.api_prefix)
+app.include_router(workspaces_router, prefix=settings.api_prefix)
+app.include_router(executions_router, prefix=settings.api_prefix)
+app.include_router(deployments_router, prefix=settings.api_prefix)
 app.include_router(group_tasks_router, prefix=settings.api_prefix)
 app.include_router(acp_providers_router, prefix=settings.api_prefix)
 app.include_router(ws_groups_router)

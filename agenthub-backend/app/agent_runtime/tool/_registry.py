@@ -115,9 +115,60 @@ def builtin_tools() -> list[dict]:
         {
             "name": "Project Command Run",
             "code": "project_command_run",
-            "description": "Run a safe allowlisted build/type-check command under project shared/code",
+            "description": "Run a sandboxed command under the current project workspace",
             "source_type": "builtin",
-            "schema_json": json.dumps({"type": "object", "properties": {"command": {"type": "string"}}, "required": ["command"]}, ensure_ascii=False),
+            "schema_json": json.dumps(
+                {
+                    "type": "object",
+                    "properties": {
+                        "command": {"type": "string"},
+                        "cwd": {"type": "string"},
+                        "sandbox_image": {"type": "string"},
+                        "network_enabled": {"type": "boolean"},
+                        "env": {"type": "object", "additionalProperties": {"type": "string"}},
+                    },
+                    "required": ["command"],
+                },
+                ensure_ascii=False,
+            ),
+            "is_active": 1,
+        },
+        {
+            "name": "Project Deploy Run",
+            "code": "project_deploy_run",
+            "description": "Run the deployment pipeline for the current project workspace",
+            "source_type": "builtin",
+            "schema_json": json.dumps(
+                {
+                    "type": "object",
+                    "properties": {
+                        "image_ref": {"type": "string"},
+                        "container_name": {"type": "string"},
+                        "sandbox_image": {"type": "string"},
+                        "dockerfile_path": {"type": "string"},
+                        "build_context_path": {"type": "string"},
+                        "install_command": {"type": "string"},
+                        "test_command": {"type": "string"},
+                        "build_command": {"type": "string"},
+                        "container_command": {"type": "string"},
+                        "env": {"type": "object", "additionalProperties": {"type": "string"}},
+                        "ports": {
+                            "type": "array",
+                            "items": {
+                                "type": "object",
+                                "properties": {
+                                    "host_port": {"type": "integer"},
+                                    "container_port": {"type": "integer"},
+                                    "protocol": {"type": "string"},
+                                },
+                                "required": ["host_port", "container_port"],
+                            },
+                        },
+                    },
+                    "required": ["image_ref", "container_name"],
+                },
+                ensure_ascii=False,
+            ),
             "is_active": 1,
         },
     ]

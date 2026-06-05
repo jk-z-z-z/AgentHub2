@@ -14,6 +14,17 @@ def normalize_rel_path(rel_path: str) -> str:
     return rel
 
 
+def normalize_rel_dir(rel_path: str, *, allow_root: bool = False) -> str:
+    rel = (rel_path or "").strip().replace("\\", "/").lstrip("/")
+    if rel in {"", "."}:
+        if allow_root:
+            return "."
+        raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail="Invalid path")
+    if rel == ".." or "/.." in f"/{rel}":
+        raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail="Invalid path")
+    return rel.rstrip("/")
+
+
 def safe_resolve_under_root(root: Path, rel_path: str) -> Path:
     rel = normalize_rel_path(rel_path)
     full = (root / rel).resolve()

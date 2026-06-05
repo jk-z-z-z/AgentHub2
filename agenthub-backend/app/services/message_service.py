@@ -9,7 +9,12 @@ from app.models.group import Group
 from app.models.member import Member
 from app.models.message import Message
 from app.agent_runtime.message_store import create_message, dispatch_message_created_event
+from app.event_runtime.context import extract_agent_mentions
 from app.ws_runtime import WsEventType, ws_manager
+
+
+def _extract_agent_mentions(meta_json: str) -> list[int]:
+    return extract_agent_mentions(meta_json)
 
 
 def list_messages(db: Session, group_id: int, cursor: int | None = None, limit: int = 50) -> list[type[Message]]:

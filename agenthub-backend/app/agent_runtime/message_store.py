@@ -126,6 +126,9 @@ async def dispatch_message_event_for_message(
     content: str,
     meta_json: str,
 ) -> None:
+    from app.event_runtime.context import EventDispatchRequest
+    from app.event_runtime.dispatcher import dispatch_message_event_chain
+
     local_db = SessionLocal()
     try:
         from app.event_runtime.dispatcher import EventDispatchRequest, dispatch_message_event_chain

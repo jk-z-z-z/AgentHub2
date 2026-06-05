@@ -59,6 +59,7 @@ def get_or_create_bootstrap_group(db: Session, *, agent_instance: AgentInstance,
         db,
         name=f"bootstrap · {agent_instance.display_name}",
         description=f"bootstrap for agent_instance_id={int(agent_instance.id)}",
+        creator_user_id=int(creator_user_id),
         group_type="bootstrap",
     )
     creator_display = f"user:{creator_user_id}"

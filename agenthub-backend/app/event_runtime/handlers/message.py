@@ -11,7 +11,6 @@ from app.event_runtime.context import (
     EventDispatchRequest,
     build_reply_context,
     build_short_term_memory,
-    broadcast_reply_failed,
     extract_agent_mentions,
     get_or_create_manager_member,
     mark_failed_reply,
@@ -19,7 +18,10 @@ from app.event_runtime.context import (
 )
 from app.event_runtime.types import MessageEventType
 from app.agent_runtime.message_store import create_pending_ai_message
+<<<<<<< HEAD
 from app.manager_runtime.facade import invoke_manager
+=======
+>>>>>>> daac4a3 (feat:增加部署功能)
 from app.models.agent_instance import AgentInstance
 from app.models.group import Group
 from app.models.member import Member
@@ -129,6 +131,8 @@ async def handle_message_created(request: EventDispatchRequest, event: Any | Non
 
 
 async def handle_project_manager(request: EventDispatchRequest, event: Any | None = None) -> None:
+    from app.manager_runtime import invoke_manager
+
     _ = event
     group = request.db.query(Group).filter(Group.id == int(request.group_id)).first()
     sender = request.db.query(Member).filter(Member.id == int(request.sender_member_id)).first()
@@ -185,6 +189,8 @@ async def handle_project_mentions(request: EventDispatchRequest, event: Any | No
 
 
 async def handle_reply_finished(request: EventDispatchRequest, event: Any | None = None) -> None:
+    from app.manager_runtime import invoke_manager
+
     payload = getattr(event, "payload", None) if event is not None else None
     if not isinstance(payload, dict):
         return

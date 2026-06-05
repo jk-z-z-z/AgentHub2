@@ -143,8 +143,8 @@ def _build_tool_groups(tools: list[ToolBase]) -> list[ToolGroup]:
     add_group(
         "project",
         "Project shared code and commands.",
-        "Prefer project-scoped reads and safe allowlisted commands.",
-        ["project_code_list", "project_code_read", "project_command_run"],
+        "Prefer project-scoped reads, sandboxed commands, and the unified deployment pipeline.",
+        ["project_code_list", "project_code_read", "project_command_run", "project_deploy_run"],
     )
     add_group(
         "runtime",

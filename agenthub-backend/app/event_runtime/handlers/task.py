@@ -8,7 +8,10 @@ from app.common.project_prompt import build_project_system_prompt
 from app.event_runtime.context import EventDispatchRequest, build_short_term_memory
 from app.event_runtime.facade import create_message_event
 from app.event_runtime.types import MessageEventStatus, MessageEventType
+<<<<<<< HEAD
 from app.manager_runtime.facade import invoke_manager
+=======
+>>>>>>> daac4a3 (feat:增加部署功能)
 from app.models.agent_instance import AgentInstance
 from app.models.group_task_node import GroupTaskNode
 from app.models.member import Member
@@ -244,6 +247,8 @@ async def handle_task_claimed(request: EventDispatchRequest, event: Any | None =
 
 
 async def handle_task_completed(request: EventDispatchRequest, event: Any | None = None) -> None:
+    from app.manager_runtime import invoke_manager
+
     payload = _payload_as_dict(event)
     node_id = payload.get("node_id")
     member_id = payload.get("member_id")
@@ -324,6 +329,8 @@ async def handle_task_completed(request: EventDispatchRequest, event: Any | None
 
 
 async def handle_task_failed(request: EventDispatchRequest, event: Any | None = None) -> None:
+    from app.manager_runtime import invoke_manager
+
     payload = _payload_as_dict(event)
     node_id = payload.get("node_id")
     if node_id is None:

@@ -35,9 +35,15 @@ agenthub-backend/
 ## Quick Start
 
 ```bash
-cd /Users/youtao/Projects/AgentHub-agentscope/agenthub-backend
+cd agenthub-backend
 uv sync
 uv run uvicorn app.main:app --reload
+```
+
+If port `8000` is already in use, choose another port:
+
+```bash
+uv run uvicorn app.main:app --reload --port 8012
 ```
 
 > 开发模式下启动会直接重建 SQLite 表结构并重新种子化基础数据；如果你要保留本地数据，先切换到非 `local/dev` 环境。
@@ -59,7 +65,7 @@ Then you can call:
 Start backend first, then run:
 
 ```bash
-cd /Users/youtao/Projects/AgentHub-agentscope/agenthub-backend
+cd agenthub-backend
 uv run python scripts/seed_demo.py --base-url http://127.0.0.1:8000/api/v1
 ```
 

@@ -22,6 +22,8 @@ from .project_code_read import run as _project_code_read_run
 from .project_code_read import spec as _project_code_read_spec
 from .project_command_run import run as _project_command_run_run
 from .project_command_run import spec as _project_command_run_spec
+from .project_deploy_run import run as _project_deploy_run_run
+from .project_deploy_run import spec as _project_deploy_run_spec
 from .user_profile_write import run as _user_profile_write_run
 from .user_profile_write import spec as _user_profile_write_spec
 from .worker_file_list import run as _worker_file_list_run
@@ -49,4 +51,5 @@ BUILTIN_TOOL_DEFS: dict[str, BuiltinToolDef] = {
         spec=_agent_profile_upsert_section_spec(), handler=_agent_profile_upsert_section_run
     ),
     "project_command_run": BuiltinToolDef(spec=_project_command_run_spec(), handler=_project_command_run_run),
+    "project_deploy_run": BuiltinToolDef(spec=_project_deploy_run_spec(), handler=_project_deploy_run_run),
 }
