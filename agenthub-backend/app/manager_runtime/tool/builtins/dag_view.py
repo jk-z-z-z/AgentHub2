@@ -16,11 +16,11 @@ class DagViewTool(ToolBase):
     def __init__(self, *, db: Session) -> None:
         self._db = db
         self.name = "manager.dag_view"
-        self.description = "Inspect the DAG view for a group."
+        self.description = "Inspect the DAG view for a task run."
         self.input_schema = {
             "type": "object",
-            "properties": {"group_id": {"type": "integer"}},
-            "required": ["group_id"],
+            "properties": {"run_id": {"type": "integer"}},
+            "required": ["run_id"],
             "additionalProperties": True,
         }
 
@@ -28,7 +28,7 @@ class DagViewTool(ToolBase):
         return object()
 
     async def __call__(self, **kwargs) -> ToolChunk:
-        group_id = kwargs.get("group_id")
-        if group_id in (None, ""):
-            return build_error_chunk("group_id_required")
-        return build_tool_chunk(get_dag_view(self._db, group_id=int(group_id)))
+        run_id = kwargs.get("run_id")
+        if run_id in (None, ""):
+            return build_error_chunk("run_id_required")
+        return build_tool_chunk(get_dag_view(self._db, run_id=int(run_id)))

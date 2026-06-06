@@ -53,6 +53,14 @@ def _normalize_short_term_memory(short_term_memory: list[dict[str, Any]] | list[
     return normalized
 
 
+def _runtime_int(runtime_context: dict[str, Any], key: str) -> int | None:
+    value = runtime_context.get(key)
+    try:
+        return int(value) if value not in (None, "") else None
+    except (TypeError, ValueError):
+        return None
+
+
 async def invoke_agent(
     db: Session,
     *,
@@ -94,7 +102,11 @@ async def invoke_agent(
         except (TypeError, ValueError):
             trace_id = None
 
-    trace = AgentRuntimeTrace(db=db, message_id=int(trace_id) if trace_id else None)
+    trace = AgentRuntimeTrace(
+        db=db,
+        message_id=int(trace_id) if trace_id else None,
+        run_id=_runtime_int(runtime_context, "run_id"),
+    )
 
     built_agent = build_complete_agent(
         db,

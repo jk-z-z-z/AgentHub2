@@ -4,7 +4,7 @@ from agentscope.tool import ToolBase, ToolChunk
 from sqlalchemy.orm import Session
 
 from app.manager_runtime.tool.base import build_error_chunk, build_tool_chunk
-from app.services.group_task_service import list_nodes, patch_nodes
+from app.services.group_task_service import list_nodes, replace_run_nodes, resolve_run
 
 
 class DagApplyTool(ToolBase):
@@ -16,15 +16,14 @@ class DagApplyTool(ToolBase):
     def __init__(self, *, db: Session) -> None:
         self._db = db
         self.name = "manager.dag_apply"
-        self.description = "Apply a structured graph update to the DAG."
+        self.description = "Replace the DAG for a task run with a structured graph."
         self.input_schema = {
             "type": "object",
             "properties": {
-                "group_id": {"type": "integer"},
-                "actor_member_id": {"type": "integer"},
+                "run_id": {"type": "integer"},
                 "graph": {"type": "object"},
             },
-            "required": ["group_id", "actor_member_id", "graph"],
+            "required": ["run_id", "graph"],
             "additionalProperties": True,
         }
 
@@ -32,26 +31,20 @@ class DagApplyTool(ToolBase):
         return object()
 
     async def __call__(self, **kwargs) -> ToolChunk:
-        group_id = kwargs.get("group_id")
-        actor_member_id = kwargs.get("actor_member_id")
+        run_id = kwargs.get("run_id")
         graph = dict(kwargs.get("graph") or {})
-        if group_id in (None, ""):
-            return build_error_chunk("group_id_required")
-        if actor_member_id in (None, ""):
-            return build_error_chunk("actor_member_id_required")
+        if run_id in (None, ""):
+            return build_error_chunk("run_id_required")
         nodes = list(graph.get("nodes") or [])
-        current = list_nodes(self._db, group_id=int(group_id))
+        run = resolve_run(self._db, run_id=int(run_id))
+        current = list_nodes(self._db, run_id=int(run_id))
         action = "updated" if current else "created"
-        patch_nodes(
-            self._db,
-            group_id=int(group_id),
-            creator_member_id=int(actor_member_id),
-            nodes=nodes,
-        )
+        replace_run_nodes(self._db, run_id=int(run_id), nodes=nodes)
         return build_tool_chunk(
             {
                 "action": action,
-                "group_id": int(group_id),
+                "group_id": int(run.group_id),
+                "run_id": int(run.id),
                 "node_count": len(nodes),
             }
         )

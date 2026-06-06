@@ -57,17 +57,26 @@ def create_message_event(
     payload: dict | None = None,
     category: str | None = None,
     status: str = MessageEventStatus.PENDING,
+    run_id: int | None = None,
 ) -> MessageEvent:
     message = db.query(Message).filter(Message.id == int(message_id)).first()
     if not message:
         raise HTTPException(status_code=http_status.HTTP_404_NOT_FOUND, detail="Message not found")
+    event_payload = payload or {}
+    if run_id is None and isinstance(event_payload, dict):
+        maybe_run_id = event_payload.get("run_id")
+        try:
+            run_id = int(maybe_run_id) if maybe_run_id not in (None, "") else None
+        except (TypeError, ValueError):
+            run_id = None
     event = MessageEvent(
         message_id=int(message_id),
+        run_id=int(run_id) if run_id is not None else None,
         seq=_next_seq(db, message_id=int(message_id)),
         event_type=str(event_type),
         category=str(category or _infer_event_category(event_type)),
         status=str(status or MessageEventStatus.PENDING),
-        payload_json=json.dumps(payload or {}, ensure_ascii=False),
+        payload_json=json.dumps(event_payload, ensure_ascii=False),
     )
     db.add(event)
     db.commit()

@@ -18,10 +18,6 @@ from app.event_runtime.context import (
 )
 from app.event_runtime.types import MessageEventType
 from app.agent_runtime.message_store import create_pending_ai_message
-<<<<<<< HEAD
-from app.manager_runtime.facade import invoke_manager
-=======
->>>>>>> daac4a3 (feat:增加部署功能)
 from app.models.agent_instance import AgentInstance
 from app.models.group import Group
 from app.models.member import Member
@@ -188,6 +184,14 @@ async def handle_project_mentions(request: EventDispatchRequest, event: Any | No
     await asyncio.gather(*[_handle_single_project_agent(request, member_id) for member_id in mentioned_ids])
 
 
+def _has_task_runtime_context(payload: dict[str, Any]) -> bool:
+    for key in ("run_id", "node_id", "task_id"):
+        if payload.get(key) not in (None, ""):
+            return True
+    source_event_type = str(payload.get("source_event_type") or "")
+    return source_event_type.startswith(("task.", "node.exec."))
+
+
 async def handle_reply_finished(request: EventDispatchRequest, event: Any | None = None) -> None:
     from app.manager_runtime import invoke_manager
 
@@ -198,12 +202,16 @@ async def handle_reply_finished(request: EventDispatchRequest, event: Any | None
         return
     if str(payload.get("trigger") or "") != "mention":
         return
+    if not _has_task_runtime_context(payload):
+        return
     group = request.db.query(Group).filter(Group.id == int(request.group_id)).first()
     sender = request.db.query(Member).filter(Member.id == int(request.sender_member_id)).first()
     user_message = request.db.query(Message).filter(Message.id == int(request.message_id)).first()
     if not group or not sender or not user_message:
         return
     if str(group.type) != "project" or sender.kind != "agent":
+        return
+    if not project_manager_enabled(request.db, group_id=int(group.id)):
         return
     agent_member = sender
     agent = request.db.query(AgentInstance).filter(AgentInstance.id == int(agent_member.agent_instance_id)).first() if agent_member.agent_instance_id else None

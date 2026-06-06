@@ -23,6 +23,7 @@ from app.api.acp_providers import router as acp_providers_router
 import app.models  # noqa: F401
 from app.core.config import settings
 from app.db.base import Base
+from app.db.migrations import run_sqlite_task_schema_migrations
 from app.db.session import SessionLocal, engine
 from app.services.auth_service import ensure_default_admin
 from app.services.storage_init_service import ensure_user_space
@@ -34,6 +35,7 @@ async def lifespan(_: FastAPI):
     if settings.reset_db_on_startup:
         Base.metadata.drop_all(bind=engine)
     Base.metadata.create_all(bind=engine)
+    run_sqlite_task_schema_migrations(engine)
 
     if settings.env.lower() in {"local", "dev"}:
         db = SessionLocal()

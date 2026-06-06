@@ -72,6 +72,7 @@ def create_group_api(
     # The creator is always a member (both project & personal)
     creator_display = str(user.display_name or user.username or user.email)
     create_user_member(db, str(row.id), creator_display, str(user.id), None)
+    creator_user_id = str(user.id)
 
     if payload.type == "personal":
         # With creator included, personal group can only have 1 more member.
@@ -83,6 +84,8 @@ def create_group_api(
             )
 
     for u in payload.users:
+        if str(u.user_id) == creator_user_id:
+            continue
         create_user_member(db, str(row.id), u.display_name, str(u.user_id), u.title)
     for a in payload.agents:
         create_agent_member(db, str(row.id), a.display_name, str(a.agent_id), a.title)

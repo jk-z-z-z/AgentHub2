@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+import re
 from typing import Any
 
 from agentscope.skill import LocalSkillLoader
@@ -12,6 +13,11 @@ from app.manager_runtime.tool.base import build_error_chunk, extract_tool_result
 from app.manager_runtime.tool._registry import get_manager_tool_factories
 
 
+def _tool_api_name(code: str) -> str:
+    normalized = re.sub(r"[^a-zA-Z0-9_-]+", "_", str(code or "").strip())
+    return normalized.strip("_") or "manager_tool"
+
+
 def load_manager_tools(db: Session) -> dict[str, ToolBase]:
     tools: dict[str, ToolBase] = {}
     for code, factory in get_manager_tool_factories().items():
@@ -20,7 +26,10 @@ def load_manager_tools(db: Session) -> dict[str, ToolBase]:
 
 
 def _build_manager_tool_groups(tools: list[ToolBase]) -> list[ToolGroup]:
-    by_code = {str(getattr(tool, "name", "")).strip(): tool for tool in tools}
+    by_code = {
+        str(getattr(tool, "_code", getattr(tool, "name", ""))).strip(): tool
+        for tool in tools
+    }
     groups: list[ToolGroup] = []
 
     def add_group(name: str, description: str, instructions: str, codes: list[str]) -> None:
@@ -76,7 +85,7 @@ class _TracedManagerTool(ToolBase):
         tool: object,
         trace: Any | None = None,
     ) -> None:
-        self.name = str(code)
+        self.name = _tool_api_name(code)
         self._code = str(code)
         self._tool = tool
         self._trace = trace

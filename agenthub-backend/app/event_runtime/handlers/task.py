@@ -8,10 +8,6 @@ from app.common.project_prompt import build_project_system_prompt
 from app.event_runtime.context import EventDispatchRequest, build_short_term_memory
 from app.event_runtime.facade import create_message_event
 from app.event_runtime.types import MessageEventStatus, MessageEventType
-<<<<<<< HEAD
-from app.manager_runtime.facade import invoke_manager
-=======
->>>>>>> daac4a3 (feat:增加部署功能)
 from app.models.agent_instance import AgentInstance
 from app.models.group_task_node import GroupTaskNode
 from app.models.member import Member
@@ -63,6 +59,7 @@ def _build_review_prompt(
         "node_id": int(node.id),
         "node_key": str(node.node_key),
         "group_id": int(node.group_id),
+        "run_id": int(node.run_id),
         "member_id": int(member_id),
         "status": str(status),
         "output_summary": str(output_summary or ""),
@@ -156,6 +153,7 @@ async def execute_node_task(
         ),
         extra_context={
             "group_id": int(node.group_id),
+            "run_id": int(node.run_id),
             "node_id": int(node.id),
             "input_text": prompt,
         },
@@ -164,6 +162,7 @@ async def execute_node_task(
     )
     return {
         "node_id": int(node.id),
+        "run_id": int(node.run_id),
         "node_key": str(node.node_key),
         "status": "completed",
         "output_summary": str(result.text or "节点执行完成"),
@@ -191,12 +190,14 @@ async def handle_node_exec_started(request: EventDispatchRequest, event: Any | N
                 event_type=MessageEventType.Task.TASK_COMPLETED,
                 payload={
                     "node_id": int(node.id),
+                    "run_id": int(node.run_id),
                     "node_key": str(node.node_key),
                     "member_id": int(member_id),
                     "status": "completed",
                     "output_summary": str(result.get("output_summary") or ""),
                     "source_event_type": MessageEventType.Task.NODE_EXEC_STARTED,
                 },
+                run_id=int(node.run_id),
                 status=MessageEventStatus.PENDING,
             )
     except Exception as exc:
@@ -208,11 +209,13 @@ async def handle_node_exec_started(request: EventDispatchRequest, event: Any | N
                     event_type=MessageEventType.Task.TASK_FAILED,
                     payload={
                         "node_id": int(node_id),
+                        "run_id": int(node.run_id) if "node" in locals() and node else payload.get("run_id"),
                         "member_id": int(member_id),
                         "status": "failed",
                         "error": str(exc),
                         "source_event_type": MessageEventType.Task.NODE_EXEC_STARTED,
                     },
+                    run_id=int(node.run_id) if "node" in locals() and node else None,
                     status=MessageEventStatus.PENDING,
                 )
             except Exception:
@@ -285,6 +288,7 @@ async def handle_task_completed(request: EventDispatchRequest, event: Any | None
             "group_type": "project",
             "group_id": int(node.group_id),
             "project_id": int(node.group_id),
+            "run_id": int(node.run_id),
             "node_id": int(node.id),
             "node_key": str(node.node_key),
             "member_id": int(member_id),
@@ -318,12 +322,14 @@ async def handle_task_completed(request: EventDispatchRequest, event: Any | None
         event_type=MessageEventType.Task.TASK_REVIEWED,
         payload={
             "node_id": int(node.id),
+            "run_id": int(node.run_id),
             "node_key": str(node.node_key),
             "member_id": int(member_id),
             "review_status": review_status,
             "source_event_type": source_event_type,
             "review_text": str(getattr(result, "text", "") or ""),
         },
+        run_id=int(node.run_id),
         status=MessageEventStatus.PENDING,
     )
 
@@ -366,6 +372,7 @@ async def handle_task_failed(request: EventDispatchRequest, event: Any | None = 
             "group_type": "project",
             "group_id": int(node.group_id),
             "project_id": int(node.group_id),
+            "run_id": int(node.run_id),
             "node_id": int(node.id),
             "node_key": str(node.node_key),
             "member_id": int(payload.get("member_id") or 0),
@@ -399,12 +406,14 @@ async def handle_task_failed(request: EventDispatchRequest, event: Any | None = 
         event_type=MessageEventType.Task.TASK_REVIEWED,
         payload={
             "node_id": int(node.id),
+            "run_id": int(node.run_id),
             "node_key": str(node.node_key),
             "member_id": int(payload.get("member_id") or 0),
             "review_status": review_status,
             "source_event_type": source_event_type,
             "review_text": str(getattr(result, "text", "") or ""),
         },
+        run_id=int(node.run_id),
         status=MessageEventStatus.PENDING,
     )
 

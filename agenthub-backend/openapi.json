@@ -1212,6 +1212,100 @@
         ]
       }
     },
+    "/api/v1/agents/{agent_id}/bootstrap-group": {
+      "get": {
+        "tags": [
+          "agents"
+        ],
+        "summary": "Get Agent Bootstrap Group Api",
+        "operationId": "get_agent_bootstrap_group_api_api_v1_agents__agent_id__bootstrap_group_get",
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ],
+        "parameters": [
+          {
+            "name": "agent_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "integer",
+              "title": "Agent Id"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiResponse_Union_GroupOut__NoneType__"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/agents/{agent_id}/bootstrap/start": {
+      "post": {
+        "tags": [
+          "agents"
+        ],
+        "summary": "Start Agent Bootstrap Api",
+        "operationId": "start_agent_bootstrap_api_api_v1_agents__agent_id__bootstrap_start_post",
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ],
+        "parameters": [
+          {
+            "name": "agent_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "integer",
+              "title": "Agent Id"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiResponse_bool_"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
     "/api/v1/agents/{agent_id}/soul": {
       "get": {
         "tags": [
@@ -2047,6 +2141,48 @@
         }
       }
     },
+    "/api/v1/messages/{message_id}/events": {
+      "get": {
+        "tags": [
+          "messages"
+        ],
+        "summary": "List Message Events Api",
+        "operationId": "list_message_events_api_api_v1_messages__message_id__events_get",
+        "parameters": [
+          {
+            "name": "message_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "integer",
+              "title": "Message Id"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiResponse_list_MessageEventOut__"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
     "/api/v1/ai/chat": {
       "post": {
         "tags": [
@@ -2191,13 +2327,350 @@
         }
       }
     },
+    "/api/v1/workspaces/{workspace_id}": {
+      "get": {
+        "tags": [
+          "workspaces"
+        ],
+        "summary": "Get Workspace Api",
+        "operationId": "get_workspace_api_api_v1_workspaces__workspace_id__get",
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ],
+        "parameters": [
+          {
+            "name": "workspace_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "integer",
+              "title": "Workspace Id"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiResponse_WorkspaceOut_"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/workspaces/{workspace_id}/snapshots": {
+      "post": {
+        "tags": [
+          "workspaces"
+        ],
+        "summary": "Create Workspace Snapshot Api",
+        "operationId": "create_workspace_snapshot_api_api_v1_workspaces__workspace_id__snapshots_post",
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ],
+        "parameters": [
+          {
+            "name": "workspace_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "integer",
+              "title": "Workspace Id"
+            }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/WorkspaceSnapshotCreateRequest"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiResponse_WorkspaceSnapshotOut_"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/executions": {
+      "post": {
+        "tags": [
+          "executions"
+        ],
+        "summary": "Create Execution Api",
+        "operationId": "create_execution_api_api_v1_executions_post",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/ExecutionRequest"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiResponse_ExecutionJobOut_"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        },
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ]
+      }
+    },
+    "/api/v1/executions/{execution_id}": {
+      "get": {
+        "tags": [
+          "executions"
+        ],
+        "summary": "Get Execution Api",
+        "operationId": "get_execution_api_api_v1_executions__execution_id__get",
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ],
+        "parameters": [
+          {
+            "name": "execution_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "integer",
+              "title": "Execution Id"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiResponse_ExecutionJobOut_"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/deployments": {
+      "post": {
+        "tags": [
+          "deployments"
+        ],
+        "summary": "Create Deployment Api",
+        "operationId": "create_deployment_api_api_v1_deployments_post",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/DeploymentRequest"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiResponse_DeploymentJobOut_"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        },
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ]
+      }
+    },
+    "/api/v1/deployments/{deployment_id}": {
+      "get": {
+        "tags": [
+          "deployments"
+        ],
+        "summary": "Get Deployment Api",
+        "operationId": "get_deployment_api_api_v1_deployments__deployment_id__get",
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ],
+        "parameters": [
+          {
+            "name": "deployment_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "integer",
+              "title": "Deployment Id"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiResponse_DeploymentJobOut_"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/deployments/{deployment_id}/retry": {
+      "post": {
+        "tags": [
+          "deployments"
+        ],
+        "summary": "Retry Deployment Api",
+        "operationId": "retry_deployment_api_api_v1_deployments__deployment_id__retry_post",
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ],
+        "parameters": [
+          {
+            "name": "deployment_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "integer",
+              "title": "Deployment Id"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiResponse_DeploymentJobOut_"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
     "/api/v1/group-tasks/groups/{group_id}/assistant": {
       "get": {
         "tags": [
           "group-tasks"
         ],
-        "summary": "Get Group Assistant Api",
-        "operationId": "get_group_assistant_api_api_v1_group_tasks_groups__group_id__assistant_get",
+        "summary": "Get Group Assistant Config Api",
+        "operationId": "get_group_assistant_config_api_api_v1_group_tasks_groups__group_id__assistant_get",
         "security": [
           {
             "HTTPBearer": []
@@ -2241,8 +2714,8 @@
         "tags": [
           "group-tasks"
         ],
-        "summary": "Update Group Assistant Api",
-        "operationId": "update_group_assistant_api_api_v1_group_tasks_groups__group_id__assistant_put",
+        "summary": "Update Group Assistant Config Api",
+        "operationId": "update_group_assistant_config_api_api_v1_group_tasks_groups__group_id__assistant_put",
         "security": [
           {
             "HTTPBearer": []
@@ -2438,8 +2911,8 @@
         "tags": [
           "group-tasks"
         ],
-        "summary": "List Group Task Nodes Api",
-        "operationId": "list_group_task_nodes_api_api_v1_group_tasks_runs__run_id__nodes_get",
+        "summary": "List Group Task Run Nodes Api",
+        "operationId": "list_group_task_run_nodes_api_api_v1_group_tasks_runs__run_id__nodes_get",
         "security": [
           {
             "HTTPBearer": []
@@ -2485,8 +2958,8 @@
         "tags": [
           "group-tasks"
         ],
-        "summary": "List Group Task Events Api",
-        "operationId": "list_group_task_events_api_api_v1_group_tasks_runs__run_id__events_get",
+        "summary": "List Group Task Run Events Api",
+        "operationId": "list_group_task_run_events_api_api_v1_group_tasks_runs__run_id__events_get",
         "security": [
           {
             "HTTPBearer": []
@@ -2527,13 +3000,60 @@
         }
       }
     },
+    "/api/v1/group-tasks/runs/{run_id}/graph": {
+      "get": {
+        "tags": [
+          "group-tasks"
+        ],
+        "summary": "Get Group Task Run Graph Api",
+        "operationId": "get_group_task_run_graph_api_api_v1_group_tasks_runs__run_id__graph_get",
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ],
+        "parameters": [
+          {
+            "name": "run_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "integer",
+              "title": "Run Id"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiResponse_GroupTaskGraphOut_"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
     "/api/v1/group-tasks/runs/{run_id}/dag": {
       "put": {
         "tags": [
           "group-tasks"
         ],
-        "summary": "Update Group Task Dag Api",
-        "operationId": "update_group_task_dag_api_api_v1_group_tasks_runs__run_id__dag_put",
+        "summary": "Update Group Task Run Dag Api",
+        "operationId": "update_group_task_run_dag_api_api_v1_group_tasks_runs__run_id__dag_put",
         "security": [
           {
             "HTTPBearer": []
@@ -2584,6 +3104,138 @@
         }
       }
     },
+    "/api/v1/group-tasks/runs/{run_id}/branches/{role_required}/block": {
+      "post": {
+        "tags": [
+          "group-tasks"
+        ],
+        "summary": "Block Group Task Role Branch Api",
+        "operationId": "block_group_task_role_branch_api_api_v1_group_tasks_runs__run_id__branches__role_required__block_post",
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ],
+        "parameters": [
+          {
+            "name": "run_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "integer",
+              "title": "Run Id"
+            }
+          },
+          {
+            "name": "role_required",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "title": "Role Required"
+            }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/GroupTaskNodeBlockRequest"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiResponse_int_"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/group-tasks/runs/{run_id}/branches/{role_required}/unblock": {
+      "post": {
+        "tags": [
+          "group-tasks"
+        ],
+        "summary": "Unblock Group Task Role Branch Api",
+        "operationId": "unblock_group_task_role_branch_api_api_v1_group_tasks_runs__run_id__branches__role_required__unblock_post",
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ],
+        "parameters": [
+          {
+            "name": "run_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "integer",
+              "title": "Run Id"
+            }
+          },
+          {
+            "name": "role_required",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "title": "Role Required"
+            }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/GroupTaskNodeBlockRequest"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiResponse_int_"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
     "/api/v1/group-tasks/nodes/{node_id}/claim": {
       "post": {
         "tags": [
@@ -2612,7 +3264,7 @@
           "content": {
             "application/json": {
               "schema": {
-                "$ref": "#/components/schemas/GroupTaskClaimRequest"
+                "$ref": "#/components/schemas/GroupTaskNodeMemberRequest"
               }
             }
           }
@@ -2755,13 +3407,13 @@
         }
       }
     },
-    "/api/v1/group-tasks/runs/{run_id}/branches/{role_required}/block": {
+    "/api/v1/group-tasks/nodes/{node_id}/assign-agent": {
       "post": {
         "tags": [
           "group-tasks"
         ],
-        "summary": "Block Role Branch Api",
-        "operationId": "block_role_branch_api_api_v1_group_tasks_runs__run_id__branches__role_required__block_post",
+        "summary": "Assign Group Task Node To Agent Api",
+        "operationId": "assign_group_task_node_to_agent_api_api_v1_group_tasks_nodes__node_id__assign_agent_post",
         "security": [
           {
             "HTTPBearer": []
@@ -2769,21 +3421,12 @@
         ],
         "parameters": [
           {
-            "name": "run_id",
+            "name": "node_id",
             "in": "path",
             "required": true,
             "schema": {
               "type": "integer",
-              "title": "Run Id"
-            }
-          },
-          {
-            "name": "role_required",
-            "in": "path",
-            "required": true,
-            "schema": {
-              "type": "string",
-              "title": "Role Required"
+              "title": "Node Id"
             }
           }
         ],
@@ -2792,7 +3435,7 @@
           "content": {
             "application/json": {
               "schema": {
-                "$ref": "#/components/schemas/GroupTaskNodeBlockRequest"
+                "$ref": "#/components/schemas/GroupTaskNodeMemberRequest"
               }
             }
           }
@@ -2803,7 +3446,7 @@
             "content": {
               "application/json": {
                 "schema": {
-                  "$ref": "#/components/schemas/ApiResponse_int_"
+                  "$ref": "#/components/schemas/ApiResponse_GroupTaskNodeOut_"
                 }
               }
             }
@@ -2821,13 +3464,13 @@
         }
       }
     },
-    "/api/v1/group-tasks/runs/{run_id}/branches/{role_required}/unblock": {
+    "/api/v1/group-tasks/nodes/{node_id}/execute": {
       "post": {
         "tags": [
           "group-tasks"
         ],
-        "summary": "Unblock Role Branch Api",
-        "operationId": "unblock_role_branch_api_api_v1_group_tasks_runs__run_id__branches__role_required__unblock_post",
+        "summary": "Execute Group Task Node Api",
+        "operationId": "execute_group_task_node_api_api_v1_group_tasks_nodes__node_id__execute_post",
         "security": [
           {
             "HTTPBearer": []
@@ -2835,21 +3478,12 @@
         ],
         "parameters": [
           {
-            "name": "run_id",
+            "name": "node_id",
             "in": "path",
             "required": true,
             "schema": {
               "type": "integer",
-              "title": "Run Id"
-            }
-          },
-          {
-            "name": "role_required",
-            "in": "path",
-            "required": true,
-            "schema": {
-              "type": "string",
-              "title": "Role Required"
+              "title": "Node Id"
             }
           }
         ],
@@ -2858,7 +3492,7 @@
           "content": {
             "application/json": {
               "schema": {
-                "$ref": "#/components/schemas/GroupTaskNodeBlockRequest"
+                "$ref": "#/components/schemas/GroupTaskNodeMemberRequest"
               }
             }
           }
@@ -2869,7 +3503,92 @@
             "content": {
               "application/json": {
                 "schema": {
-                  "$ref": "#/components/schemas/ApiResponse_int_"
+                  "$ref": "#/components/schemas/ApiResponse_GroupTaskNodeOut_"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/acp-providers": {
+      "get": {
+        "tags": [
+          "acp_providers"
+        ],
+        "summary": "List Acp Providers Api",
+        "operationId": "list_acp_providers_api_api_v1_acp_providers_get",
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiResponse_list_ACPProviderOut__"
+                }
+              }
+            }
+          }
+        },
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ]
+      }
+    },
+    "/api/v1/acp-providers/{provider_type}/active": {
+      "put": {
+        "tags": [
+          "acp_providers"
+        ],
+        "summary": "Set Acp Provider Active Api",
+        "operationId": "set_acp_provider_active_api_api_v1_acp_providers__provider_type__active_put",
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ],
+        "parameters": [
+          {
+            "name": "provider_type",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "title": "Provider Type"
+            }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "additionalProperties": true,
+                "title": "Payload"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiResponse_ACPProviderOut_"
                 }
               }
             }
@@ -2890,6 +3609,73 @@
   },
   "components": {
     "schemas": {
+      "ACPProviderOut": {
+        "properties": {
+          "id": {
+            "type": "integer",
+            "title": "Id"
+          },
+          "name": {
+            "type": "string",
+            "title": "Name"
+          },
+          "provider_type": {
+            "type": "string",
+            "title": "Provider Type"
+          },
+          "transport_type": {
+            "type": "string",
+            "title": "Transport Type"
+          },
+          "endpoint": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Endpoint"
+          },
+          "capability_json": {
+            "type": "string",
+            "title": "Capability Json"
+          },
+          "auth_config_json": {
+            "type": "string",
+            "title": "Auth Config Json"
+          },
+          "is_active": {
+            "type": "integer",
+            "title": "Is Active"
+          },
+          "created_at": {
+            "type": "string",
+            "format": "date-time",
+            "title": "Created At"
+          },
+          "updated_at": {
+            "type": "string",
+            "format": "date-time",
+            "title": "Updated At"
+          }
+        },
+        "type": "object",
+        "required": [
+          "id",
+          "name",
+          "provider_type",
+          "transport_type",
+          "endpoint",
+          "capability_json",
+          "auth_config_json",
+          "is_active",
+          "created_at",
+          "updated_at"
+        ],
+        "title": "ACPProviderOut"
+      },
       "AIChatRequest": {
         "properties": {
           "message": {
@@ -2994,6 +3780,19 @@
             ],
             "title": "Api Key Ref"
           },
+          "engine_type": {
+            "type": "string",
+            "maxLength": 40,
+            "minLength": 1,
+            "title": "Engine Type",
+            "default": "internal_llm"
+          },
+          "engine_config_json": {
+            "type": "string",
+            "maxLength": 200000,
+            "title": "Engine Config Json",
+            "default": "{}"
+          },
           "status": {
             "type": "string",
             "maxLength": 30,
@@ -3081,6 +3880,14 @@
             ],
             "title": "Api Key Ref"
           },
+          "engine_type": {
+            "type": "string",
+            "title": "Engine Type"
+          },
+          "engine_config_json": {
+            "type": "string",
+            "title": "Engine Config Json"
+          },
           "status": {
             "type": "string",
             "title": "Status"
@@ -3104,6 +3911,8 @@
           "description",
           "base_url",
           "api_key_ref",
+          "engine_type",
+          "engine_config_json",
           "status",
           "created_at",
           "updated_at"
@@ -3190,11 +3999,6 @@
             "minLength": 1,
             "title": "Soul Md"
           },
-          "agents_md": {
-            "type": "string",
-            "title": "Agents Md",
-            "default": ""
-          },
           "profile_md": {
             "type": "string",
             "title": "Profile Md",
@@ -3205,14 +4009,14 @@
             "title": "Bootstrap Md",
             "default": ""
           },
-          "memory_md": {
+          "tools_json": {
             "type": "string",
-            "title": "Memory Md",
+            "title": "Tools Json",
             "default": ""
           },
-          "heartbeat_md": {
+          "skills_json": {
             "type": "string",
-            "title": "Heartbeat Md",
+            "title": "Skills Json",
             "default": ""
           },
           "enabled_files_json": {
@@ -3301,10 +4105,6 @@
             "type": "string",
             "title": "Soul Md"
           },
-          "agents_md": {
-            "type": "string",
-            "title": "Agents Md"
-          },
           "profile_md": {
             "type": "string",
             "title": "Profile Md"
@@ -3313,13 +4113,13 @@
             "type": "string",
             "title": "Bootstrap Md"
           },
-          "memory_md": {
+          "tools_json": {
             "type": "string",
-            "title": "Memory Md"
+            "title": "Tools Json"
           },
-          "heartbeat_md": {
+          "skills_json": {
             "type": "string",
-            "title": "Heartbeat Md"
+            "title": "Skills Json"
           },
           "enabled_files_json": {
             "type": "string",
@@ -3371,11 +4171,10 @@
           "role",
           "description",
           "soul_md",
-          "agents_md",
           "profile_md",
           "bootstrap_md",
-          "memory_md",
-          "heartbeat_md",
+          "tools_json",
+          "skills_json",
           "enabled_files_json",
           "model_name",
           "temperature",
@@ -3454,6 +4253,28 @@
         },
         "type": "object",
         "title": "AgentToolTogglesUpdateRequest"
+      },
+      "ApiResponse_ACPProviderOut_": {
+        "properties": {
+          "code": {
+            "type": "integer",
+            "title": "Code",
+            "default": 0
+          },
+          "message": {
+            "type": "string",
+            "title": "Message",
+            "default": "ok"
+          },
+          "data": {
+            "$ref": "#/components/schemas/ACPProviderOut"
+          }
+        },
+        "type": "object",
+        "required": [
+          "data"
+        ],
+        "title": "ApiResponse[ACPProviderOut]"
       },
       "ApiResponse_AIChatResponse_": {
         "properties": {
@@ -3587,6 +4408,50 @@
         ],
         "title": "ApiResponse[AgentToolTogglesOut]"
       },
+      "ApiResponse_DeploymentJobOut_": {
+        "properties": {
+          "code": {
+            "type": "integer",
+            "title": "Code",
+            "default": 0
+          },
+          "message": {
+            "type": "string",
+            "title": "Message",
+            "default": "ok"
+          },
+          "data": {
+            "$ref": "#/components/schemas/DeploymentJobOut"
+          }
+        },
+        "type": "object",
+        "required": [
+          "data"
+        ],
+        "title": "ApiResponse[DeploymentJobOut]"
+      },
+      "ApiResponse_ExecutionJobOut_": {
+        "properties": {
+          "code": {
+            "type": "integer",
+            "title": "Code",
+            "default": 0
+          },
+          "message": {
+            "type": "string",
+            "title": "Message",
+            "default": "ok"
+          },
+          "data": {
+            "$ref": "#/components/schemas/ExecutionJobOut"
+          }
+        },
+        "type": "object",
+        "required": [
+          "data"
+        ],
+        "title": "ApiResponse[ExecutionJobOut]"
+      },
       "ApiResponse_GroupAssistantConfigOut_": {
         "properties": {
           "code": {
@@ -3630,6 +4495,28 @@
           "data"
         ],
         "title": "ApiResponse[GroupOut]"
+      },
+      "ApiResponse_GroupTaskGraphOut_": {
+        "properties": {
+          "code": {
+            "type": "integer",
+            "title": "Code",
+            "default": 0
+          },
+          "message": {
+            "type": "string",
+            "title": "Message",
+            "default": "ok"
+          },
+          "data": {
+            "$ref": "#/components/schemas/GroupTaskGraphOut"
+          }
+        },
+        "type": "object",
+        "required": [
+          "data"
+        ],
+        "title": "ApiResponse[GroupTaskGraphOut]"
       },
       "ApiResponse_GroupTaskNodeOut_": {
         "properties": {
@@ -3851,6 +4738,35 @@
         ],
         "title": "ApiResponse[TextFileOut]"
       },
+      "ApiResponse_Union_GroupOut__NoneType__": {
+        "properties": {
+          "code": {
+            "type": "integer",
+            "title": "Code",
+            "default": 0
+          },
+          "message": {
+            "type": "string",
+            "title": "Message",
+            "default": "ok"
+          },
+          "data": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/GroupOut"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          }
+        },
+        "type": "object",
+        "required": [
+          "data"
+        ],
+        "title": "ApiResponse[Union[GroupOut, NoneType]]"
+      },
       "ApiResponse_UserOut_": {
         "properties": {
           "code": {
@@ -3939,6 +4855,50 @@
         ],
         "title": "ApiResponse[WorkspaceFileTogglesOut]"
       },
+      "ApiResponse_WorkspaceOut_": {
+        "properties": {
+          "code": {
+            "type": "integer",
+            "title": "Code",
+            "default": 0
+          },
+          "message": {
+            "type": "string",
+            "title": "Message",
+            "default": "ok"
+          },
+          "data": {
+            "$ref": "#/components/schemas/WorkspaceOut"
+          }
+        },
+        "type": "object",
+        "required": [
+          "data"
+        ],
+        "title": "ApiResponse[WorkspaceOut]"
+      },
+      "ApiResponse_WorkspaceSnapshotOut_": {
+        "properties": {
+          "code": {
+            "type": "integer",
+            "title": "Code",
+            "default": 0
+          },
+          "message": {
+            "type": "string",
+            "title": "Message",
+            "default": "ok"
+          },
+          "data": {
+            "$ref": "#/components/schemas/WorkspaceSnapshotOut"
+          }
+        },
+        "type": "object",
+        "required": [
+          "data"
+        ],
+        "title": "ApiResponse[WorkspaceSnapshotOut]"
+      },
       "ApiResponse_bool_": {
         "properties": {
           "code": {
@@ -3984,6 +4944,32 @@
           "data"
         ],
         "title": "ApiResponse[int]"
+      },
+      "ApiResponse_list_ACPProviderOut__": {
+        "properties": {
+          "code": {
+            "type": "integer",
+            "title": "Code",
+            "default": 0
+          },
+          "message": {
+            "type": "string",
+            "title": "Message",
+            "default": "ok"
+          },
+          "data": {
+            "items": {
+              "$ref": "#/components/schemas/ACPProviderOut"
+            },
+            "type": "array",
+            "title": "Data"
+          }
+        },
+        "type": "object",
+        "required": [
+          "data"
+        ],
+        "title": "ApiResponse[list[ACPProviderOut]]"
       },
       "ApiResponse_list_AgentInstanceOut__": {
         "properties": {
@@ -4219,6 +5205,32 @@
         ],
         "title": "ApiResponse[list[MemberOut]]"
       },
+      "ApiResponse_list_MessageEventOut__": {
+        "properties": {
+          "code": {
+            "type": "integer",
+            "title": "Code",
+            "default": 0
+          },
+          "message": {
+            "type": "string",
+            "title": "Message",
+            "default": "ok"
+          },
+          "data": {
+            "items": {
+              "$ref": "#/components/schemas/MessageEventOut"
+            },
+            "type": "array",
+            "title": "Data"
+          }
+        },
+        "type": "object",
+        "required": [
+          "data"
+        ],
+        "title": "ApiResponse[list[MessageEventOut]]"
+      },
       "ApiResponse_list_MessageOut__": {
         "properties": {
           "code": {
@@ -4349,6 +5361,525 @@
         ],
         "title": "ApiResponse[list[str]]"
       },
+      "DeploymentJobOut": {
+        "properties": {
+          "id": {
+            "type": "integer",
+            "title": "Id"
+          },
+          "workspace_id": {
+            "type": "integer",
+            "title": "Workspace Id"
+          },
+          "project_id": {
+            "type": "integer",
+            "title": "Project Id"
+          },
+          "sandbox_run_id": {
+            "anyOf": [
+              {
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Sandbox Run Id"
+          },
+          "status": {
+            "type": "string",
+            "title": "Status"
+          },
+          "target_type": {
+            "type": "string",
+            "title": "Target Type"
+          },
+          "image_ref": {
+            "type": "string",
+            "title": "Image Ref"
+          },
+          "container_name": {
+            "type": "string",
+            "title": "Container Name"
+          },
+          "sandbox_image": {
+            "type": "string",
+            "title": "Sandbox Image"
+          },
+          "dockerfile_path": {
+            "type": "string",
+            "title": "Dockerfile Path"
+          },
+          "build_context_path": {
+            "type": "string",
+            "title": "Build Context Path"
+          },
+          "deployed_container_id": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Deployed Container Id"
+          },
+          "rollback_image_ref": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Rollback Image Ref"
+          },
+          "rollback_status": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Rollback Status"
+          },
+          "attempt_count": {
+            "type": "integer",
+            "title": "Attempt Count"
+          },
+          "logs_text": {
+            "type": "string",
+            "title": "Logs Text"
+          },
+          "error_message": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Error Message"
+          },
+          "spec": {
+            "additionalProperties": true,
+            "type": "object",
+            "title": "Spec"
+          },
+          "context": {
+            "additionalProperties": true,
+            "type": "object",
+            "title": "Context"
+          },
+          "result": {
+            "additionalProperties": true,
+            "type": "object",
+            "title": "Result"
+          },
+          "created_at": {
+            "type": "string",
+            "format": "date-time",
+            "title": "Created At"
+          },
+          "updated_at": {
+            "type": "string",
+            "format": "date-time",
+            "title": "Updated At"
+          },
+          "started_at": {
+            "anyOf": [
+              {
+                "type": "string",
+                "format": "date-time"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Started At"
+          },
+          "finished_at": {
+            "anyOf": [
+              {
+                "type": "string",
+                "format": "date-time"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Finished At"
+          }
+        },
+        "type": "object",
+        "required": [
+          "id",
+          "workspace_id",
+          "project_id",
+          "sandbox_run_id",
+          "status",
+          "target_type",
+          "image_ref",
+          "container_name",
+          "sandbox_image",
+          "dockerfile_path",
+          "build_context_path",
+          "deployed_container_id",
+          "rollback_image_ref",
+          "rollback_status",
+          "attempt_count",
+          "logs_text",
+          "error_message",
+          "spec",
+          "context",
+          "result",
+          "created_at",
+          "updated_at",
+          "started_at",
+          "finished_at"
+        ],
+        "title": "DeploymentJobOut"
+      },
+      "DeploymentPortBindingIn": {
+        "properties": {
+          "host_port": {
+            "type": "integer",
+            "maximum": 65535.0,
+            "minimum": 1.0,
+            "title": "Host Port"
+          },
+          "container_port": {
+            "type": "integer",
+            "maximum": 65535.0,
+            "minimum": 1.0,
+            "title": "Container Port"
+          },
+          "protocol": {
+            "type": "string",
+            "pattern": "^(tcp|udp)$",
+            "title": "Protocol",
+            "default": "tcp"
+          }
+        },
+        "type": "object",
+        "required": [
+          "host_port",
+          "container_port"
+        ],
+        "title": "DeploymentPortBindingIn"
+      },
+      "DeploymentRequest": {
+        "properties": {
+          "workspace_id": {
+            "type": "integer",
+            "title": "Workspace Id"
+          },
+          "image_ref": {
+            "type": "string",
+            "maxLength": 255,
+            "minLength": 1,
+            "title": "Image Ref"
+          },
+          "container_name": {
+            "type": "string",
+            "maxLength": 120,
+            "minLength": 1,
+            "title": "Container Name"
+          },
+          "sandbox_image": {
+            "anyOf": [
+              {
+                "type": "string",
+                "maxLength": 255
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Sandbox Image"
+          },
+          "dockerfile_path": {
+            "type": "string",
+            "maxLength": 255,
+            "minLength": 1,
+            "title": "Dockerfile Path",
+            "default": "Dockerfile"
+          },
+          "build_context_path": {
+            "type": "string",
+            "maxLength": 255,
+            "minLength": 1,
+            "title": "Build Context Path",
+            "default": "."
+          },
+          "install_command": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Install Command"
+          },
+          "test_command": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Test Command"
+          },
+          "build_command": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Build Command"
+          },
+          "container_command": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Container Command"
+          },
+          "env": {
+            "additionalProperties": {
+              "type": "string"
+            },
+            "type": "object",
+            "title": "Env"
+          },
+          "ports": {
+            "items": {
+              "$ref": "#/components/schemas/DeploymentPortBindingIn"
+            },
+            "type": "array",
+            "title": "Ports"
+          }
+        },
+        "type": "object",
+        "required": [
+          "workspace_id",
+          "image_ref",
+          "container_name"
+        ],
+        "title": "DeploymentRequest"
+      },
+      "ExecutionJobOut": {
+        "properties": {
+          "id": {
+            "type": "integer",
+            "title": "Id"
+          },
+          "workspace_id": {
+            "type": "integer",
+            "title": "Workspace Id"
+          },
+          "project_id": {
+            "type": "integer",
+            "title": "Project Id"
+          },
+          "sandbox_run_id": {
+            "anyOf": [
+              {
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Sandbox Run Id"
+          },
+          "status": {
+            "type": "string",
+            "title": "Status"
+          },
+          "job_type": {
+            "type": "string",
+            "title": "Job Type"
+          },
+          "command": {
+            "type": "string",
+            "title": "Command"
+          },
+          "cwd": {
+            "type": "string",
+            "title": "Cwd"
+          },
+          "sandbox_image": {
+            "type": "string",
+            "title": "Sandbox Image"
+          },
+          "network_enabled": {
+            "type": "boolean",
+            "title": "Network Enabled"
+          },
+          "attempt_count": {
+            "type": "integer",
+            "title": "Attempt Count"
+          },
+          "stdout": {
+            "type": "string",
+            "title": "Stdout"
+          },
+          "stderr": {
+            "type": "string",
+            "title": "Stderr"
+          },
+          "error_message": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Error Message"
+          },
+          "spec": {
+            "additionalProperties": true,
+            "type": "object",
+            "title": "Spec"
+          },
+          "context": {
+            "additionalProperties": true,
+            "type": "object",
+            "title": "Context"
+          },
+          "result": {
+            "additionalProperties": true,
+            "type": "object",
+            "title": "Result"
+          },
+          "created_at": {
+            "type": "string",
+            "format": "date-time",
+            "title": "Created At"
+          },
+          "updated_at": {
+            "type": "string",
+            "format": "date-time",
+            "title": "Updated At"
+          },
+          "started_at": {
+            "anyOf": [
+              {
+                "type": "string",
+                "format": "date-time"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Started At"
+          },
+          "finished_at": {
+            "anyOf": [
+              {
+                "type": "string",
+                "format": "date-time"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Finished At"
+          }
+        },
+        "type": "object",
+        "required": [
+          "id",
+          "workspace_id",
+          "project_id",
+          "sandbox_run_id",
+          "status",
+          "job_type",
+          "command",
+          "cwd",
+          "sandbox_image",
+          "network_enabled",
+          "attempt_count",
+          "stdout",
+          "stderr",
+          "error_message",
+          "spec",
+          "context",
+          "result",
+          "created_at",
+          "updated_at",
+          "started_at",
+          "finished_at"
+        ],
+        "title": "ExecutionJobOut"
+      },
+      "ExecutionRequest": {
+        "properties": {
+          "workspace_id": {
+            "type": "integer",
+            "title": "Workspace Id"
+          },
+          "command": {
+            "type": "string",
+            "minLength": 1,
+            "title": "Command"
+          },
+          "cwd": {
+            "type": "string",
+            "title": "Cwd",
+            "default": "."
+          },
+          "sandbox_image": {
+            "anyOf": [
+              {
+                "type": "string",
+                "maxLength": 255
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Sandbox Image"
+          },
+          "network_enabled": {
+            "type": "boolean",
+            "title": "Network Enabled",
+            "default": false
+          },
+          "env": {
+            "additionalProperties": {
+              "type": "string"
+            },
+            "type": "object",
+            "title": "Env"
+          }
+        },
+        "type": "object",
+        "required": [
+          "workspace_id",
+          "command"
+        ],
+        "title": "ExecutionRequest"
+      },
       "FsEntryOut": {
         "properties": {
           "path": {
@@ -4396,12 +5927,35 @@
           "creator_user_id": {
             "type": "string",
             "title": "Creator User Id"
+          },
+          "created_at": {
+            "anyOf": [
+              {
+                "type": "string",
+                "format": "date-time"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Created At"
+          },
+          "updated_at": {
+            "anyOf": [
+              {
+                "type": "string",
+                "format": "date-time"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Updated At"
           }
         },
         "type": "object",
         "required": [
           "group_id",
-          "manager_member_id",
           "enabled",
           "creator_user_id"
         ],
@@ -4569,6 +6123,17 @@
             "type": "string",
             "title": "Type"
           },
+          "workspace_id": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Workspace Id"
+          },
           "created_at": {
             "type": "string",
             "format": "date-time",
@@ -4591,26 +6156,6 @@
         ],
         "title": "GroupOut"
       },
-      "GroupTaskClaimRequest": {
-        "properties": {
-          "member_id": {
-            "anyOf": [
-              {
-                "type": "string"
-              },
-              {
-                "type": "integer"
-              }
-            ],
-            "title": "Member Id"
-          }
-        },
-        "type": "object",
-        "required": [
-          "member_id"
-        ],
-        "title": "GroupTaskClaimRequest"
-      },
       "GroupTaskDagUpdateRequest": {
         "properties": {
           "nodes": {
@@ -4622,9 +6167,6 @@
           }
         },
         "type": "object",
-        "required": [
-          "nodes"
-        ],
         "title": "GroupTaskDagUpdateRequest"
       },
       "GroupTaskEventOut": {
@@ -4633,11 +6175,11 @@
             "type": "string",
             "title": "Id"
           },
-          "run_id": {
+          "message_id": {
             "type": "string",
-            "title": "Run Id"
+            "title": "Message Id"
           },
-          "node_id": {
+          "run_id": {
             "anyOf": [
               {
                 "type": "string"
@@ -4646,11 +6188,23 @@
                 "type": "null"
               }
             ],
-            "title": "Node Id"
+            "title": "Run Id"
+          },
+          "seq": {
+            "type": "integer",
+            "title": "Seq"
           },
           "event_type": {
             "type": "string",
             "title": "Event Type"
+          },
+          "category": {
+            "type": "string",
+            "title": "Category"
+          },
+          "status": {
+            "type": "string",
+            "title": "Status"
           },
           "payload_json": {
             "type": "string",
@@ -4670,14 +6224,47 @@
         "type": "object",
         "required": [
           "id",
+          "message_id",
           "run_id",
-          "node_id",
+          "seq",
           "event_type",
+          "category",
+          "status",
           "payload_json",
           "created_at",
           "updated_at"
         ],
         "title": "GroupTaskEventOut"
+      },
+      "GroupTaskGraphOut": {
+        "properties": {
+          "run_id": {
+            "type": "string",
+            "title": "Run Id"
+          },
+          "nodes": {
+            "items": {
+              "$ref": "#/components/schemas/GroupTaskNodeOut"
+            },
+            "type": "array",
+            "title": "Nodes"
+          },
+          "edges": {
+            "items": {
+              "additionalProperties": true,
+              "type": "object"
+            },
+            "type": "array",
+            "title": "Edges"
+          }
+        },
+        "type": "object",
+        "required": [
+          "run_id",
+          "nodes",
+          "edges"
+        ],
+        "title": "GroupTaskGraphOut"
       },
       "GroupTaskNodeBlockRequest": {
         "properties": {
@@ -4695,16 +6282,27 @@
       },
       "GroupTaskNodeCompleteRequest": {
         "properties": {
+          "member_id": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Member Id"
+          },
           "output_summary": {
             "type": "string",
-            "minLength": 1,
-            "title": "Output Summary"
+            "title": "Output Summary",
+            "default": ""
           }
         },
         "type": "object",
-        "required": [
-          "output_summary"
-        ],
         "title": "GroupTaskNodeCompleteRequest"
       },
       "GroupTaskNodeIn": {
@@ -4737,6 +6335,17 @@
             ],
             "title": "Role Required"
           },
+          "parent_node_key": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Parent Node Key"
+          },
           "deps": {
             "items": {
               "type": "string"
@@ -4752,15 +6361,61 @@
         ],
         "title": "GroupTaskNodeIn"
       },
+      "GroupTaskNodeMemberRequest": {
+        "properties": {
+          "member_id": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "integer"
+              }
+            ],
+            "title": "Member Id"
+          }
+        },
+        "type": "object",
+        "required": [
+          "member_id"
+        ],
+        "title": "GroupTaskNodeMemberRequest"
+      },
       "GroupTaskNodeOut": {
         "properties": {
           "id": {
             "type": "string",
             "title": "Id"
           },
+          "group_id": {
+            "type": "string",
+            "title": "Group Id"
+          },
           "run_id": {
             "type": "string",
             "title": "Run Id"
+          },
+          "parent_node_id": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Parent Node Id"
+          },
+          "parent_node_key": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Parent Node Key"
           },
           "node_key": {
             "type": "string",
@@ -4785,13 +6440,6 @@
             ],
             "title": "Role Required"
           },
-          "deps": {
-            "items": {
-              "type": "string"
-            },
-            "type": "array",
-            "title": "Deps"
-          },
           "status": {
             "type": "string",
             "title": "Status"
@@ -4811,13 +6459,69 @@
             ],
             "title": "Assignee Member Id"
           },
+          "attempt": {
+            "type": "integer",
+            "title": "Attempt",
+            "default": 0
+          },
+          "deps": {
+            "items": {
+              "type": "string"
+            },
+            "type": "array",
+            "title": "Deps"
+          },
+          "input_json": {
+            "type": "string",
+            "title": "Input Json",
+            "default": "{}"
+          },
+          "result_json": {
+            "type": "string",
+            "title": "Result Json",
+            "default": "{}"
+          },
+          "error": {
+            "type": "string",
+            "title": "Error",
+            "default": ""
+          },
           "output_summary": {
             "type": "string",
             "title": "Output Summary"
           },
           "manager_review_status": {
             "type": "string",
-            "title": "Manager Review Status"
+            "title": "Manager Review Status",
+            "default": "pending"
+          },
+          "manager_review_note": {
+            "type": "string",
+            "title": "Manager Review Note",
+            "default": ""
+          },
+          "reviewed_at": {
+            "anyOf": [
+              {
+                "type": "string",
+                "format": "date-time"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Reviewed At"
+          },
+          "reviewed_by_member_id": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Reviewed By Member Id"
           },
           "created_at": {
             "type": "string",
@@ -4833,17 +6537,17 @@
         "type": "object",
         "required": [
           "id",
+          "group_id",
           "run_id",
+          "parent_node_id",
           "node_key",
           "title",
           "detail",
           "role_required",
-          "deps",
           "status",
           "assignee_kind",
           "assignee_member_id",
           "output_summary",
-          "manager_review_status",
           "created_at",
           "updated_at"
         ],
@@ -4971,14 +6675,6 @@
             "type": "string",
             "title": "Status"
           },
-          "dag_json": {
-            "type": "string",
-            "title": "Dag Json"
-          },
-          "runtime_dir": {
-            "type": "string",
-            "title": "Runtime Dir"
-          },
           "created_at": {
             "type": "string",
             "format": "date-time",
@@ -4999,8 +6695,6 @@
           "title",
           "goal_text",
           "status",
-          "dag_json",
-          "runtime_dir",
           "created_at",
           "updated_at"
         ],
@@ -5257,6 +6951,72 @@
           "content"
         ],
         "title": "MessageCreateRequest"
+      },
+      "MessageEventOut": {
+        "properties": {
+          "id": {
+            "type": "string",
+            "title": "Id"
+          },
+          "message_id": {
+            "type": "string",
+            "title": "Message Id"
+          },
+          "run_id": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Run Id"
+          },
+          "seq": {
+            "type": "integer",
+            "title": "Seq"
+          },
+          "event_type": {
+            "type": "string",
+            "title": "Event Type"
+          },
+          "category": {
+            "type": "string",
+            "title": "Category"
+          },
+          "status": {
+            "type": "string",
+            "title": "Status"
+          },
+          "payload_json": {
+            "type": "string",
+            "title": "Payload Json"
+          },
+          "created_at": {
+            "type": "string",
+            "format": "date-time",
+            "title": "Created At"
+          },
+          "updated_at": {
+            "type": "string",
+            "format": "date-time",
+            "title": "Updated At"
+          }
+        },
+        "type": "object",
+        "required": [
+          "id",
+          "message_id",
+          "seq",
+          "event_type",
+          "category",
+          "status",
+          "payload_json",
+          "created_at",
+          "updated_at"
+        ],
+        "title": "MessageEventOut"
       },
       "MessageOut": {
         "properties": {
@@ -5888,6 +7648,146 @@
         },
         "type": "object",
         "title": "WorkspaceFileWriteRequest"
+      },
+      "WorkspaceOut": {
+        "properties": {
+          "id": {
+            "type": "integer",
+            "title": "Id"
+          },
+          "project_id": {
+            "type": "integer",
+            "title": "Project Id"
+          },
+          "tenant_id": {
+            "type": "string",
+            "title": "Tenant Id"
+          },
+          "name": {
+            "type": "string",
+            "title": "Name"
+          },
+          "backend_type": {
+            "type": "string",
+            "title": "Backend Type"
+          },
+          "source_path": {
+            "type": "string",
+            "title": "Source Path"
+          },
+          "last_snapshot_id": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Last Snapshot Id"
+          },
+          "last_snapshot_digest": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Last Snapshot Digest"
+          },
+          "last_snapshot_file_count": {
+            "type": "integer",
+            "title": "Last Snapshot File Count"
+          },
+          "created_at": {
+            "type": "string",
+            "format": "date-time",
+            "title": "Created At"
+          },
+          "updated_at": {
+            "type": "string",
+            "format": "date-time",
+            "title": "Updated At"
+          }
+        },
+        "type": "object",
+        "required": [
+          "id",
+          "project_id",
+          "tenant_id",
+          "name",
+          "backend_type",
+          "source_path",
+          "last_snapshot_id",
+          "last_snapshot_digest",
+          "last_snapshot_file_count",
+          "created_at",
+          "updated_at"
+        ],
+        "title": "WorkspaceOut"
+      },
+      "WorkspaceSnapshotCreateRequest": {
+        "properties": {
+          "label": {
+            "anyOf": [
+              {
+                "type": "string",
+                "maxLength": 120
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Label"
+          }
+        },
+        "type": "object",
+        "title": "WorkspaceSnapshotCreateRequest"
+      },
+      "WorkspaceSnapshotOut": {
+        "properties": {
+          "workspace_id": {
+            "type": "integer",
+            "title": "Workspace Id"
+          },
+          "snapshot_id": {
+            "type": "string",
+            "title": "Snapshot Id"
+          },
+          "snapshot_path": {
+            "type": "string",
+            "title": "Snapshot Path"
+          },
+          "source_path": {
+            "type": "string",
+            "title": "Source Path"
+          },
+          "digest": {
+            "type": "string",
+            "title": "Digest"
+          },
+          "file_count": {
+            "type": "integer",
+            "title": "File Count"
+          },
+          "created_at": {
+            "type": "string",
+            "title": "Created At"
+          }
+        },
+        "type": "object",
+        "required": [
+          "workspace_id",
+          "snapshot_id",
+          "snapshot_path",
+          "source_path",
+          "digest",
+          "file_count",
+          "created_at"
+        ],
+        "title": "WorkspaceSnapshotOut"
       }
     },
     "securitySchemes": {

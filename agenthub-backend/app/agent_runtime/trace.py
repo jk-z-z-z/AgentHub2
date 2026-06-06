@@ -13,15 +13,20 @@ from app.event_runtime.facade import create_message_event
 class AgentRuntimeTrace:
     db: Session
     message_id: int | None = None
+    run_id: int | None = None
 
     def emit(self, event_type: str, payload: dict[str, Any] | None = None) -> None:
         if self.message_id is None:
             return
+        event_payload = dict(payload or {})
+        if self.run_id is not None and "run_id" not in event_payload:
+            event_payload["run_id"] = int(self.run_id)
         create_message_event(
             self.db,
             message_id=int(self.message_id),
             event_type=str(event_type),
-            payload=payload or {},
+            payload=event_payload,
+            run_id=int(self.run_id) if self.run_id is not None else None,
         )
 
     def emit_llm_request(self, payload: dict[str, Any] | None = None) -> None:

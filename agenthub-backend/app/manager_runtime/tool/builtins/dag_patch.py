@@ -16,14 +16,14 @@ class DagPatchTool(ToolBase):
     def __init__(self, *, db: Session) -> None:
         self._db = db
         self.name = "manager.dag_patch"
-        self.description = "Create, update, and delete DAG nodes and edges."
+        self.description = "Create, update, and delete DAG nodes and edges for a task run."
         self.input_schema = {
             "type": "object",
             "properties": {
-                "group_id": {"type": "integer"},
+                "run_id": {"type": "integer"},
                 "ops": {"type": "array"},
             },
-            "required": ["group_id", "ops"],
+            "required": ["run_id", "ops"],
             "additionalProperties": True,
         }
 
@@ -31,20 +31,21 @@ class DagPatchTool(ToolBase):
         return object()
 
     async def __call__(self, **kwargs) -> ToolChunk:
-        group_id = kwargs.get("group_id")
+        run_id = kwargs.get("run_id")
         ops = list(kwargs.get("ops") or [])
-        if group_id in (None, ""):
-            return build_error_chunk("group_id_required")
+        if run_id in (None, ""):
+            return build_error_chunk("run_id_required")
         if not ops:
             return build_error_chunk("ops_required")
         result = patch_dag(
             self._db,
-            group_id=int(group_id),
+            run_id=int(run_id),
             ops=ops,
         )
         return build_tool_chunk(
             {
                 "group_id": int(result.group_id),
+                "run_id": int(result.run_id),
                 "node_count": int(result.node_count),
                 "edge_count": int(result.edge_count),
                 "created_node_keys": list(result.created_node_keys),

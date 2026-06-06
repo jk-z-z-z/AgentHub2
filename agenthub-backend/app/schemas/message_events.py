@@ -8,6 +8,7 @@ from app.schemas.common import ORMBaseModel
 class MessageEventOut(ORMBaseModel):
     id: str
     message_id: str
+    run_id: str | None = None
     seq: int
     event_type: str
     category: str

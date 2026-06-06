@@ -1,5 +1,10 @@
 <template>
-  <div class="shell" :class="{ withSidePane: manageOpen || taskOpen || projectFilesOpen }">
+  <div
+    ref="shellRef"
+    class="shell"
+    :class="{ withSidePane: hasSidePane, isResizingSidePane: sidePaneDragging }"
+    :style="shellStyle"
+  >
     <MessageConversationList
       v-model:search="groupSearch"
       :groups="filteredGroups"
@@ -72,7 +77,15 @@
       />
     </section>
 
-    <aside v-if="manageOpen || taskOpen || projectFilesOpen" class="sidePane">
+    <aside v-if="hasSidePane" class="sidePane">
+      <div
+        class="sidePaneResize"
+        :class="{ dragging: sidePaneDragging }"
+        role="separator"
+        aria-label="调整右侧侧边栏宽度"
+        aria-orientation="vertical"
+        @pointerdown="startSidePaneResize"
+      />
       <MessageFilePanel
         v-if="projectFilesOpen"
         :active-group="activeGroup"
@@ -229,7 +242,7 @@ import {
   apiUpdateGroupMemoryCompressorConfig,
 } from '../api/groups'
 import { apiListAgents } from '../api/agents'
-import { apiListUsers, type User } from '../api/users'
+import { apiGetCurrentUser, apiListUsers, type User } from '../api/users'
 import { apiListProjectCode, type ProjectCodeEntry } from '../api/project-code'
 import MessageConversationList from '../components/messages/MessageConversationList.vue'
 import MessageComposer from '../components/messages/MessageComposer.vue'
@@ -242,6 +255,7 @@ import MessageThread from '../components/messages/MessageThread.vue'
 import { ElMessage, ElMessageBox } from 'element-plus'
 
 const route = useRoute()
+const shellRef = ref<HTMLElement | null>(null)
 const draft = ref('')
 const groups = ref<Group[]>([])
 const loadingGroups = ref(false)
@@ -309,10 +323,20 @@ const users = ref<User[]>([])
 const agents = ref<Agent[]>([])
 const pickedUserIds = ref<Set<string>>(new Set())
 const pickedAgentIds = ref<Set<string>>(new Set())
+const currentUserId = ref('')
 
 const manageOpen = ref(false)
 const taskOpen = ref(false)
 const projectFilesOpen = ref(false)
+const LEFT_PANE_WIDTH = 280
+const SIDE_PANE_MIN_WIDTH = 400
+const SIDE_PANE_DEFAULT_WIDTH = 540
+const SIDE_PANE_MAX_WIDTH = 760
+const SIDE_PANE_MIN_CHAT_WIDTH = 320
+const SHELL_COLUMN_GAP = 24
+const SIDE_PANE_WIDTH_STORAGE_KEY = 'agenthub.messages.sidePaneWidth'
+const sidePaneWidth = ref(SIDE_PANE_DEFAULT_WIDTH)
+const sidePaneDragging = ref(false)
 const manageErr = ref('')
 const addKind = ref<'user' | 'agent'>('user')
 const addUserId = ref<string>('')
@@ -365,6 +389,10 @@ const taskNodeStats = computed(() => {
   }
   return counts
 })
+const hasSidePane = computed(() => manageOpen.value || taskOpen.value || projectFilesOpen.value)
+const shellStyle = computed(() => ({
+  '--side-pane-width': `${sidePaneWidth.value}px`,
+}))
 
 watch(
   () => createType.value,
@@ -428,6 +456,21 @@ function updatePreview(groupId: string) {
   lastTimeMap.value[groupId] = new Date(last.created_at).toLocaleDateString()
 }
 
+function upsertMessage(nextMessage: Message) {
+  const nextId = String(nextMessage.id)
+  const index = messages.value.findIndex((item) => String(item.id) === nextId)
+  if (index < 0) {
+    messages.value = [...messages.value, nextMessage]
+    return
+  }
+  const next = messages.value.slice()
+  next[index] = {
+    ...next[index],
+    ...nextMessage,
+  }
+  messages.value = next
+}
+
 function connectWs(groupId: string) {
   const seq = ++wsSeq
   if (ws.value) {
@@ -470,15 +513,13 @@ function connectWs(groupId: string) {
     if (seq !== wsSeq || ws.value !== socket) return
     try {
       const payload = JSON.parse(evt.data)
-      if (payload.event === 'message.created') {
+      if (payload.event === 'message.created' || payload.event === 'message.updated') {
         const msg = normalizeMessage(payload.data)
         if (
           String(msg.group_id) === String(groupId) &&
           String(activeGroupId.value) === String(groupId)
         ) {
-          if (!messages.value.some((m) => String(m.id) === String(msg.id))) {
-            messages.value = [...messages.value, msg]
-          }
+          upsertMessage(msg)
           updatePreview(groupId)
         }
       } else if (payload.event === 'reply.failed') {
@@ -540,10 +581,8 @@ async function send() {
   })
   // Optimistic append: even if WS is disconnected, show the sent message immediately.
   const created = normalizeMessage(res.data)
-  if (!messages.value.some((m) => String(m.id) === String(created.id))) {
-    messages.value = [...messages.value, created]
-    updatePreview(activeGroup.value.id)
-  }
+  upsertMessage(created)
+  updatePreview(activeGroup.value.id)
   selectedMentions.value = new Set()
 }
 
@@ -588,6 +627,65 @@ function pickMention(memberId: string) {
   }
   mentionSuggestOpen.value = false
   mentionQuery.value = ''
+}
+
+function getSidePaneBounds() {
+  const shellWidth = shellRef.value?.clientWidth || window.innerWidth
+  const layoutMax =
+    shellWidth - LEFT_PANE_WIDTH - SIDE_PANE_MIN_CHAT_WIDTH - SHELL_COLUMN_GAP
+  const max = Math.max(SIDE_PANE_MIN_WIDTH, Math.min(SIDE_PANE_MAX_WIDTH, layoutMax))
+  return {
+    min: Math.min(SIDE_PANE_MIN_WIDTH, max),
+    max,
+  }
+}
+
+function clampSidePaneWidth(width: number) {
+  const bounds = getSidePaneBounds()
+  return Math.min(Math.max(width, bounds.min), bounds.max)
+}
+
+function syncSidePaneWidth(width: number) {
+  sidePaneWidth.value = clampSidePaneWidth(width)
+  try {
+    localStorage.setItem(SIDE_PANE_WIDTH_STORAGE_KEY, String(sidePaneWidth.value))
+  } catch {}
+}
+
+function updateSidePaneWidthFromClientX(clientX: number) {
+  const shellRect = shellRef.value?.getBoundingClientRect()
+  if (!shellRect) return
+  syncSidePaneWidth(shellRect.right - clientX)
+}
+
+function onSidePaneResize(event: PointerEvent) {
+  if (!sidePaneDragging.value) return
+  updateSidePaneWidthFromClientX(event.clientX)
+}
+
+function stopSidePaneResize() {
+  if (!sidePaneDragging.value) return
+  sidePaneDragging.value = false
+  document.body.style.cursor = ''
+  document.body.style.userSelect = ''
+  window.removeEventListener('pointermove', onSidePaneResize)
+  window.removeEventListener('pointerup', stopSidePaneResize)
+  window.removeEventListener('pointercancel', stopSidePaneResize)
+}
+
+function startSidePaneResize(event: PointerEvent) {
+  if (!hasSidePane.value) return
+  sidePaneDragging.value = true
+  document.body.style.cursor = 'col-resize'
+  document.body.style.userSelect = 'none'
+  updateSidePaneWidthFromClientX(event.clientX)
+  window.addEventListener('pointermove', onSidePaneResize)
+  window.addEventListener('pointerup', stopSidePaneResize)
+  window.addEventListener('pointercancel', stopSidePaneResize)
+}
+
+function handleWindowResize() {
+  syncSidePaneWidth(sidePaneWidth.value)
 }
 
 function openManage() {
@@ -959,12 +1057,26 @@ async function deleteActiveGroup() {
 onMounted(loadGroups)
 
 onMounted(async () => {
-  const [u, a] = await Promise.all([apiListUsers(), apiListAgents()])
-  users.value = u.data
+  try {
+    const saved = Number(localStorage.getItem(SIDE_PANE_WIDTH_STORAGE_KEY) || '')
+    if (Number.isFinite(saved) && saved > 0) {
+      sidePaneWidth.value = clampSidePaneWidth(saved)
+    } else {
+      sidePaneWidth.value = clampSidePaneWidth(SIDE_PANE_DEFAULT_WIDTH)
+    }
+  } catch {
+    sidePaneWidth.value = clampSidePaneWidth(SIDE_PANE_DEFAULT_WIDTH)
+  }
+  window.addEventListener('resize', handleWindowResize)
+  const [u, a, me] = await Promise.all([apiListUsers(), apiListAgents(), apiGetCurrentUser()])
+  currentUserId.value = String(me.data.id || '')
+  users.value = u.data.filter((item) => String(item.id) !== currentUserId.value)
   agents.value = a.data
 })
 
 onBeforeUnmount(() => {
+  stopSidePaneResize()
+  window.removeEventListener('resize', handleWindowResize)
   try {
     ws.value?.close()
   } catch {}
@@ -988,7 +1100,7 @@ function togglePickAgent(a: Agent) {
 
 async function createGroup() {
   createErr.value = ''
-  const pickedUsers = Array.from(pickedUserIds.value)
+  const pickedUsers = Array.from(pickedUserIds.value).filter((id) => String(id) !== currentUserId.value)
   const pickedAgents = Array.from(pickedAgentIds.value)
 
   if (createType.value === 'personal') {
@@ -1051,7 +1163,7 @@ async function createGroup() {
 }
 
 .shell.withSidePane {
-  grid-template-columns: 320px minmax(0, 1fr) 420px;
+  grid-template-columns: 280px minmax(0, 1fr) var(--side-pane-width);
 }
 
 .chatPane {
@@ -1068,6 +1180,35 @@ async function createGroup() {
 .sidePane {
   min-width: 0;
   height: 100%;
+  position: relative;
+}
+.sidePaneResize {
+  position: absolute;
+  top: 0;
+  bottom: 0;
+  left: -18px;
+  width: 24px;
+  cursor: col-resize;
+  z-index: 3;
+  touch-action: none;
+}
+.sidePaneResize::before {
+  content: '';
+  position: absolute;
+  top: 18px;
+  bottom: 18px;
+  left: 50%;
+  width: 4px;
+  transform: translateX(-50%);
+  border-radius: 999px;
+  background: rgba(31, 35, 41, 0.1);
+  transition: background 0.18s ease, box-shadow 0.18s ease;
+}
+.sidePaneResize:hover::before,
+.sidePaneResize.dragging::before,
+.shell.isResizingSidePane .sidePaneResize::before {
+  background: rgba(79, 140, 255, 0.72);
+  box-shadow: 0 0 0 4px rgba(79, 140, 255, 0.16);
 }
 .searchInput :deep() {
   height: 38px;
@@ -1171,5 +1312,11 @@ async function createGroup() {
   display: flex;
   justify-content: center;
   font-size: 16px;
+}
+
+@media (max-width: 1200px) {
+  .shell.withSidePane {
+    grid-template-columns: 240px minmax(0, 1fr) minmax(320px, 42vw);
+  }
 }
 </style>

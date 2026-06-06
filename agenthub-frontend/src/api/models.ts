@@ -67,11 +67,7 @@ export type MemoryCompressRunResult = {
   last_message_id?: number | null
 }
 
-export type GroupTaskGraph = {
-  run_id: string
-  version: number
-  snapshot_json: string
-}
+export type GroupTaskGraph = Schema['GroupTaskGraphOut']
 
 export type GroupTaskNodeDraft = {
   title: string
