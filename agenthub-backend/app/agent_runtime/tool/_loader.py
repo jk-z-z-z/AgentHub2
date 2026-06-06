@@ -6,6 +6,7 @@ from pathlib import Path
 from typing import Any
 
 from agentscope.message import TextBlock, ToolResultState
+from agentscope.permission import PermissionBehavior, PermissionDecision
 from agentscope.skill import LocalSkillLoader
 from agentscope.tool import ToolBase, ToolGroup, Toolkit, ToolChunk
 
@@ -51,7 +52,11 @@ class BuiltinAgentTool(ToolBase):
         return {"type": "object", "properties": {}, "required": []}
 
     async def check_permissions(self, _tool_input: dict[str, Any], _context: Any) -> Any:
-        return object()
+        return PermissionDecision(
+            behavior=PermissionBehavior.PASSTHROUGH,
+            message="No agent-specific permission override.",
+            decision_reason="passthrough",
+        )
 
     async def __call__(self, **kwargs: Any) -> ToolChunk:
         start_time = time.perf_counter()

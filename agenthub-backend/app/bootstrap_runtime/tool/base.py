@@ -4,6 +4,7 @@ import json
 from typing import Any
 
 from agentscope.message import TextBlock, ToolResultState
+from agentscope.permission import PermissionBehavior, PermissionDecision
 from agentscope.tool import ToolChunk
 
 
@@ -16,3 +17,11 @@ def build_tool_chunk(payload: Any, *, ok: bool = True) -> ToolChunk:
 
 def build_error_chunk(error: str) -> ToolChunk:
     return build_tool_chunk({"error": error}, ok=False)
+
+
+def permission_passthrough_decision() -> PermissionDecision:
+    return PermissionDecision(
+        behavior=PermissionBehavior.PASSTHROUGH,
+        message="No bootstrap-specific permission override.",
+        decision_reason="passthrough",
+    )

@@ -3,11 +3,11 @@ from __future__ import annotations
 from agentscope.tool import ToolBase, ToolChunk
 from sqlalchemy.orm import Session
 
-from app.manager_runtime.tool.base import build_error_chunk, build_tool_chunk
+from app.manager_runtime.tool.base import ManagerRuntimeContextMixin, build_error_chunk, build_tool_chunk
 from app.services.group_task_service import patch_dag
 
 
-class DagPatchTool(ToolBase):
+class DagPatchTool(ManagerRuntimeContextMixin, ToolBase):
     is_mcp = False
     is_external_tool = False
     is_state_injected = False
@@ -15,15 +15,15 @@ class DagPatchTool(ToolBase):
 
     def __init__(self, *, db: Session) -> None:
         self._db = db
+        self.set_runtime_context(None)
         self.name = "manager.dag_patch"
-        self.description = "Create, update, and delete DAG nodes and edges for a task run."
+        self.description = "Create, update, and delete DAG nodes and edges for a task run. If run_id is omitted, use the current conversation task context."
         self.input_schema = {
             "type": "object",
             "properties": {
                 "run_id": {"type": "integer"},
                 "ops": {"type": "array"},
             },
-            "required": ["run_id", "ops"],
             "additionalProperties": True,
         }
 
@@ -31,10 +31,16 @@ class DagPatchTool(ToolBase):
         return object()
 
     async def __call__(self, **kwargs) -> ToolChunk:
-        run_id = kwargs.get("run_id")
+        run_id = self._resolve_run_id(kwargs.get("run_id"))
         ops = list(kwargs.get("ops") or [])
-        if run_id in (None, ""):
-            return build_error_chunk("run_id_required")
+        if run_id is None:
+            return build_tool_chunk(
+                {
+                    "ok": False,
+                    "error": "run_id_required_for_patch",
+                    "available_runs": self._list_group_runs(),
+                }
+            )
         if not ops:
             return build_error_chunk("ops_required")
         result = patch_dag(

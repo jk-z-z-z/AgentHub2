@@ -184,6 +184,7 @@ def build_complete_manager(
         toolkit=load_manager_toolkit(
             db,
             group_id=int(group_id),
+            runtime_context=runtime_context,
             trace=extra_context.get("trace"),
             extra_skill_loaders=extra_skill_loaders,
         ),

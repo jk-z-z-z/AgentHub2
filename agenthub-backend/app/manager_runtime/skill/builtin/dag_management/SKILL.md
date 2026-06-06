@@ -71,6 +71,8 @@ When editing the DAG, follow this order:
 - what was removed
 - what execution impact this has
 
+If the user is asking for a brand-new task graph and there is no bound `run_id` yet, prefer `manager.dag_apply` to create the new run first.
+
 ## Failure Handling
 - If the current graph is unclear, read it first.
 - If a patch would break dependencies, fix the dependency chain before editing.

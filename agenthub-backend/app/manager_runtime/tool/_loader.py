@@ -9,7 +9,7 @@ from sqlalchemy.orm import Session
 
 from app.event_runtime.types import MessageEventType
 from app.manager_runtime.skill._loader import load_manager_skill_loaders
-from app.manager_runtime.tool.base import build_error_chunk, extract_tool_result
+from app.manager_runtime.tool.base import build_error_chunk, extract_tool_result, permission_passthrough_decision
 from app.manager_runtime.tool._registry import get_manager_tool_factories
 
 
@@ -97,7 +97,7 @@ class _TracedManagerTool(ToolBase):
         }
 
     async def check_permissions(self, _tool_input: dict[str, Any], _context: Any) -> Any:
-        return object()
+        return permission_passthrough_decision()
 
     async def __call__(self, **kwargs: Any) -> ToolChunk:
         if self._trace:
@@ -127,12 +127,18 @@ def load_manager_toolkit(
     db: Session,
     *,
     group_id: int,
+    runtime_context: dict[str, Any] | None = None,
     trace: Any | None = None,
     extra_skill_loaders: list[LocalSkillLoader] | None = None,
 ) -> Toolkit:
     tools: list[ToolBase] = []
     for code, factory in get_manager_tool_factories().items():
         tool = factory(db)
+        if runtime_context is not None and hasattr(tool, "set_runtime_context"):
+            try:
+                tool.set_runtime_context(runtime_context)
+            except Exception:
+                pass
         if trace is not None and hasattr(tool, "set_trace"):
             try:
                 tool.set_trace(trace)

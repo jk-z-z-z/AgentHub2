@@ -1,5 +1,7 @@
 from __future__ import annotations
 
+import asyncio
+
 from sqlalchemy import create_engine
 from sqlalchemy.orm import Session, sessionmaker
 
@@ -8,6 +10,10 @@ from app.core.config import settings
 from app.db.base import Base
 from app.event_runtime.facade import create_message_event
 from app.event_runtime.types import MessageEventType
+from app.manager_runtime.tool.base import extract_tool_result
+from app.manager_runtime.tool.builtins.dag_apply import DagApplyTool
+from app.manager_runtime.tool.builtins.dag_patch import DagPatchTool
+from app.manager_runtime.tool.builtins.dag_view import DagViewTool
 from app.manager_runtime.assistant.state_store import (
     load_pending_clarify,
     load_pending_plan,
@@ -213,3 +219,93 @@ def test_pending_state_isolated_by_trigger_message_and_bound_to_run(tmp_path, mo
     assert pending_clarify_b and pending_clarify_b["goal_text"] == "goal-b"
     assert pending_clarify_a["run_id"] == int(run_a.id)
     assert pending_clarify_b["run_id"] == int(run_b.id)
+
+
+def test_dag_apply_can_create_run_from_manager_runtime_context() -> None:
+    db = _session()
+    group, member, message = _seed_group(db)
+    tool = DagApplyTool(db=db)
+    tool.set_runtime_context(
+        {
+            "group_id": int(group.id),
+            "sender_id": int(member.id),
+            "user_message_id": int(message.id),
+            "input_text": "创建一个任务流程图，覆盖用户登录全链路",
+        }
+    )
+
+    chunk = asyncio.run(
+        tool(
+            graph={
+                "nodes": [
+                    {"node_key": "n1", "title": "梳理登录入口与前置条件", "detail": "", "deps": []},
+                    {"node_key": "n2", "title": "设计认证与会话校验流程", "detail": "", "deps": ["n1"]},
+                ]
+            }
+        )
+    )
+    payload = extract_tool_result(chunk)
+
+    assert payload["ok"] is True
+    assert payload["result"]["action"] == "created"
+    run_id = int(payload["result"]["run_id"])
+    graph = get_dag_view(db, run_id=run_id)
+    assert [node["node_key"] for node in graph["nodes"]] == ["n1", "n2"]
+    assert graph["edges"] == [{"from": "n1", "to": "n2"}]
+
+
+def test_dag_view_without_run_id_returns_available_runs_instead_of_failing() -> None:
+    db = _session()
+    group, member, message = _seed_group(db)
+    run = create_run(
+        db,
+        group_id=int(group.id),
+        creator_member_id=int(member.id),
+        title="Run A",
+        goal_text="A goal",
+        nodes=[{"node_key": "n1", "title": "A1", "detail": "", "deps": []}],
+        trigger_message_id=int(message.id),
+    )
+    tool = DagViewTool(db=db)
+    tool.set_runtime_context({"group_id": int(group.id)})
+
+    chunk = asyncio.run(tool())
+    payload = extract_tool_result(chunk)
+
+    assert payload["ok"] is True
+    assert payload["result"]["resolved_run_id"] is None
+    assert payload["result"]["nodes"] == []
+    assert payload["result"]["available_runs"][0]["run_id"] == int(run.id)
+
+
+def test_dag_patch_uses_runtime_bound_run_id() -> None:
+    db = _session()
+    group, member, message = _seed_group(db)
+    run = create_run(
+        db,
+        group_id=int(group.id),
+        creator_member_id=int(member.id),
+        title="Run A",
+        goal_text="A goal",
+        nodes=[{"node_key": "n1", "title": "A1", "detail": "", "deps": []}],
+        trigger_message_id=int(message.id),
+    )
+    tool = DagPatchTool(db=db)
+    tool.set_runtime_context({"run_id": int(run.id), "group_id": int(group.id)})
+
+    chunk = asyncio.run(
+        tool(
+            ops=[
+                {
+                    "op": "add_node",
+                    "node": {"node_key": "n2", "title": "A2", "detail": "", "deps": ["n1"]},
+                }
+            ]
+        )
+    )
+    payload = extract_tool_result(chunk)
+
+    assert payload["ok"] is True
+    assert payload["result"]["run_id"] == int(run.id)
+    graph = get_dag_view(db, run_id=int(run.id))
+    assert graph["edges"] == [{"from": "n1", "to": "n2"}]
