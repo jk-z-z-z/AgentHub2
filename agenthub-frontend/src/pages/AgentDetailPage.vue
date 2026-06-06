@@ -1,8 +1,7 @@
 <template>
   <div class="shell">
-    <div class="header">
-      <div class="title">智能体详情：{{ agent?.display_name || agentId }}</div>
-      <div class="actions">
+    <WorkspacePanel :title="`智能体详情：${agent?.display_name || agentId}`">
+      <template #actions>
         <el-button @click="router.push('/agents')">返回管理</el-button>
         <el-button @click="reloadAll" :disabled="!agentId || saving">刷新</el-button>
         <el-button
@@ -10,139 +9,148 @@
           @click="save"
           :loading="saving"
           :disabled="!agentId || !activeFilePath"
-          >保存</el-button
         >
-      </div>
-    </div>
+          保存
+        </el-button>
+      </template>
 
-    <div class="body">
-      <section class="panel">
-        <div class="panelInner">
-          <aside class="files">
-            <div class="filesTitle">文件</div>
-            <div v-if="loading" class="hint">加载中…</div>
-            <el-input
-              v-model="filter"
-              placeholder="搜索文件…"
-              size="small"
-              style="margin: 6px 0 10px 0"
+      <div class="panelInner">
+        <aside class="files">
+          <div class="filesTitle">文件</div>
+          <div v-if="loading" class="hint">加载中…</div>
+          <el-input
+            v-model="filter"
+            placeholder="搜索文件…"
+            size="small"
+            style="margin: 6px 0 10px 0"
+          />
+
+          <div class="tree">
+            <AgentFileTreeNode
+              v-for="n in treeRoots"
+              :key="n.path"
+              :node="n"
+              :active-path="activeFilePath"
+              :open-dirs="openDirs"
+              @open="openFile"
+              @toggle="toggleDir"
             />
+          </div>
 
-            <div class="tree">
-              <AgentFileTreeNode
-                v-for="n in treeRoots"
-                :key="n.path"
-                :node="n"
-                :active-path="activeFilePath"
-                :open-dirs="openDirs"
-                @open="openFile"
-                @toggle="toggleDir"
-              />
-            </div>
+          <div class="ops">
+            <el-select v-model="newFileDir" style="width: 140px">
+              <el-option label="skills/" value="skills/" />
+              <el-option label="knowledge/" value="knowledge/" />
+              <el-option label="mcps/" value="mcps/" />
+            </el-select>
+            <el-input v-model="newFilePath" placeholder="例如：web/search.md 或 notes.md" />
+            <el-button type="primary" @click="createFile" :disabled="!newFilePath.trim()">
+              新建
+            </el-button>
+          </div>
+        </aside>
 
-            <div class="ops">
-              <el-select v-model="newFileDir" style="width: 140px">
-                <el-option label="skills/" value="skills/" />
-                <el-option label="knowledge/" value="knowledge/" />
-                <el-option label="mcps/" value="mcps/" />
-              </el-select>
-              <el-input v-model="newFilePath" placeholder="例如：web/search.md 或 notes.md" />
-              <el-button type="primary" @click="createFile" :disabled="!newFilePath.trim()"
-                >新建</el-button
+        <main class="editor">
+          <div class="editorHeader">
+            <div class="editorTitle">{{ activeFilePath || '选择一个文件' }}</div>
+            <div class="editorActions">
+              <el-button
+                size="small"
+                type="danger"
+                plain
+                @click="removeFile"
+                :disabled="!canDeleteActive"
               >
+                删除
+              </el-button>
             </div>
-          </aside>
-
-          <main class="editor">
-            <div class="editorHeader">
-              <div class="editorTitle">{{ activeFilePath || '选择一个文件' }}</div>
-              <div class="editorActions">
-                <el-button
-                  size="small"
-                  type="danger"
-                  plain
-                  @click="removeFile"
-                  :disabled="!canDeleteActive"
-                >
-                  删除
+          </div>
+          <div class="editorBody">
+            <div class="toolPanel">
+              <div class="toolTitle">工具启用</div>
+              <div class="toolHint">工具为内置能力；智能体仅配置是否启用。</div>
+              <el-table
+                :data="tools"
+                size="small"
+                empty-text="暂无内置工具"
+                class="toolList"
+                height="240"
+              >
+                <el-table-column label="工具" min-width="220">
+                  <template #default="{ row }">
+                    <div class="tName">{{ row.name }}</div>
+                    <div class="tMeta">{{ row.code }} · {{ row.source_type }}</div>
+                  </template>
+                </el-table-column>
+                <el-table-column label="启用" width="100" align="right">
+                  <template #default="{ row }">
+                    <el-switch v-model="toolToggles[row.code]" />
+                  </template>
+                </el-table-column>
+              </el-table>
+              <div class="toolActions">
+                <el-button size="small" :loading="toolSaving" @click="saveToolToggles">
+                  保存工具开关
                 </el-button>
               </div>
             </div>
-            <div class="editorBody">
-              <div class="toolPanel">
-                <div class="toolTitle">工具启用</div>
-                <div class="toolHint">工具为内置能力；智能体仅配置是否启用。</div>
-                <el-table :data="tools" size="small" empty-text="暂无内置工具" class="toolList" height="240">
-                  <el-table-column label="工具" min-width="220">
-                    <template #default="{ row }">
-                      <div class="tName">{{ row.name }}</div>
-                      <div class="tMeta">{{ row.code }} · {{ row.source_type }}</div>
-                    </template>
-                  </el-table-column>
-                  <el-table-column label="启用" width="100" align="right">
-                    <template #default="{ row }">
-                      <el-switch v-model="toolToggles[row.code]" />
-                    </template>
-                  </el-table-column>
-                </el-table>
-                <div class="toolActions">
-                  <el-button size="small" :loading="toolSaving" @click="saveToolToggles"
-                    >保存工具开关</el-button
-                  >
+
+            <div class="toolPanel">
+              <div class="toolTitle">技能加载</div>
+              <div class="toolHint">
+                可从全局 Skill 池选择，也可控制是否加载该 Agent 本地 skills 目录。
+              </div>
+              <div class="toolRow">
+                <div class="tLeft">
+                  <div class="tName">加载本地 skills/</div>
+                  <div class="tMeta">开启后会递归加载该智能体目录下的 SKILL.md</div>
+                </div>
+                <div class="tRight">
+                  <el-switch v-model="skillConfig.enable_agent_local_skills" />
                 </div>
               </div>
-
-              <div class="toolPanel">
-                <div class="toolTitle">技能加载</div>
-                <div class="toolHint">
-                  可从全局 Skill 池选择，也可控制是否加载该 Agent 本地 skills 目录。
-                </div>
-                <div class="toolRow">
-                  <div class="tLeft">
-                    <div class="tName">加载本地 skills/</div>
-                    <div class="tMeta">开启后会递归加载该智能体目录下的 SKILL.md</div>
-                  </div>
-                  <div class="tRight">
-                    <el-switch v-model="skillConfig.enable_agent_local_skills" />
-                  </div>
-                </div>
-                <el-table :data="skillPool" size="small" empty-text="全局 Skill 池为空（请在后端 skill-pool 目录下放置 SKILL.md）" class="toolList" height="240">
-                  <el-table-column label="技能" min-width="220">
-                    <template #default="{ row }">
-                      <div class="tName">{{ row.name || row.code }}</div>
-                      <div class="tMeta">{{ row.code }} · {{ row.description || '无描述' }}</div>
-                    </template>
-                  </el-table-column>
-                  <el-table-column label="选择" width="100" align="right">
-                    <template #default="{ row }">
-                      <el-checkbox
-                        :model-value="skillConfig.pool_skill_codes.includes(row.code)"
-                        @change="(v: boolean) => togglePoolSkill(row.code, v)"
-                      />
-                    </template>
-                  </el-table-column>
-                </el-table>
-                <div class="toolActions">
-                  <el-button size="small" :loading="skillSaving" @click="saveSkillConfig"
-                    >保存技能配置</el-button
-                  >
-                </div>
+              <el-table
+                :data="skillPool"
+                size="small"
+                empty-text="全局 Skill 池为空（请在后端 skill-pool 目录下放置 SKILL.md）"
+                class="toolList"
+                height="240"
+              >
+                <el-table-column label="技能" min-width="220">
+                  <template #default="{ row }">
+                    <div class="tName">{{ row.name || row.code }}</div>
+                    <div class="tMeta">{{ row.code }} · {{ row.description || '无描述' }}</div>
+                  </template>
+                </el-table-column>
+                <el-table-column label="选择" width="100" align="right">
+                  <template #default="{ row }">
+                    <el-checkbox
+                      :model-value="skillConfig.pool_skill_codes.includes(row.code)"
+                      @change="(v: boolean) => togglePoolSkill(row.code, v)"
+                    />
+                  </template>
+                </el-table-column>
+              </el-table>
+              <div class="toolActions">
+                <el-button size="small" :loading="skillSaving" @click="saveSkillConfig">
+                  保存技能配置
+                </el-button>
               </div>
-
-              <div v-if="!activeFilePath" class="hint">从左侧选择文件</div>
-              <el-input
-                v-else
-                v-model="content"
-                type="textarea"
-                :rows="20"
-                placeholder="编辑内容"
-              />
-              <div v-if="err" class="err">{{ err }}</div>
             </div>
-          </main>
-        </div>
-      </section>
-    </div>
+
+            <div v-if="!activeFilePath" class="hint">从左侧选择文件</div>
+            <el-input
+              v-else
+              v-model="content"
+              type="textarea"
+              :rows="20"
+              placeholder="编辑内容"
+            />
+            <div v-if="err" class="err">{{ err }}</div>
+          </div>
+        </main>
+      </div>
+    </WorkspacePanel>
   </div>
 </template>
 
@@ -168,6 +176,7 @@ import {
 } from '../api/agents'
 import { ElMessage } from 'element-plus'
 import AgentFileTreeNode, { type FileTreeNode } from '../components/AgentFileTreeNode.vue'
+import WorkspacePanel from '../components/common/WorkspacePanel.vue'
 
 const route = useRoute()
 const router = useRouter()
@@ -456,46 +465,17 @@ onMounted(async () => {
 <style scoped>
 .shell {
   height: 100%;
-  display: flex;
-  flex-direction: column;
-  gap: 14px;
-}
-.header {
-  height: 64px;
-  padding: 0 10px;
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-}
-.title {
-  font-weight: 900;
-  font-size: 16px;
-}
-.actions {
-  display: flex;
-  gap: 10px;
-}
-.body {
-  flex: 1;
   min-height: 0;
 }
-.panel {
-  height: 100%;
-  background: rgba(255, 255, 255, 0.75);
-  backdrop-filter: blur(12px);
-  border-radius: 18px;
-  overflow: hidden;
-  padding: 14px;
-}
 .panelInner {
-  height: 100%;
+  flex: 1;
   display: grid;
   grid-template-columns: 320px 1fr;
   gap: 14px;
   min-height: 0;
 }
 .files {
-  border: 1px solid rgba(31, 35, 41, 0.06);
+  border: 1px solid var(--ah-border-soft);
   border-radius: 16px;
   overflow: auto;
   padding: 10px;
@@ -510,7 +490,7 @@ onMounted(async () => {
   gap: 4px;
 }
 .editor {
-  border: 1px solid rgba(31, 35, 41, 0.06);
+  border: 1px solid var(--ah-border-soft);
   border-radius: 16px;
   overflow: hidden;
   display: flex;
@@ -519,7 +499,7 @@ onMounted(async () => {
 }
 .editorHeader {
   height: 52px;
-  border-bottom: 1px solid rgba(31, 35, 41, 0.06);
+  border-bottom: 1px solid var(--ah-border-soft);
   display: flex;
   align-items: center;
   padding: 0 12px;
@@ -538,11 +518,11 @@ onMounted(async () => {
   min-height: 0;
 }
 .toolPanel {
-  border: 1px solid rgba(31, 35, 41, 0.06);
+  border: 1px solid var(--ah-border-soft);
   border-radius: 14px;
   padding: 12px;
   margin-bottom: 12px;
-  background: rgba(255, 255, 255, 0.65);
+  background: var(--ah-surface-soft);
 }
 .toolTitle {
   font-weight: 900;
@@ -561,7 +541,7 @@ onMounted(async () => {
   display: flex;
   justify-content: space-between;
   align-items: center;
-  border: 1px solid rgba(31, 35, 41, 0.06);
+  border: 1px solid var(--ah-border-soft);
   border-radius: 12px;
   padding: 10px;
 }
@@ -571,7 +551,7 @@ onMounted(async () => {
 .tMeta {
   margin-top: 2px;
   font-size: 12px;
-  opacity: 0.65;
+  color: var(--ah-text-tertiary);
 }
 .toolActions {
   margin-top: 10px;
@@ -580,7 +560,7 @@ onMounted(async () => {
 }
 .err {
   margin-top: 10px;
-  color: #d92d20;
+  color: var(--ah-danger);
   font-size: 12px;
 }
 .hint {
@@ -589,7 +569,7 @@ onMounted(async () => {
 }
 .ops {
   margin-top: 12px;
-  border-top: 1px solid rgba(31, 35, 41, 0.06);
+  border-top: 1px solid var(--ah-border-soft);
   padding-top: 10px;
   display: grid;
   grid-template-columns: 140px 1fr 80px;

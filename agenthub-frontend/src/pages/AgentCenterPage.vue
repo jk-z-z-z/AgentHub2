@@ -12,13 +12,10 @@
     </aside>
 
     <main class="content">
-      <section v-if="section === 'instances'" class="panel">
-        <div class="panelHeader">
-          <div class="panelTitle">智能体管理</div>
-          <div class="actions">
-            <el-button type="primary" @click="createAgentOpen = true">创建智能体</el-button>
-          </div>
-        </div>
+      <WorkspacePanel v-if="section === 'instances'" title="智能体管理">
+        <template #actions>
+          <el-button type="primary" @click="createAgentOpen = true">创建智能体</el-button>
+        </template>
         <div v-if="agentErr" class="err">{{ agentErr }}</div>
         <el-table
           :data="agents"
@@ -40,16 +37,13 @@
             </template>
           </el-table-column>
         </el-table>
-      </section>
+      </WorkspacePanel>
 
-      <section v-else-if="section === 'templates'" class="panel">
-        <div class="panelHeader">
-          <div class="panelTitle">模版管理</div>
-          <div class="actions">
-            <el-button @click="loadProfiles" :loading="loadingProfiles">刷新</el-button>
-            <el-button type="primary" @click="createProfileOpen = true">新建模版</el-button>
-          </div>
-        </div>
+      <WorkspacePanel v-else-if="section === 'templates'" title="模版管理">
+        <template #actions>
+          <el-button @click="loadProfiles" :loading="loadingProfiles">刷新</el-button>
+          <el-button type="primary" @click="createProfileOpen = true">新建模版</el-button>
+        </template>
         <el-table
           :data="profiles"
           class="table"
@@ -70,15 +64,12 @@
             </template>
           </el-table-column>
         </el-table>
-      </section>
+      </WorkspacePanel>
 
-      <section v-else-if="section === 'tools'" class="panel">
-        <div class="panelHeader">
-          <div class="panelTitle">工具（全局）</div>
-          <div class="actions">
-            <el-button @click="loadTools" :loading="loadingTools">刷新</el-button>
-          </div>
-        </div>
+      <WorkspacePanel v-else-if="section === 'tools'" title="工具（全局）">
+        <template #actions>
+          <el-button @click="loadTools" :loading="loadingTools">刷新</el-button>
+        </template>
         <div class="skillsToolbar">
           <el-input v-model="toolFilterName" placeholder="按名称/Code筛选" clearable />
           <div></div>
@@ -128,16 +119,13 @@
             </template>
           </el-table-column>
         </el-table>
-      </section>
+      </WorkspacePanel>
 
-      <section v-else-if="section === 'mcps'" class="panel">
-        <div class="panelHeader">
-          <div class="panelTitle">MCP（全局）</div>
-          <div class="actions">
-            <el-button @click="loadMcps" :loading="loadingMcps">刷新</el-button>
-            <el-button type="primary" @click="createMcpOpen = true">新建</el-button>
-          </div>
-        </div>
+      <WorkspacePanel v-else-if="section === 'mcps'" title="MCP（全局）">
+        <template #actions>
+          <el-button @click="loadMcps" :loading="loadingMcps">刷新</el-button>
+          <el-button type="primary" @click="createMcpOpen = true">新建</el-button>
+        </template>
         <div v-if="mcpErr" class="err">{{ mcpErr }}</div>
         <div class="skillsToolbar">
           <el-input v-model="mcpFilterName" placeholder="按名称/Code筛选" clearable />
@@ -199,15 +187,12 @@
             </template>
           </el-table-column>
         </el-table>
-      </section>
+      </WorkspacePanel>
 
-      <section v-else-if="section === 'skills'" class="panel">
-        <div class="panelHeader">
-          <div class="panelTitle">技能（全局）</div>
-          <div class="actions">
-            <el-button @click="loadSkillPool" :loading="loadingSkillPool">刷新</el-button>
-          </div>
-        </div>
+      <WorkspacePanel v-else-if="section === 'skills'" title="技能（全局）">
+        <template #actions>
+          <el-button @click="loadSkillPool" :loading="loadingSkillPool">刷新</el-button>
+        </template>
         <div class="empty" style="margin-bottom: 10px; text-align: left">
           当前技能来源为后端配置目录（Skill Pool），前端此处只读展示；编辑请在目录中维护 `SKILL.md`。
         </div>
@@ -262,16 +247,11 @@
             </template>
           </el-table-column>
         </el-table>
-      </section>
+      </WorkspacePanel>
 
-      <section v-else class="panel">
-        <div class="panelHeader">
-          <div class="panelTitle">
-            {{ section === 'tools' ? '工具（全局）' : section === 'mcps' ? 'MCP（全局）' : '技能（全局）' }}
-          </div>
-        </div>
+      <WorkspacePanel v-else :title="section === 'tools' ? '工具（全局）' : section === 'mcps' ? 'MCP（全局）' : '技能（全局）'">
         <div class="empty">该模块前端页面已预留；后续接入对应接口展示/创建。</div>
-      </section>
+      </WorkspacePanel>
     </main>
   </div>
 
@@ -397,6 +377,7 @@ import {
   type SkillPoolItem,
   type Tool,
 } from '../api/agents'
+import WorkspacePanel from '../components/common/WorkspacePanel.vue'
 
 const router = useRouter()
 
@@ -710,9 +691,9 @@ onMounted(async () => {
   gap: 12px;
 }
 .centerNav {
-  background: rgba(255, 255, 255, 0.84);
+  background: var(--ah-surface);
   backdrop-filter: blur(10px);
-  border: 1px solid rgba(31, 35, 41, 0.08);
+  border: 1px solid var(--ah-border);
   border-radius: 18px;
   padding: 14px;
   display: flex;
@@ -735,38 +716,12 @@ onMounted(async () => {
   font-weight: 700;
 }
 .navMenu :deep(.el-menu-item.is-active) {
-  background: rgba(79, 140, 255, 0.12);
+  background: var(--ah-primary-soft);
 }
 
 .content {
   overflow: hidden;
   min-width: 0;
-}
-.panel {
-  height: 100%;
-  background: rgba(255, 255, 255, 0.84);
-  backdrop-filter: blur(10px);
-  border-radius: 18px;
-  overflow: hidden;
-  display: flex;
-  flex-direction: column;
-}
-.panelHeader {
-  height: 64px;
-  padding: 0 16px;
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  border-bottom: 1px solid rgba(31, 35, 41, 0.06);
-}
-.panelTitle {
-  font-weight: 900;
-  font-size: 16px;
-}
-.actions {
-  display: flex;
-  align-items: center;
-  gap: 10px;
 }
 .list {
   padding: 10px 8px;
@@ -782,26 +737,26 @@ onMounted(async () => {
   cursor: pointer;
 }
 .row:hover {
-  background: rgba(79, 140, 255, 0.06);
+  background: var(--ah-primary-ghost);
 }
 .name {
   font-weight: 900;
 }
 .meta {
   font-size: 12px;
-  opacity: 0.65;
+  color: var(--ah-text-tertiary);
   margin-top: 2px;
 }
 .right {
   font-size: 12px;
-  opacity: 0.7;
+  color: var(--ah-text-secondary);
 }
 .empty {
   padding: 18px 10px;
-  opacity: 0.6;
+  color: var(--ah-text-tertiary);
 }
 .err {
-  color: #d92d20;
+  color: var(--ah-danger);
   font-size: 12px;
   padding: 0 16px;
   margin-top: 10px;
@@ -818,7 +773,7 @@ onMounted(async () => {
   grid-template-columns: 1fr 180px 80px;
   gap: 10px;
   align-items: center;
-  border-bottom: 1px solid rgba(31, 35, 41, 0.06);
+  border-bottom: 1px solid var(--ah-border-soft);
 }
 .viewToggles {
   display: flex;
@@ -829,8 +784,8 @@ onMounted(async () => {
   width: 36px;
   height: 36px;
   border-radius: 10px;
-  border: 1px solid rgba(31, 35, 41, 0.1);
-  background: rgba(255, 255, 255, 0.7);
+  border: 1px solid var(--ah-border-strong);
+  background: var(--ah-surface-soft);
   cursor: pointer;
   font-weight: 900;
   display: inline-flex;
@@ -839,11 +794,11 @@ onMounted(async () => {
   font-size: 16px;
 }
 .viewBtn.active {
-  background: rgba(31, 35, 41, 0.06);
+  background: var(--ah-active);
 }
 
 .skillsGrid {
-  padding: 14px;
+  margin-top: 12px;
   display: grid;
   grid-template-columns: repeat(2, minmax(0, 1fr));
   gap: 14px;
@@ -851,9 +806,9 @@ onMounted(async () => {
   min-height: 0;
 }
 .skillCard {
-  border: 1px solid rgba(31, 35, 41, 0.07);
+  border: 1px solid var(--ah-border);
   border-radius: 18px;
-  background: rgba(255, 255, 255, 0.85);
+  background: var(--ah-surface);
   padding: 0;
   overflow: hidden;
 }
@@ -874,7 +829,7 @@ onMounted(async () => {
   border-radius: 14px;
   display: grid;
   place-items: center;
-  background: rgba(79, 140, 255, 0.14);
+  background: var(--ah-primary-soft);
   font-size: 18px;
 }
 .status {
@@ -888,10 +843,10 @@ onMounted(async () => {
   width: 8px;
   height: 8px;
   border-radius: 999px;
-  background: rgba(31, 35, 41, 0.25);
+  background: var(--ah-text-muted);
 }
 .dot.on {
-  background: #12b76a;
+  background: var(--ah-success);
 }
 .cardName {
   margin-top: 12px;
@@ -907,8 +862,8 @@ onMounted(async () => {
   font-size: 12px;
   padding: 2px 8px;
   border-radius: 999px;
-  background: rgba(255, 176, 0, 0.16);
-  color: #b25a00;
+  background: var(--ah-warning-bg);
+  color: var(--ah-warning);
   font-weight: 900;
 }
 .cardMeta {
@@ -923,23 +878,23 @@ onMounted(async () => {
   gap: 10px;
 }
 .k {
-  opacity: 0.6;
+  color: var(--ah-text-muted);
 }
 .v {
-  opacity: 0.9;
+  color: var(--ah-text-secondary);
 }
 .cardDesc {
   margin-top: 10px;
   font-size: 12px;
-  opacity: 0.75;
+  color: var(--ah-text-tertiary);
   line-height: 1.5;
 }
 .templateHint {
   margin-top: 10px;
   padding: 10px 12px;
   border-radius: 12px;
-  background: rgba(79, 140, 255, 0.08);
-  color: rgba(37, 99, 235, 0.92);
+  background: var(--ah-primary-ghost);
+  color: var(--ah-primary-strong);
   font-size: 12px;
   line-height: 1.6;
 }

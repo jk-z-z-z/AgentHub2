@@ -64,6 +64,26 @@
       </div>
 
       <div class="railBottom">
+        <el-tooltip placement="right" effect="light" :show-after="0" :hide-after="0" :enterable="false">
+          <template #content>
+            <div class="tooltipContent">
+              <div class="tooltipTitle">{{ themeStore.isDark ? '切换到亮色' : '切换到深色' }}</div>
+              <div class="tooltipDesc">{{ themeStore.isDark ? '恢复当前保留的亮色主题' : '进入深色主题模式' }}</div>
+            </div>
+          </template>
+          <el-button
+            class="themeBtn"
+            text
+            circle
+            :aria-label="themeStore.isDark ? '切换到亮色主题' : '切换到深色主题'"
+            @click="themeStore.toggleTheme()"
+          >
+            <el-icon>
+              <component :is="themeStore.isDark ? Sunny : MoonNight" />
+            </el-icon>
+          </el-button>
+        </el-tooltip>
+
         <el-popover
           v-model:visible="profilePopoverOpen"
           placement="top-end"
@@ -138,15 +158,19 @@ import {
   FolderOpened,
   Monitor,
   ArrowRightBold,
+  MoonNight,
+  Sunny,
   SwitchButton,
   User,
   UserFilled,
 } from '@element-plus/icons-vue'
 import { apiGetCurrentUser, type User as CurrentUser } from '../api/users'
+import { useThemeStore } from '../stores/theme'
 import railLogoSrc from '../assets/sidebar-logo-dog.png'
 
 const route = useRoute()
 const router = useRouter()
+const themeStore = useThemeStore()
 
 const currentUser = ref<CurrentUser | null>(null)
 const userLoading = ref(false)
@@ -199,8 +223,8 @@ onMounted(loadCurrentUser)
 }
 
 .rail {
-  background: rgba(255, 255, 255, 0.78);
-  border-right: 1px solid rgba(31, 35, 41, 0.08);
+  background: var(--ah-surface-ghost);
+  border-right: 1px solid var(--ah-border);
   backdrop-filter: blur(10px);
   display: flex;
   flex-direction: column;
@@ -223,9 +247,9 @@ onMounted(loadCurrentUser)
   border-radius: 50%;
   display: grid;
   place-items: center;
-  background: #fff;
+  background: var(--ah-surface-strong);
   overflow: hidden;
-  box-shadow: 0 8px 18px rgba(107, 140, 255, 0.28);
+  box-shadow: var(--ah-shadow-sm);
   margin-bottom: 4px;
 }
 .railLogoImg {
@@ -241,7 +265,7 @@ onMounted(loadCurrentUser)
   height: 46px;
   border-radius: 14px;
   background: transparent;
-  color: rgba(31, 35, 41, 0.42);
+  color: var(--ah-text-muted);
   display: inline-flex;
   align-items: center;
   justify-content: center;
@@ -251,13 +275,13 @@ onMounted(loadCurrentUser)
 
 .railBtn:hover,
 .profileBtn:hover {
-  background: rgba(31, 35, 41, 0.05);
-  color: rgba(31, 35, 41, 0.82);
+  background: var(--ah-hover);
+  color: var(--ah-text-secondary);
 }
 
 .railBtn.active {
-  background: rgba(31, 35, 41, 0.07);
-  color: rgba(31, 35, 41, 0.96);
+  background: var(--ah-active);
+  color: var(--ah-text-primary);
 }
 
 .main {
@@ -275,13 +299,13 @@ onMounted(loadCurrentUser)
 .tooltipTitle {
   font-size: 13px;
   font-weight: 800;
-  color: rgba(31, 35, 41, 0.96);
+  color: var(--ah-text-primary);
 }
 .tooltipDesc {
   margin-top: 4px;
   font-size: 12px;
   line-height: 1.4;
-  color: rgba(31, 35, 41, 0.62);
+  color: var(--ah-text-tertiary);
 }
 
 .profileCard {
@@ -294,7 +318,7 @@ onMounted(loadCurrentUser)
   align-items: center;
   gap: 12px;
   padding-bottom: 10px;
-  border-bottom: 1px solid rgba(31, 35, 41, 0.08);
+  border-bottom: 1px solid var(--ah-border);
 }
 .profileAvatar {
   width: 44px;
@@ -302,8 +326,8 @@ onMounted(loadCurrentUser)
   border-radius: 50%;
   display: grid;
   place-items: center;
-  background: linear-gradient(135deg, #4f8cff, #7aa8ff);
-  color: #fff;
+  background: var(--ah-avatar-gradient);
+  color: var(--ah-text-on-primary);
   font-weight: 900;
 }
 .profileMeta {
@@ -314,7 +338,7 @@ onMounted(loadCurrentUser)
   width: 40px;
   height: 40px;
   border-radius: 12px;
-  color: rgba(31, 35, 41, 0.76);
+  color: var(--ah-text-secondary);
   flex: 0 0 auto;
 }
 .profileName {
@@ -324,7 +348,7 @@ onMounted(loadCurrentUser)
 .profileSub {
   margin-top: 4px;
   font-size: 12px;
-  color: rgba(31, 35, 41, 0.58);
+  color: var(--ah-text-tertiary);
 }
 .profileFields {
   display: grid;
@@ -338,11 +362,11 @@ onMounted(loadCurrentUser)
   line-height: 1.4;
 }
 .profileRow .label {
-  color: rgba(31, 35, 41, 0.52);
+  color: var(--ah-text-muted);
   flex: 0 0 auto;
 }
 .profileRow .value {
-  color: rgba(31, 35, 41, 0.92);
+  color: var(--ah-text-primary);
   text-align: right;
   word-break: break-all;
   flex: 1;
@@ -350,10 +374,10 @@ onMounted(loadCurrentUser)
 .profileLoading,
 .profileError {
   font-size: 12px;
-  color: rgba(31, 35, 41, 0.62);
+  color: var(--ah-text-tertiary);
 }
 .profileError {
-  color: #d92d20;
+  color: var(--ah-danger);
 }
 .logoutRow {
   margin-top: auto;
@@ -362,5 +386,23 @@ onMounted(loadCurrentUser)
   justify-content: space-between;
   font-size: 13px;
   font-weight: 700;
+}
+
+.themeBtn {
+  width: 46px;
+  height: 46px;
+  border-radius: 14px;
+  background: transparent;
+  color: var(--ah-text-muted);
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  text-decoration: none;
+  font-size: 22px;
+}
+
+.themeBtn:hover {
+  background: var(--ah-hover);
+  color: var(--ah-text-secondary);
 }
 </style>

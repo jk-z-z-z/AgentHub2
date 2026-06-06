@@ -85,10 +85,10 @@ function onClick() {
   cursor: pointer;
 }
 .nodeRow:hover {
-  background: rgba(79, 140, 255, 0.06);
+  background: var(--ah-primary-ghost);
 }
 .nodeRow.active {
-  background: rgba(79, 140, 255, 0.12);
+  background: var(--ah-primary-soft);
 }
 .chev {
   width: 18px;
@@ -100,7 +100,7 @@ function onClick() {
   width: 18px;
   display: inline-flex;
   justify-content: center;
-  color: rgba(31, 35, 41, 0.62);
+  color: var(--ah-text-tertiary);
 }
 .nName {
   font-weight: 800;
@@ -110,11 +110,11 @@ function onClick() {
 }
 .nMeta {
   font-size: 12px;
-  opacity: 0.65;
+  color: var(--ah-text-tertiary);
 }
 .children {
   margin-left: 12px;
-  border-left: 1px solid rgba(31, 35, 41, 0.08);
+  border-left: 1px solid var(--ah-border);
   padding-left: 10px;
   display: grid;
   gap: 3px;

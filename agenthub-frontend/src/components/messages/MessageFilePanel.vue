@@ -136,9 +136,9 @@ function buildProjectTree(rows: ProjectCodeEntry[]): FileTreeNode[] {
   height: 100%;
   display: flex;
   flex-direction: column;
-  background: rgba(255, 255, 255, 0.84);
+  background: var(--ah-surface);
   backdrop-filter: blur(10px);
-  border: 1px solid rgba(31, 35, 41, 0.08);
+  border: 1px solid var(--ah-border);
   border-radius: 18px;
   overflow: hidden;
   min-width: 0;
@@ -146,7 +146,7 @@ function buildProjectTree(rows: ProjectCodeEntry[]): FileTreeNode[] {
 .sideHeader {
   height: 58px;
   padding: 0 16px;
-  border-bottom: 1px solid rgba(31, 35, 41, 0.06);
+  border-bottom: 1px solid var(--ah-border-soft);
   display: flex;
   align-items: center;
   justify-content: space-between;
@@ -160,13 +160,13 @@ function buildProjectTree(rows: ProjectCodeEntry[]): FileTreeNode[] {
 .sideSubtitle {
   margin-top: 2px;
   font-size: 12px;
-  color: rgba(31, 35, 41, 0.58);
+  color: var(--ah-text-tertiary);
 }
 .sideCloseBtn {
   width: 32px;
   height: 32px;
   border-radius: 10px;
-  color: rgba(31, 35, 41, 0.8);
+  color: var(--ah-text-secondary);
 }
 .sideBody {
   flex: 1;
@@ -188,9 +188,9 @@ function buildProjectTree(rows: ProjectCodeEntry[]): FileTreeNode[] {
   margin-bottom: 12px;
 }
 .fileTreeWrap {
-  border: 1px solid rgba(31, 35, 41, 0.06);
+  border: 1px solid var(--ah-border-soft);
   border-radius: 16px;
-  background: rgba(255, 255, 255, 0.76);
+  background: var(--ah-surface-soft);
   overflow: auto;
   min-height: 0;
   flex: 1;
@@ -206,7 +206,7 @@ function buildProjectTree(rows: ProjectCodeEntry[]): FileTreeNode[] {
 .taskEmpty {
   padding: 16px 4px;
   font-size: 13px;
-  color: rgba(31, 35, 41, 0.58);
+  color: var(--ah-text-tertiary);
 }
 .sideEmpty {
   height: 100%;

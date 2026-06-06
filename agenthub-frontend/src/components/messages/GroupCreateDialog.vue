@@ -125,32 +125,35 @@ function agentRowClassName({ row }: { row: Agent }) {
   margin-top: 10px;
 }
 .pickCol {
-  border: 1px solid rgba(31, 35, 41, 0.08);
+  border: 1px solid var(--ah-border);
   border-radius: 14px;
   overflow: hidden;
 }
 .pickTitle {
   padding: 10px 12px;
   font-weight: 900;
-  border-bottom: 1px solid rgba(31, 35, 41, 0.06);
+  border-bottom: 1px solid var(--ah-border-soft);
 }
 .pickList { width: 100%; }
 .pickList :deep(.el-table__row) { cursor: pointer; }
-.pickList :deep(.el-table__row.active) { background: rgba(79,140,255,.12); }
+.pickList :deep(.el-table__row.active) {
+  background: var(--ah-list-active-bg);
+  box-shadow: inset 0 0 0 1px var(--ah-list-active-border);
+}
 .pAvatar {
   width: 36px;
   height: 36px;
   border-radius: 12px;
   display: grid;
   place-items: center;
-  background: rgba(31, 35, 41, 0.06);
+  background: var(--ah-bg-soft);
   font-size: 16px;
 }
 .pName {
   font-weight: 800;
 }
 .err {
-  color: #d92d20;
+  color: var(--ah-danger);
   font-size: 12px;
 }
 </style>

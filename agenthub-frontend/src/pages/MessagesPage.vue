@@ -1,8 +1,7 @@
 <template>
   <div class="shell" :class="{ withSidePane: manageOpen || taskOpen || projectFilesOpen }">
     <MessageConversationList
-      v-model:search="groupSearch"
-      :groups="filteredGroups"
+      :groups="groups"
       :active-group-id="activeGroupId"
       :last-preview-map="lastPreviewMap"
       :last-time-map="lastTimeMap"
@@ -13,32 +12,23 @@
 
     <section class="chatPane">
       <div class="chatHeader">
-        <div class="chatTitle">{{ activeGroup?.name || '选择一个会话' }}</div>
+        <div class="chatHeading">
+          <div class="chatTitle">{{ activeGroup?.name || '选择一个会话' }}</div>
+          <div v-if="activeGroup" class="chatMeta">
+            <span>{{ members.length }} 位成员</span>
+            <span>{{ agentMembers.length }} 个智能体</span>
+          </div>
+        </div>
         <div class="chatActions">
-          <el-button
-            v-if="activeGroup?.type === 'project'"
-            class="iconBtn iconBtnLarge"
-            text
-            :icon="FolderOpened"
-            @click="openProjectCode"
-            aria-label="查看代码"
-          />
-          <el-button
-            v-if="activeGroup?.type === 'project'"
-            class="iconBtn iconBtnLarge"
-            text
-            :icon="Operation"
-            @click="openTaskPlanner"
-            aria-label="任务规划"
-          />
-          <el-button
-            class="iconBtn"
-            :disabled="!activeGroup"
-            text
-            :icon="Setting"
-            @click="openManage"
-            aria-label="聊天管理"
-          />
+          <el-tooltip v-if="activeGroup?.type === 'project'" content="查看代码" placement="bottom">
+            <el-button class="iconBtn iconBtnLarge" text :icon="FolderOpened" @click="openProjectCode" aria-label="查看代码" />
+          </el-tooltip>
+          <el-tooltip v-if="activeGroup?.type === 'project'" content="任务规划" placement="bottom">
+            <el-button class="iconBtn iconBtnLarge" text :icon="Operation" @click="openTaskPlanner" aria-label="任务规划" />
+          </el-tooltip>
+          <el-tooltip content="聊天管理" placement="bottom">
+            <el-button class="iconBtn" :disabled="!activeGroup" text :icon="Setting" @click="openManage" aria-label="聊天管理" />
+          </el-tooltip>
         </div>
       </div>
 
@@ -114,22 +104,15 @@
         v-else
         :active-group="activeGroup"
         :members="members"
-        :runs="taskRuns"
-        :active-run-id="activeRunId"
-        :active-run="activeTaskRun"
         :nodes="taskNodes"
         :node-stats="taskNodeStats"
-        :runs-loading="taskRunsLoading"
         :nodes-loading="taskNodesLoading"
         :manage-err="manageErr"
         @close="taskOpen = false"
-        @refresh-runs="loadTaskRuns"
-        @select-run="selectTaskRun"
-        @create-run="taskCreateOpen = true"
-        @refresh-run-details="loadTaskRunDetails"
+        @refresh-nodes="loadTaskNodes"
+        @create-nodes="taskCreateOpen = true"
         @claim-node="claimNode"
         @complete-node="completeNode"
-        @review-node="reviewNode"
       />
     </aside>
   </div>
@@ -186,13 +169,11 @@
     @create="createGroup"
   />
 
-  <TaskRunCreateDialog
+  <TaskNodeCreateDialog
     v-model:open="taskCreateOpen"
-    v-model:title="taskCreateTitle"
-    v-model:goal="taskCreateGoal"
     v-model:node-text="taskCreateNodeText"
     :create-err="manageErr"
-    @create="createTaskRunNow"
+    @create="createTaskNodesNow"
   />
 </template>
 
@@ -211,14 +192,11 @@ import {
   apiListMessages,
   apiGetGroupAssistantConfig,
   apiUpdateGroupAssistantConfig,
-  apiCreateGroupTaskRunFromText,
-  apiListGroupTaskRuns,
+  apiCreateGroupTaskNodesFromText,
   apiListGroupTaskNodes,
   apiClaimGroupTaskNode,
   apiCompleteGroupTaskNode,
-  apiReviewGroupTaskNode,
   type GroupAssistantConfig,
-  type GroupTaskRun,
 } from '../api/messages'
 import {
   type Agent,
@@ -242,7 +220,7 @@ import MessageComposer from '../components/messages/MessageComposer.vue'
 import GroupCreateDialog from '../components/messages/GroupCreateDialog.vue'
 import MessageFilePanel from '../components/messages/MessageFilePanel.vue'
 import MessageManagePanel from '../components/messages/MessageManagePanel.vue'
-import TaskRunCreateDialog from '../components/messages/TaskRunCreateDialog.vue'
+import TaskNodeCreateDialog from '../components/messages/TaskNodeCreateDialog.vue'
 import TaskPlannerPanel from '../components/messages/TaskPlannerPanel.vue'
 import MessageThread from '../components/messages/MessageThread.vue'
 import { ElMessage, ElMessageBox } from 'element-plus'
@@ -260,8 +238,6 @@ let wsSeq = 0
 
 const lastPreviewMap = ref<Record<string, string>>({})
 const lastTimeMap = ref<Record<string, string>>({})
-const groupSearch = ref('')
-
 const activeGroup = computed(() => groups.value.find((g) => g.id === activeGroupId.value) || null)
 const mentionNames = computed<Record<string, string>>(() => {
   const out: Record<string, string> = {}
@@ -270,17 +246,6 @@ const mentionNames = computed<Record<string, string>>(() => {
   }
   return out
 })
-const filteredGroups = computed(() => {
-  const query = groupSearch.value.trim().toLowerCase()
-  if (!query) return groups.value
-  return groups.value.filter((group) => {
-    const name = (group.name || '').toLowerCase()
-    const type = (group.type || '').toLowerCase()
-    const preview = (lastPreviewMap.value[group.id] || '').toLowerCase()
-    return name.includes(query) || type.includes(query) || preview.includes(query)
-  })
-})
-
 const canSend = computed(() => Boolean(activeGroup.value) && Boolean(draft.value.trim()))
 const canMentionAgents = computed(() => activeGroup.value?.type === 'project')
 const MANAGER_NAME = '管家'
@@ -344,17 +309,9 @@ const assistantCfgEnabled = computed({
     assistantCfg.value.enabled = value ? 1 : 0
   },
 })
-const taskRunsLoading = ref(false)
-const taskRuns = ref<GroupTaskRun[]>([])
-const activeRunId = ref('')
-const activeTaskRun = computed(
-  () => taskRuns.value.find((run) => String(run.id) === String(activeRunId.value)) || null,
-)
 const taskNodesLoading = ref(false)
 const taskNodes = ref<GroupTaskNode[]>([])
 const taskCreateOpen = ref(false)
-const taskCreateTitle = ref('')
-const taskCreateGoal = ref('')
 const taskCreateNodeText = ref('需求澄清与初始计划 | manager')
 const projectFilesLoading = ref(false)
 const projectFilesEntries = ref<ProjectCodeEntry[]>([])
@@ -615,7 +572,7 @@ function openManage() {
     void loadMemoryConfig()
     void loadMemoryStatus()
     void loadAssistantConfig()
-    void loadTaskRuns()
+    void loadTaskNodes()
   }
 }
 
@@ -624,7 +581,7 @@ function openTaskPlanner() {
   manageOpen.value = false
   projectFilesOpen.value = false
   taskOpen.value = true
-  void loadTaskRuns()
+  void loadTaskNodes()
 }
 
 async function loadAssistantConfig() {
@@ -658,40 +615,12 @@ async function saveAssistantConfig() {
   }
 }
 
-async function loadTaskRuns() {
+async function loadTaskNodes() {
   if (!activeGroup.value || activeGroup.value.type !== 'project') return
-  taskRunsLoading.value = true
-  try {
-    const res = await apiListGroupTaskRuns(activeGroup.value.id)
-    taskRuns.value = res.data
-    if (
-      activeRunId.value &&
-      !taskRuns.value.some((r) => String(r.id) === String(activeRunId.value))
-    ) {
-      activeRunId.value = ''
-    }
-    if (!activeRunId.value && taskRuns.value[0]) {
-      activeRunId.value = String(taskRuns.value[0].id)
-    }
-    if (activeRunId.value) {
-      await loadTaskRunDetails(activeRunId.value)
-    } else {
-      taskNodes.value = []
-    }
-  } catch (error) {
-    taskRuns.value = []
-    taskNodes.value = []
-    manageErr.value = error instanceof Error ? error.message : String(error)
-  } finally {
-    taskRunsLoading.value = false
-  }
-}
-
-async function loadTaskRunDetails(runId: string) {
-  if (!runId) return
+  manageErr.value = ''
   taskNodesLoading.value = true
   try {
-    const nodesRes = await apiListGroupTaskNodes(runId)
+    const nodesRes = await apiListGroupTaskNodes(activeGroup.value.id)
     taskNodes.value = nodesRes.data
   } catch (error) {
     taskNodes.value = []
@@ -701,44 +630,23 @@ async function loadTaskRunDetails(runId: string) {
   }
 }
 
-async function selectTaskRun(runId: string) {
-  activeRunId.value = String(runId)
-  await loadTaskRunDetails(activeRunId.value)
-}
-
-async function createTaskRunNow() {
-  if (!activeGroup.value) return
-  const me = members.value.find((m) => m.kind === 'user')
-  if (!me) {
-    manageErr.value = '当前会话缺少用户成员'
+async function createTaskNodesNow() {
+  if (!activeGroup.value || activeGroup.value.type !== 'project') return
+  const nodeText = taskCreateNodeText.value.trim()
+  if (!nodeText) {
+    manageErr.value = '请输入任务节点'
     return
   }
-  const title = taskCreateTitle.value.trim()
-  const goal = taskCreateGoal.value.trim()
-  if (!title || !goal) {
-    manageErr.value = '请输入任务标题与目标'
-    return
-  }
+  manageErr.value = ''
   try {
-    const res = await apiCreateGroupTaskRunFromText({
+    await apiCreateGroupTaskNodesFromText({
       group_id: activeGroup.value.id,
-      creator_member_id: me.id,
-      title,
-      goal_text: goal,
-      node_text: taskCreateNodeText.value,
+      node_text: nodeText,
     })
     taskCreateOpen.value = false
-    taskCreateTitle.value = ''
-    taskCreateGoal.value = ''
     taskCreateNodeText.value = '需求澄清与初始计划 | manager'
-    await loadTaskRuns()
-    if (res.data?.id) {
-      activeRunId.value = String(res.data.id)
-      await loadTaskRunDetails(activeRunId.value)
-    } else if (activeRunId.value) {
-      await loadTaskRunDetails(activeRunId.value)
-    }
-    ElMessage.success('任务运行已创建')
+    await loadTaskNodes()
+    ElMessage.success('任务节点已创建')
   } catch (e) {
     manageErr.value = e instanceof Error ? e.message : String(e)
   }
@@ -749,28 +657,20 @@ async function claimNode(node: GroupTaskNode) {
   if (!me) return
   try {
     await apiClaimGroupTaskNode(String(node.id), String(me.id))
-    await loadTaskRunDetails(String(node.run_id))
+    await loadTaskNodes()
   } catch (e) {
     manageErr.value = e instanceof Error ? e.message : String(e)
   }
 }
 
 async function completeNode(node: GroupTaskNode) {
-  const summary = window.prompt('请输入节点完成总结（会用于管家复核）') || ''
+  const me = members.value.find((m) => m.kind === 'user')
+  if (!me) return
+  const summary = window.prompt('请输入节点完成总结') || ''
   if (!summary.trim()) return
   try {
-    await apiCompleteGroupTaskNode(String(node.id), summary.trim())
-    await loadTaskRunDetails(String(node.run_id))
-  } catch (e) {
-    manageErr.value = e instanceof Error ? e.message : String(e)
-  }
-}
-
-async function reviewNode(node: GroupTaskNode, status: 'approved' | 'rework') {
-  const note = status === 'rework' ? window.prompt('请输入返工说明') || '' : ''
-  try {
-    await apiReviewGroupTaskNode(String(node.id), { manager_review_status: status, note })
-    await loadTaskRunDetails(String(node.run_id))
+    await apiCompleteGroupTaskNode(String(node.id), String(me.id), summary.trim())
+    await loadTaskNodes()
   } catch (e) {
     manageErr.value = e instanceof Error ? e.message : String(e)
   }
@@ -1059,88 +959,75 @@ async function createGroup() {
 .shell {
   height: 100%;
   display: grid;
-  grid-template-columns: 340px minmax(0, 1fr);
-  gap: 12px;
+  grid-template-columns: 360px minmax(0, 1fr);
+  gap: 18px;
   align-items: stretch;
 }
 
 .shell.withSidePane {
-  grid-template-columns: 320px minmax(0, 1fr) 420px;
+  grid-template-columns: 340px minmax(0, 1fr) 430px;
 }
 
 .chatPane {
-  background: rgba(255, 255, 255, 0.84);
+  background: var(--ah-surface);
   backdrop-filter: blur(10px);
-  border: 1px solid rgba(31, 35, 41, 0.08);
-  border-radius: 18px;
+  border: 1px solid var(--ah-border);
+  border-radius: 26px;
   overflow: hidden;
   min-width: 0;
   display: flex;
   flex-direction: column;
+  box-shadow: var(--ah-shadow-md);
 }
 
 .sidePane {
   min-width: 0;
   height: 100%;
 }
-.searchInput :deep() {
-  height: 38px;
-  border-radius: 12px;
-  background: rgba(255, 255, 255, 0.92);
-  box-shadow: none;
-}
-.searchInput :deep() {
-  color: rgba(31, 35, 41, 0.42);
-}
-
-.taskStat span {
-  display: block;
-  font-size: 12px;
-  color: rgba(31, 35, 41, 0.58);
-}
-.taskStat strong {
-  display: block;
-  margin-top: 4px;
-  font-size: 18px;
-}
-
-.fileTreeWrap :deep() {
-  margin-bottom: 4px;
-}
-
-.mName {
-  font-weight: 900;
-}
-
 .chatHeader {
-  height: 58px;
+  min-height: 74px;
   display: flex;
   align-items: center;
   justify-content: space-between;
-  padding: 0 18px;
-  border-bottom: 1px solid rgba(31, 35, 41, 0.06);
+  padding: 14px 24px;
+  border-bottom: 1px solid var(--ah-border-soft);
+}
+.chatHeading {
+  display: grid;
+  gap: 6px;
+  min-width: 0;
 }
 .chatTitle {
-  font-size: 16px;
+  font-size: 18px;
   font-weight: 900;
+  color: var(--ah-text-primary);
+}
+.chatMeta {
+  display: flex;
+  align-items: center;
+  gap: 14px;
+  font-size: 12px;
+  color: var(--ah-text-tertiary);
 }
 .chatActions {
   display: flex;
-  gap: 8px;
+  gap: 10px;
   align-items: center;
 }
 .iconBtn {
-  width: 34px;
-  height: 34px;
-  border-radius: 10px;
+  width: 40px;
+  height: 40px;
+  border-radius: 14px;
   font-size: 16px;
   padding: 0;
+  background: var(--ah-surface-soft);
+  color: var(--ah-text-secondary);
 }
 .iconBtnLarge {
   font-size: 17px;
 }
 .iconBtn:hover {
-  background: rgba(31, 35, 41, 0.1);
+  background: var(--ah-conv-item-hover-bg, var(--ah-hover-strong));
 }
 .iconBtn:disabled {
   opacity: 0.45;
@@ -1153,7 +1040,7 @@ async function createGroup() {
   cursor: pointer;
 }
 .mentionList :deep(.el-table__row.active) {
-  background: rgba(79, 140, 255, 0.12);
+  background: var(--ah-list-active-bg);
 }
 .mAvatar {
   width: 36px;
@@ -1161,16 +1048,17 @@ async function createGroup() {
   border-radius: 12px;
   display: grid;
   place-items: center;
-  background: rgba(79, 140, 255, 0.14);
+  background: var(--ah-surface-soft);
   font-size: 16px;
 }
 .mName {
   font-weight: 800;
 }
 .mCheck {
-  color: #2f6bff;
+  color: var(--ah-primary-strong);
   display: flex;
   justify-content: center;
   font-size: 16px;
 }
+
 </style>

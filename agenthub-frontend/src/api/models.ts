@@ -25,8 +25,7 @@ export type AgentMemberCreateRequest = Schema['AgentMemberCreateRequest']
 export type MessageCreateRequest = Schema['MessageCreateRequest']
 export type GroupTaskNodeIn = Schema['GroupTaskNodeIn']
 export type GroupTaskNode = Schema['GroupTaskNodeOut'] & {
-  run_id: string
-  manager_review_status: string
+  manager_review_status?: string
 }
 export type FsEntry = Schema['FsEntryOut']
 export type ProjectCodeEntry = FsEntry
@@ -66,11 +65,7 @@ export type MemoryCompressRunResult = {
   last_message_id?: number | null
 }
 
-export type GroupTaskGraph = {
-  run_id: string
-  version: number
-  snapshot_json: string
-}
+export type GroupTaskGraph = Record<string, unknown>
 
 export type GroupTaskNodeDraft = {
   title: string
@@ -110,26 +105,4 @@ export type AgentRunEvent = {
   updated_at?: string
 }
 
-export type GroupTaskEvent = {
-  id: string | number
-  run_id: string | number
-  seq?: number
-  event_type?: string | null
-  category?: string | null
-  status?: string | null
-  payload_json?: string | null
-  created_at?: string
-  updated_at?: string
-}
-
-export type GroupTaskRun = {
-  id: string | number
-  group_id?: string | number | null
-  creator_member_id?: string | number | null
-  title: string
-  goal_text: string
-  status: string
-  trigger_message_id?: string | number | null
-  created_at: string
-  updated_at?: string
-}
+export type GroupTaskEvent = Record<string, unknown>

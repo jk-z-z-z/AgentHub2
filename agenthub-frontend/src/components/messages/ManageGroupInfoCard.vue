@@ -1,20 +1,27 @@
 <template>
-  <el-card class="card" shadow="never">
-    <template #header>
-      <div class="secTitle">会话信息</div>
-    </template>
+  <section class="section">
+    <div class="sectionTitle">会话信息</div>
     <template v-if="activeGroup">
-      <el-descriptions :column="1" size="small" border>
-        <el-descriptions-item label="名称">{{ activeGroup.name }}</el-descriptions-item>
-        <el-descriptions-item label="类型">{{ activeGroup.type }}</el-descriptions-item>
-        <el-descriptions-item label="ID">{{ activeGroup.id }}</el-descriptions-item>
-      </el-descriptions>
+      <div class="settingCard">
+        <div class="infoRow">
+          <span class="label">名称</span>
+          <span class="value">{{ activeGroup.name }}</span>
+        </div>
+        <div class="infoRow">
+          <span class="label">类型</span>
+          <span class="value">{{ activeGroup.type }}</span>
+        </div>
+        <div class="infoRow">
+          <span class="label">ID</span>
+          <span class="value mono">{{ activeGroup.id }}</span>
+        </div>
+      </div>
       <div class="actions">
         <el-button type="danger" plain @click="$emit('delete-group')">删除会话</el-button>
       </div>
     </template>
     <el-empty v-else description="未选择会话" />
-  </el-card>
+  </section>
 </template>
 
 <script setup lang="ts">
@@ -30,13 +37,46 @@ defineEmits<{
 </script>
 
 <style scoped>
-.card {
-  border-radius: 14px;
-  margin-bottom: 12px;
-  background: rgba(255, 255, 255, 0.7);
+.section {
+  margin-bottom: 22px;
 }
-.secTitle {
+.sectionTitle {
+  margin-bottom: 12px;
+  font-size: 13px;
   font-weight: 900;
+  color: var(--ah-text-tertiary);
+}
+.settingCard {
+  border: 1px solid var(--ah-border-soft);
+  border-radius: 24px;
+  background: var(--ah-surface-soft);
+  padding: 10px 18px;
+}
+.infoRow {
+  display: grid;
+  grid-template-columns: 72px minmax(0, 1fr);
+  gap: 12px;
+  align-items: center;
+  min-height: 48px;
+  border-bottom: 1px solid var(--ah-border-soft);
+}
+.infoRow:last-child {
+  border-bottom: 0;
+}
+.label {
+  font-size: 13px;
+  font-weight: 800;
+  color: var(--ah-text-tertiary);
+}
+.value {
+  min-width: 0;
+  color: var(--ah-text-primary);
+  font-size: 14px;
+  font-weight: 700;
+  word-break: break-all;
+}
+.mono {
+  font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, Liberation Mono, monospace;
 }
 .actions {
   display: flex;

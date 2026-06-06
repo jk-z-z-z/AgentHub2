@@ -54,6 +54,10 @@ Optional API base override:
 
 - copy `.env.example` to `.env.local` and set `VITE_API_BASE`
 
+## Frontend Conventions
+
+- See [`docs/ui-conventions.md`](docs/ui-conventions.md) for the shared UI, layout, component, and API boundaries used across the frontend.
+
 ## Project Setup
 
 ```sh

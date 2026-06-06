@@ -1,6 +1,6 @@
 <template>
   <div class="wrap">
-    <div class="card">
+    <el-card class="card" shadow="never">
       <div class="title">登录</div>
       <div class="sub">使用邮箱与密码登录</div>
 
@@ -12,7 +12,7 @@
 
       <div v-if="error" class="error">{{ error }}</div>
       <div class="hint">默认管理员：admin@example.com / admin123456</div>
-    </div>
+    </el-card>
   </div>
 </template>
 
@@ -50,12 +50,10 @@ async function submit() {
   background: var(--ah-bg);
 }
 .card {
-  width: 420px;
-  border-radius: 16px;
-  background: #fff;
-  border: 1px solid rgba(31, 35, 41, 0.08);
-  padding: 22px;
-  box-shadow: 0 14px 44px rgba(31, 35, 41, 0.08);
+  width: min(420px, calc(100vw - 32px));
+  border-radius: 18px;
+  background: var(--ah-login-surface);
+  backdrop-filter: blur(10px);
 }
 .title {
   font-size: 18px;
@@ -73,7 +71,7 @@ async function submit() {
 }
 .error {
   margin-top: 10px;
-  color: #d92d20;
+  color: var(--ah-danger);
   font-size: 12px;
 }
 .hint {

@@ -1,9 +1,11 @@
 <template>
   <section v-if="activeGroup?.type === 'project'" class="projectStack">
-    <el-card class="card" shadow="never">
-      <template #header>
-        <div class="secTitle">添加成员</div>
-      </template>
+    <section class="section">
+      <div class="sectionTitle">Agent 管理</div>
+      <div class="settingCard">
+        <div class="cardTitleRow">
+          <div class="cardTitle">添加成员</div>
+        </div>
       <div class="addGrid">
         <el-select v-model="addKindModel" style="width: 120px">
           <el-option label="用户" value="user" />
@@ -17,12 +19,15 @@
         </el-select>
         <el-button type="primary" :loading="adding" @click="$emit('add-member')">添加</el-button>
       </div>
-    </el-card>
+      </div>
+    </section>
 
-    <el-card class="card" shadow="never">
-      <template #header>
-        <div class="secTitle">长期记忆自动提炼配置</div>
-      </template>
+    <section class="section">
+      <div class="sectionTitle">权限与记忆</div>
+      <div class="settingCard">
+        <div class="cardTitleRow">
+          <div class="cardTitle">长期记忆自动提炼配置</div>
+        </div>
       <div v-if="memoryCfgLoading" class="loading">加载配置中…</div>
       <template v-else>
         <div class="kvRow">
@@ -53,12 +58,15 @@
           <div>是否达到阈值：{{ memoryStatus.will_trigger ? '是' : '否' }}</div>
         </div>
       </template>
-    </el-card>
+      </div>
+    </section>
 
-    <el-card class="card" shadow="never">
-      <template #header>
-        <div class="secTitle">群管家配置</div>
-      </template>
+    <section class="section">
+      <div class="sectionTitle">其他设置</div>
+      <div class="settingCard">
+        <div class="cardTitleRow">
+          <div class="cardTitle">群管家配置</div>
+        </div>
       <div v-if="assistantCfgLoading" class="loading">加载中…</div>
       <template v-else>
         <div class="kvRow">
@@ -77,7 +85,8 @@
           <el-button size="small" :loading="assistantCfgSaving" @click="$emit('save-assistant-config')">保存管家配置</el-button>
         </div>
       </template>
-    </el-card>
+      </div>
+    </section>
   </section>
 </template>
 
@@ -130,14 +139,30 @@ defineEmits<{
 <style scoped>
 .projectStack {
   display: grid;
-  gap: 12px;
+  gap: 22px;
 }
-.card {
-  border-radius: 14px;
-  background: rgba(255, 255, 255, 0.7);
-}
-.secTitle {
+.sectionTitle {
+  margin-bottom: 12px;
+  font-size: 13px;
   font-weight: 900;
+  color: var(--ah-text-tertiary);
+}
+.settingCard {
+  border-radius: 24px;
+  border: 1px solid var(--ah-border-soft);
+  background: var(--ah-surface-soft);
+  padding: 18px;
+}
+.cardTitleRow {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  margin-bottom: 16px;
+}
+.cardTitle {
+  font-size: 15px;
+  font-weight: 900;
+  color: var(--ah-text-primary);
 }
 .addGrid {
   display: grid;
@@ -149,31 +174,35 @@ defineEmits<{
   display: grid;
   grid-template-columns: 72px 1fr;
   gap: 10px;
-  font-size: 12px;
-  margin-bottom: 6px;
+  font-size: 13px;
+  min-height: 42px;
+  align-items: center;
+  margin-bottom: 8px;
 }
 .k {
-  opacity: 0.6;
+  color: var(--ah-text-tertiary);
   font-weight: 800;
 }
 .v {
-  opacity: 0.9;
+  color: var(--ah-text-primary);
   word-break: break-all;
 }
 .actions {
   display: flex;
   gap: 8px;
-  margin-top: 10px;
+  margin-top: 14px;
   flex-wrap: wrap;
 }
 .loading {
-  opacity: 0.7;
+  color: var(--ah-text-tertiary);
   font-size: 12px;
 }
 .statusBlock {
   margin-top: 10px;
   font-size: 12px;
-  opacity: 0.75;
+  color: var(--ah-text-tertiary);
   line-height: 1.6;
+  border-top: 1px solid var(--ah-border-soft);
+  padding-top: 10px;
 }
 </style>

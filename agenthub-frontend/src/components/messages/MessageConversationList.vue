@@ -1,54 +1,44 @@
 <template>
-  <section class="convPane">
-    <div class="paneHeader">
-      <el-input v-model="searchModel" class="searchInput" placeholder="搜索" clearable>
-        <template #prefix>
-          <el-icon class="searchIcon">
-            <Search />
-          </el-icon>
-        </template>
-      </el-input>
-      <el-button class="addBtn" :icon="CirclePlus" circle plain @click="$emit('create')" aria-label="新建会话" />
-    </div>
+  <el-card class="convPane" shadow="never">
+    <template #header>
+      <div class="paneHeader">
+        <div class="paneTitle">对话</div>
+        <el-button class="addBtn" :icon="CirclePlus" text circle @click="$emit('create')" aria-label="新建会话" />
+      </div>
+    </template>
 
-    <el-table
-      :data="groups"
-      class="convList"
-      height="100%"
-      empty-text="暂无会话"
-      :row-class-name="tableRowClassName"
-      @row-click="handleRowClick"
-    >
-      <el-table-column label="" width="64">
-        <template #default="{ row }">
-          <div class="avatar">{{ avatarText(row.name) }}</div>
-        </template>
-      </el-table-column>
-      <el-table-column label="会话" min-width="160">
-        <template #default="{ row }">
-          <div class="name">{{ row.name }}</div>
-          <div class="preview">{{ lastPreviewMap[row.id] || '' }}</div>
-        </template>
-      </el-table-column>
-      <el-table-column label="时间" width="88" align="right">
-        <template #default="{ row }">
-          <span class="time">{{ lastTimeMap[row.id] || '' }}</span>
-        </template>
-      </el-table-column>
-      <el-table-column label="类型" width="90" align="right">
-        <template #default="{ row }">
-          <span class="badge">{{ row.type === 'project' ? '项目组' : '单聊' }}</span>
-        </template>
-      </el-table-column>
-    </el-table>
-  </section>
+    <el-scrollbar class="convList">
+      <el-empty v-if="loading && groups.length === 0" description="加载中…" />
+      <el-empty v-else-if="groups.length === 0" description="暂无会话" />
+      <div v-else class="convListInner">
+        <button
+          v-for="row in groups"
+          :key="row.id"
+          type="button"
+          class="convItem"
+          :class="{ active: row.id === activeGroupId }"
+          @click="handleRowClick(row)"
+        >
+          <el-avatar class="avatar" :size="48">{{ avatarText(row.name) }}</el-avatar>
+          <div class="convMain">
+            <div class="convTop">
+              <div class="name">{{ row.name }}</div>
+              <span class="time">{{ lastTimeMap[row.id] || '' }}</span>
+            </div>
+            <div class="preview">{{ lastPreviewMap[row.id] || '暂无消息' }}</div>
+            <div class="metaRow">
+              <span class="typePill">{{ row.type === 'project' ? '项目组' : '单聊' }}</span>
+            </div>
+          </div>
+        </button>
+      </div>
+    </el-scrollbar>
+  </el-card>
 </template>
 
 <script setup lang="ts">
-import { CirclePlus, Search } from '@element-plus/icons-vue'
+import { CirclePlus } from '@element-plus/icons-vue'
 import type { Group } from '@/api/models.ts'
-
-const searchModel = defineModel<string>('search', { default: '' })
 
 const props = defineProps<{
   groups: Group[]
@@ -72,92 +62,137 @@ function handleRowClick(row: Group) {
   emit('select', row.id)
 }
 
-function tableRowClassName({ row }: { row: Group }) {
-  return row.id === props.activeGroupId ? 'active' : ''
-}
 </script>
 
 <style scoped>
 .convPane {
-  background: rgba(255, 255, 255, 0.84);
+  background: var(--ah-surface);
   backdrop-filter: blur(10px);
-  border: 1px solid rgba(31, 35, 41, 0.08);
+  border: 1px solid var(--ah-border);
   border-radius: 18px;
   overflow: hidden;
   min-width: 0;
   display: flex;
   flex-direction: column;
+  padding: 0;
+}
+.convPane :deep(.el-card__header) {
+  padding: 0 16px;
+  height: 56px;
+  border-bottom: 1px solid var(--ah-border-soft);
+}
+.convPane :deep(.el-card__body) {
+  padding: 0;
+  flex: 1;
+  min-height: 0;
 }
 .paneHeader {
-  height: 64px;
-  padding: 12px;
+  height: 100%;
   display: flex;
   align-items: center;
+  justify-content: space-between;
   gap: 12px;
-  border-bottom: 1px solid rgba(31, 35, 41, 0.06);
 }
-.searchInput {
-  flex: 1;
-}
-.searchInput :deep(.el-input__wrapper) {
-  height: 38px;
-  border-radius: 12px;
-  background: rgba(255, 255, 255, 0.92);
-  box-shadow: none;
-}
-.searchInput :deep(.el-input__inner) {
-  color: rgba(31, 35, 41, 0.92);
-}
-.searchIcon {
-  font-size: 18px;
+.paneTitle {
+  font-size: 15px;
+  font-weight: 900;
+  color: var(--ah-text-primary);
 }
 .addBtn {
-  width: 38px;
-  height: 38px;
-  color: rgba(31, 35, 41, 0.88);
+  width: 36px;
+  height: 36px;
+  color: var(--ah-text-secondary);
 }
 .convList {
-  height: 100%;
+  flex: 1;
+  min-height: 0;
 }
-.convList :deep(.el-table__row) {
+.convListInner {
+  display: grid;
+  gap: 8px;
+  padding: 10px;
+}
+.convItem {
+  width: 100%;
+  display: grid;
+  grid-template-columns: 44px minmax(0, 1fr);
+  gap: 12px;
+  align-items: start;
+  padding: 12px 14px;
+  min-height: 80px;
+  border: 1px solid transparent;
+  border-radius: 18px;
+  background: var(--ah-conv-item-bg, transparent);
   cursor: pointer;
+  text-align: left;
+  transition:
+    background-color 0.18s ease,
+    border-color 0.18s ease,
+    box-shadow 0.18s ease,
+    transform 0.18s ease;
 }
-.convList :deep(.el-table__row.active) {
-  background: rgba(79, 140, 255, 0.12);
+.convItem:hover {
+  background: var(--ah-conv-item-hover-bg, var(--ah-surface-soft));
+}
+.convItem.active {
+  background: var(--ah-conv-item-active-bg, var(--ah-list-active-bg));
+  border-color: var(--ah-conv-item-active-border, var(--ah-list-active-border));
+  box-shadow: 0 8px 20px rgba(70, 58, 43, 0.06);
 }
 .avatar {
-  width: 52px;
-  height: 52px;
-  border-radius: 14px;
-  display: grid;
-  place-items: center;
-  background: linear-gradient(135deg, #4f8cff, #7aa8ff);
-  color: #fff;
+  background: var(--ah-avatar-gradient);
+  color: var(--ah-icon-dark, var(--ah-text-primary));
   font-weight: 800;
-  font-size: 16px;
+}
+.convMain {
+  min-width: 0;
+  display: grid;
+  gap: 4px;
+}
+.convTop {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: 10px;
 }
 .name {
   font-weight: 800;
-  font-size: 16px;
+  font-size: 15px;
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
 }
 .time {
   font-size: 12px;
-  opacity: 0.55;
+  color: var(--ah-text-muted);
+  flex: 0 0 auto;
 }
 .preview {
   font-size: 13px;
-  opacity: 0.66;
+  color: var(--ah-text-tertiary);
   overflow: hidden;
-  white-space: nowrap;
-  text-overflow: ellipsis;
+  display: -webkit-box;
+  -webkit-line-clamp: 1;
+  -webkit-box-orient: vertical;
+  line-height: 1.4;
+  padding-right: 54px;
 }
-.badge {
-  font-size: 12px;
-  padding: 2px 8px;
+.metaRow {
+  display: flex;
+  justify-content: flex-end;
+  margin-top: 2px;
+}
+.typePill {
+  display: inline-flex;
+  align-items: center;
+  height: 20px;
+  padding: 0 8px;
   border-radius: 999px;
-  background: rgba(79, 140, 255, 0.14);
-  color: #2563eb;
+  background: var(--ah-surface-strong);
+  color: var(--ah-text-secondary);
+  font-size: 11px;
   font-weight: 700;
-  white-space: nowrap;
+  border: 1px solid var(--ah-border-soft);
 }
 </style>

@@ -1,10 +1,7 @@
 <template>
   <div class="page">
     <div class="grid">
-      <el-card class="panel" shadow="never">
-        <template #header>
-          <div class="panelTitle">创建用户</div>
-        </template>
+      <WorkspacePanel title="创建用户">
         <div class="form">
           <el-input v-model="form.email" placeholder="email" />
           <el-input v-model="form.username" placeholder="username" />
@@ -16,38 +13,46 @@
           <el-button type="primary" :loading="creating" @click="$emit('create')">创建</el-button>
           <div v-if="createError" class="err">{{ createError }}</div>
         </div>
-      </el-card>
+      </WorkspacePanel>
 
-      <el-card class="panel" shadow="never">
-        <template #header>
-          <div class="panelTitle">用户列表</div>
-        </template>
-        <div class="toolbar">
-          <el-input v-model="queryModel" placeholder="搜索 email/username/display_name" clearable @keyup.enter="$emit('load')" />
+      <WorkspacePanel title="用户列表">
+        <template #actions>
           <el-button @click="$emit('load')" :loading="loading">刷新</el-button>
+        </template>
+
+        <div class="listPane">
+          <el-input
+            v-model="queryModel"
+            class="searchBar"
+            placeholder="搜索 email/username/display_name"
+            clearable
+            @keyup.enter="$emit('load')"
+          />
+
+          <el-table :data="users" empty-text="暂无用户" class="list" height="100%">
+            <el-table-column label="名称" min-width="160">
+              <template #default="{ row }">
+                <div class="name">{{ row.display_name || row.username }}</div>
+                <div class="meta">{{ row.email }}</div>
+              </template>
+            </el-table-column>
+            <el-table-column prop="role" label="角色" width="100" />
+            <el-table-column prop="status" label="状态" width="100" />
+            <el-table-column label="ID" width="100" align="right">
+              <template #default="{ row }">
+                <span class="id">#{{ row.id }}</span>
+              </template>
+            </el-table-column>
+          </el-table>
         </div>
-        <el-table :data="users" empty-text="暂无用户" class="list" height="100%">
-          <el-table-column label="名称" min-width="160">
-            <template #default="{ row }">
-              <div class="name">{{ row.display_name || row.username }}</div>
-              <div class="meta">{{ row.email }}</div>
-            </template>
-          </el-table-column>
-          <el-table-column prop="role" label="角色" width="100" />
-          <el-table-column prop="status" label="状态" width="100" />
-          <el-table-column label="ID" width="100" align="right">
-            <template #default="{ row }">
-              <span class="id">#{{ row.id }}</span>
-            </template>
-          </el-table-column>
-        </el-table>
-      </el-card>
+      </WorkspacePanel>
     </div>
   </div>
 </template>
 
 <script setup lang="ts">
 import type { User } from '../../api/users'
+import WorkspacePanel from '../common/WorkspacePanel.vue'
 
 const queryModel = defineModel<string>('q', { required: true })
 
@@ -76,13 +81,12 @@ defineEmits<{
 <style scoped>
 .page { height: 100%; display:flex; flex-direction:column; gap:14px; }
 .grid { flex:1; display:grid; grid-template-columns:420px 1fr; gap:14px; min-height:0; }
-.panel { background:rgba(255,255,255,.75); border-radius:18px; overflow:hidden; display:flex; flex-direction:column; min-height:0; }
-.panelTitle { font-weight:900; }
 .form { padding:14px 16px; display:grid; gap:10px; }
-.toolbar { padding:12px 16px; display:grid; grid-template-columns:1fr 90px; gap:10px; border-bottom:1px solid rgba(31,35,41,.06); }
-.list { min-height:0; }
+.listPane { flex:1; min-height:0; display:flex; flex-direction:column; }
+.searchBar { margin-bottom: 12px; }
+.list { min-height:0; flex:1; }
 .name { font-weight:900; }
 .meta { font-size:12px; opacity:.65; margin-top:2px; }
 .id { font-size:12px; opacity:.6; }
-.err { color:#d92d20; font-size:12px; }
+.err { color: var(--ah-danger); font-size:12px; }
 </style>

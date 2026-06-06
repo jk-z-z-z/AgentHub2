@@ -1,8 +1,3 @@
-:root {
-  --ah-bg: #f2f4f8;
-  --ah-text: #1f2329;
-}
-
 html,
 body,
 #app {
@@ -18,4 +13,110 @@ body,
 body {
   overflow: hidden;
   background: var(--ah-bg);
+  color: var(--ah-text);
+  color-scheme: var(--ah-color-scheme);
+  transition:
+    background-color 0.18s ease,
+    color 0.18s ease;
+}
+
+::selection {
+  background: var(--ah-primary-soft);
+  color: var(--ah-text-strong);
+}
+
+.el-card {
+  background: var(--ah-surface);
+  color: var(--ah-text);
+  border-color: var(--ah-border);
+  box-shadow: var(--ah-shadow-md);
+}
+
+.el-card.is-never-shadow {
+  box-shadow: none;
+}
+
+.el-input__wrapper,
+.el-textarea__inner,
+.el-select__wrapper {
+  background-color: var(--ah-input-bg) !important;
+  box-shadow: 0 0 0 1px var(--ah-input-border) inset !important;
+  color: var(--ah-text-primary) !important;
+}
+
+.el-input__wrapper,
+.el-select__wrapper {
+  border-radius: 14px;
+}
+
+.el-textarea__inner {
+  border-radius: 18px;
+}
+
+.el-input__wrapper.is-focus,
+.el-textarea__inner:focus,
+.el-select__wrapper.is-focused {
+  box-shadow: 0 0 0 1px var(--ah-primary) inset !important;
+}
+
+.el-table {
+  --el-table-bg-color: transparent;
+  --el-table-tr-bg-color: transparent;
+  --el-table-row-hover-bg-color: var(--ah-primary-ghost);
+  --el-table-header-bg-color: var(--ah-surface-soft);
+  --el-table-header-text-color: var(--ah-text-primary);
+  --el-table-text-color: var(--ah-text);
+  color: var(--ah-text);
+}
+
+.el-table th.el-table__cell,
+.el-table td.el-table__cell {
+  background-color: transparent !important;
+  border-bottom-color: var(--ah-border-soft) !important;
+}
+
+.el-descriptions {
+  color: var(--ah-text);
+}
+
+.el-descriptions__label {
+  color: var(--ah-text-tertiary) !important;
+}
+
+.el-empty__description {
+  color: var(--ah-text-tertiary);
+}
+
+.el-dialog,
+.el-drawer {
+  background: var(--ah-surface-strong);
+  color: var(--ah-text);
+  border: 1px solid var(--ah-border);
+  box-shadow: var(--ah-shadow-lg);
+}
+
+.el-dialog__header,
+.el-drawer__header {
+  border-bottom: 1px solid var(--ah-border-soft);
+}
+
+.el-drawer__body,
+.el-dialog__body {
+  color: var(--ah-text);
+}
+
+.el-popper.is-light,
+.el-tooltip__popper.is-light,
+.el-dropdown__popper,
+.el-popover.el-popper {
+  background: var(--ah-tooltip-bg) !important;
+  border-color: var(--ah-border) !important;
+  color: var(--ah-text-primary) !important;
+  box-shadow: var(--ah-tooltip-shadow) !important;
+}
+
+.el-message-box {
+  background: var(--ah-surface-strong);
+  color: var(--ah-text);
+  border-color: var(--ah-border);
 }

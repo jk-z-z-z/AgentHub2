@@ -84,7 +84,7 @@ function editorTheme() {
   return EditorView.theme({
     '&': {
       height: '100%',
-      backgroundColor: '#fff',
+      backgroundColor: 'var(--ah-code-bg)',
     },
     '.cm-scroller': {
       fontFamily:
@@ -95,15 +95,15 @@ function editorTheme() {
       fontSize: 'var(--editor-font-size)',
     },
     '.cm-gutters': {
-      borderRight: '1px solid rgba(31, 35, 41, 0.08)',
-      backgroundColor: 'rgba(247, 248, 250, 0.95)',
-      color: 'rgba(31, 35, 41, 0.48)',
+      borderRight: '1px solid var(--ah-border)',
+      backgroundColor: 'var(--ah-code-gutter-bg)',
+      color: 'var(--ah-code-gutter-text)',
     },
     '.cm-activeLine, .cm-activeLineGutter': {
-      backgroundColor: 'rgba(79, 140, 255, 0.06)',
+      backgroundColor: 'var(--ah-primary-ghost)',
     },
     '.cm-cursor, .cm-dropCursor': {
-      borderLeftColor: '#2563eb',
+      borderLeftColor: 'var(--ah-primary-strong)',
     },
     '.cm-focused': {
       outline: 'none',
@@ -251,7 +251,7 @@ onBeforeUnmount(() => {
 .filePath {
   font-size: 15px;
   font-weight: 900;
-  color: rgba(31, 35, 41, 0.9);
+  color: var(--ah-text-primary);
   overflow: hidden;
   text-overflow: ellipsis;
   white-space: nowrap;
@@ -260,11 +260,11 @@ onBeforeUnmount(() => {
 .fileInfo {
   margin-top: 4px;
   font-size: 12px;
-  color: rgba(31, 35, 41, 0.56);
+  color: var(--ah-text-tertiary);
 }
 
 .dirtyFlag {
-  color: #d97706;
+  color: var(--ah-warning);
   font-weight: 700;
 }
 
@@ -291,8 +291,8 @@ onBeforeUnmount(() => {
   height: 100%;
   overflow: hidden;
   border-radius: 16px;
-  border: 1px solid rgba(31, 35, 41, 0.08);
-  background: #fff;
+  border: 1px solid var(--ah-border);
+  background: var(--ah-code-bg);
 }
 
 .emptyState {
@@ -300,7 +300,7 @@ onBeforeUnmount(() => {
   inset: 0;
   display: grid;
   place-items: center;
-  color: rgba(31, 35, 41, 0.58);
+  color: var(--ah-text-tertiary);
   font-size: 13px;
 }
 

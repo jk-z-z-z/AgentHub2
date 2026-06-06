@@ -2,13 +2,19 @@
   <div class="sidePanel">
     <div class="sideHeader">
       <div>
-        <div class="sideTitle">聊天管理</div>
+        <div class="sideTitle">{{ activeGroup?.type === 'project' ? '项目设置' : '会话设置' }}</div>
         <div class="sideSubtitle">{{ activeGroup?.name || '未选择会话' }}</div>
       </div>
       <el-button class="sideCloseBtn" :icon="Close" circle text @click="$emit('close')" aria-label="关闭聊天管理" />
     </div>
 
     <el-scrollbar class="sideBody" v-if="activeGroup">
+      <div class="groupHero">
+        <div class="groupAvatar">{{ (activeGroup.name || '项').slice(0, 1) }}</div>
+        <div class="groupName">{{ activeGroup.name }}</div>
+        <div class="groupMeta">{{ activeGroup.type === 'project' ? '项目群聊' : '单聊会话' }}</div>
+      </div>
+
       <ManageGroupInfoCard :active-group="activeGroup" @delete-group="$emit('delete-group')" />
 
       <ManageMemberListCard
@@ -114,17 +120,18 @@ defineEmits<{
   height: 100%;
   display: flex;
   flex-direction: column;
-  background: rgba(255, 255, 255, 0.84);
+  background: var(--ah-surface);
   backdrop-filter: blur(10px);
-  border: 1px solid rgba(31, 35, 41, 0.08);
-  border-radius: 18px;
+  border: 1px solid var(--ah-border);
+  border-radius: 26px;
   overflow: hidden;
   min-width: 0;
+  box-shadow: var(--ah-shadow-md);
 }
 .sideHeader {
-  height: 58px;
-  padding: 0 16px;
-  border-bottom: 1px solid rgba(31, 35, 41, 0.06);
+  min-height: 74px;
+  padding: 14px 20px;
+  border-bottom: 1px solid var(--ah-border-soft);
   display: flex;
   align-items: center;
   justify-content: space-between;
@@ -132,24 +139,25 @@ defineEmits<{
   flex: 0 0 auto;
 }
 .sideTitle {
-  font-size: 16px;
+  font-size: 18px;
   font-weight: 900;
 }
 .sideSubtitle {
-  margin-top: 2px;
+  margin-top: 4px;
   font-size: 12px;
-  color: rgba(31, 35, 41, 0.58);
+  color: var(--ah-text-tertiary);
 }
 .sideCloseBtn {
-  width: 32px;
-  height: 32px;
-  border-radius: 10px;
-  color: rgba(31, 35, 41, 0.8);
+  width: 40px;
+  height: 40px;
+  border-radius: 14px;
+  color: var(--ah-text-secondary);
+  background: var(--ah-surface-soft);
 }
 .sideBody {
   flex: 1;
   min-height: 0;
-  padding: 12px;
+  padding: 22px 22px 24px;
 }
 .sideEmpty {
   height: 100%;
@@ -157,9 +165,36 @@ defineEmits<{
   align-items: center;
   justify-content: center;
 }
+.groupHero {
+  display: grid;
+  justify-items: center;
+  gap: 10px;
+  padding: 8px 0 22px;
+}
+.groupAvatar {
+  width: 80px;
+  height: 80px;
+  border-radius: 28px;
+  display: grid;
+  place-items: center;
+  background: var(--ah-avatar-gradient);
+  color: var(--ah-icon-dark, var(--ah-text-primary));
+  font-size: 30px;
+  font-weight: 900;
+  border: 1px solid var(--ah-border-soft);
+}
+.groupName {
+  font-size: 18px;
+  font-weight: 900;
+  color: var(--ah-text-primary);
+}
+.groupMeta {
+  font-size: 13px;
+  color: var(--ah-text-tertiary);
+}
 .errBox {
   margin-top: 12px;
-  color: #d92d20;
+  color: var(--ah-danger);
   font-size: 12px;
 }
 </style>

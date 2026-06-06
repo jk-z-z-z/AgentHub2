@@ -5,7 +5,11 @@ import 'element-plus/dist/index.css'
 
 import App from './App.vue'
 import router from './router'
+import { applyThemeToDocument, getStoredTheme } from './stores/theme'
+import './styles/tokens.css'
 import './styles/theme.css'
+
+applyThemeToDocument(getStoredTheme())
 
 const app = createApp(App)
 

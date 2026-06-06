@@ -127,15 +127,15 @@ onMounted(loadContacts)
   height: 38px;
   border-radius: 12px;
   box-shadow: none;
-  background: rgba(31, 35, 41, 0.04);
+  background: var(--ah-input-bg);
 }
 
 .searchBar :deep() {
-  box-shadow: 0 0 0 1px rgba(79, 140, 255, 0.35) inset;
+  box-shadow: 0 0 0 1px var(--ah-primary-soft-strong) inset;
 }
 
 .drawerRow span:first-child {
-  color: rgba(31, 35, 41, 0.48);
+  color: var(--ah-text-muted);
   flex: 0 0 auto;
 }
 </style>
