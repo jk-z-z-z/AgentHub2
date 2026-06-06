@@ -66,6 +66,83 @@
               <div class="taskGoalText">{{ activeRun.goal_text }}</div>
             </div>
 
+            <div class="panelCard taskSectionCard taskGraphCard">
+              <div class="taskSectionHeader">
+                <div>
+                  <div class="taskSectionTitle">流程图</div>
+                  <div class="taskSectionCaption">{{ graphCaption }}</div>
+                </div>
+                <div class="taskLegend">
+                  <span class="taskLegendItem"><i class="legendDot statusPending"></i>待处理</span>
+                  <span class="taskLegendItem"><i class="legendDot statusRun"></i>进行中</span>
+                  <span class="taskLegendItem"><i class="legendDot statusDone"></i>已完成</span>
+                  <span class="taskLegendItem"><i class="legendDot statusBlocked"></i>已阻塞</span>
+                </div>
+              </div>
+
+              <div v-if="nodesLoading" class="taskLoading">加载流程图中…</div>
+              <div v-else-if="graphLayout.nodes.length === 0" class="taskEmpty">当前 Run 还没有可展示的流程图</div>
+              <div v-else class="taskGraphViewport">
+                <div class="taskGraphCanvas" :style="graphCanvasStyle">
+                  <svg class="taskGraphEdgeLayer" :viewBox="`0 0 ${graphLayout.width} ${graphLayout.height}`" preserveAspectRatio="none">
+                    <defs>
+                      <linearGradient id="taskGraphEdgeGradient" x1="0%" x2="100%" y1="0%" y2="0%">
+                        <stop offset="0%" stop-color="rgba(13, 42, 79, 0.16)" />
+                        <stop offset="100%" stop-color="rgba(79, 140, 255, 0.52)" />
+                      </linearGradient>
+                      <marker
+                        id="taskGraphArrow"
+                        markerWidth="10"
+                        markerHeight="10"
+                        refX="7"
+                        refY="3"
+                        orient="auto"
+                        markerUnits="strokeWidth"
+                      >
+                        <path d="M0,0 L0,6 L7,3 z" fill="rgba(79, 140, 255, 0.8)" />
+                      </marker>
+                    </defs>
+                    <path
+                      v-for="edge in graphLayout.edges"
+                      :key="edge.id"
+                      class="taskGraphEdge"
+                      :d="edge.path"
+                      marker-end="url(#taskGraphArrow)"
+                    />
+                  </svg>
+
+                  <div
+                    v-for="column in graphLayout.columns"
+                    :key="`column-${column.level}`"
+                    class="taskGraphColumnLabel"
+                    :style="{ left: `${column.x}px` }"
+                  >
+                    阶段 {{ column.level + 1 }}
+                  </div>
+
+                  <article
+                    v-for="item in graphLayout.nodes"
+                    :key="item.node.id"
+                    class="taskGraphNode"
+                    :class="nodeStatusClass(item.node.status)"
+                    :style="{ left: `${item.x}px`, top: `${item.y}px` }"
+                  >
+                    <div class="taskGraphNodeTop">
+                      <span class="taskGraphNodeKey">{{ item.node.node_key }}</span>
+                      <span class="taskGraphNodeBadge">{{ taskStatusLabel(item.node.status) }}</span>
+                    </div>
+                    <div class="taskGraphNodeTitle">{{ item.node.title }}</div>
+                    <div class="taskGraphNodeRole">{{ item.node.role_required || '未指定角色' }}</div>
+                    <div class="taskGraphNodeDetail">{{ item.node.detail || '暂无说明' }}</div>
+                    <div class="taskGraphNodeMeta">
+                      <span>{{ item.node.deps?.length ? `依赖 ${item.node.deps.length} 项` : '起始节点' }}</span>
+                      <span>{{ item.node.assignee_member_id ? senderName(item.node.assignee_member_id) : '待认领' }}</span>
+                    </div>
+                  </article>
+                </div>
+              </div>
+            </div>
+
             <div class="panelCard taskSectionCard">
               <div class="taskSectionHeader">
                 <div class="taskSectionTitle">节点列表</div>
@@ -88,7 +165,7 @@
                   <div class="taskNodeInfo">
                     <span>依赖：{{ (node.deps || []).join(', ') || '无' }}</span>
                     <span>负责人：{{ node.assignee_member_id ? senderName(node.assignee_member_id) : '待认领' }}</span>
-                    <span>复核：{{ node.manager_review_status }}</span>
+                    <span>复核：{{ reviewStatusLabel(node.manager_review_status) }}</span>
                   </div>
 
                   <div class="taskNodeActions">
@@ -140,9 +217,40 @@
 </template>
 
 <script setup lang="ts">
+import { computed } from 'vue'
 import { Close } from '@element-plus/icons-vue'
 import type { Group, GroupTaskNode, Member } from '../../api/groups'
-import type { GroupTaskRun } from '../../api/messages'
+import type { GroupTaskGraph, GroupTaskRun } from '../../api/messages'
+
+const GRAPH_PADDING_X = 28
+const GRAPH_PADDING_TOP = 56
+const GRAPH_PADDING_BOTTOM = 24
+const GRAPH_NODE_WIDTH = 220
+const GRAPH_NODE_HEIGHT = 144
+const GRAPH_COLUMN_GAP = 68
+const GRAPH_ROW_GAP = 26
+
+type GraphEdge = {
+  from: string
+  to: string
+}
+
+type GraphLayoutNode = {
+  node: GroupTaskNode
+  x: number
+  y: number
+}
+
+type GraphLayoutEdge = {
+  id: string
+  path: string
+}
+
+type GraphLayoutColumn = {
+  level: number
+  x: number
+  nodes: GroupTaskNode[]
+}
 
 const props = defineProps<{
   activeGroup: Group | null
@@ -150,6 +258,7 @@ const props = defineProps<{
   runs: GroupTaskRun[]
   activeRunId: string
   activeRun: GroupTaskRun | null
+  graph: GroupTaskGraph | null
   nodes: GroupTaskNode[]
   nodeStats: { total: number; running: number; completed: number; blocked: number }
   runsLoading: boolean
@@ -168,6 +277,154 @@ defineEmits<{
   (e: 'review-node', node: GroupTaskNode, status: 'approved' | 'rework'): void
 }>()
 
+const graphNodes = computed<GroupTaskNode[]>(() => {
+  if (props.graph?.nodes?.length) return props.graph.nodes as GroupTaskNode[]
+  return props.nodes
+})
+
+const graphEdges = computed<GraphEdge[]>(() => {
+  if (props.graph?.edges?.length) {
+    const rawEdges = props.graph.edges as Array<{
+      from?: string
+      to?: string
+      source?: string
+      target?: string
+    }>
+
+    return rawEdges
+      .map((edge, index) => ({
+        from: String(edge.from ?? edge.source ?? `edge-from-${index}`),
+        to: String(edge.to ?? edge.target ?? `edge-to-${index}`),
+      }))
+      .filter((edge) => edge.from && edge.to)
+  }
+
+  return graphNodes.value.flatMap((node) =>
+    (node.deps || []).map((dep) => ({
+      from: String(dep),
+      to: String(node.node_key),
+    })),
+  )
+})
+
+const graphNodeMap = computed(() => new Map(graphNodes.value.map((node) => [String(node.node_key), node])))
+
+const graphLevels = computed(() => {
+  const memo = new Map<string, number>()
+  const visiting = new Set<string>()
+
+  function resolveLevel(nodeKey: string): number {
+    if (memo.has(nodeKey)) return memo.get(nodeKey) || 0
+    if (visiting.has(nodeKey)) return 0
+
+    visiting.add(nodeKey)
+    const node = graphNodeMap.value.get(nodeKey)
+    const depLevels = (node?.deps || [])
+      .map((dep) => graphNodeMap.value.has(String(dep)) ? resolveLevel(String(dep)) : 0)
+      .filter((level) => Number.isFinite(level))
+    const nextLevel = depLevels.length > 0 ? Math.max(...depLevels) + 1 : 0
+    memo.set(nodeKey, nextLevel)
+    visiting.delete(nodeKey)
+    return nextLevel
+  }
+
+  for (const node of graphNodes.value) {
+    resolveLevel(String(node.node_key))
+  }
+
+  const buckets = new Map<number, GroupTaskNode[]>()
+  for (const node of graphNodes.value) {
+    const level = memo.get(String(node.node_key)) || 0
+    const current = buckets.get(level) || []
+    current.push(node)
+    buckets.set(level, current)
+  }
+
+  return Array.from(buckets.entries())
+    .sort((a, b) => a[0] - b[0])
+    .map(([level, nodes]) => ({
+      level,
+      nodes,
+    }))
+})
+
+const graphCaption = computed(() => {
+  if (graphNodes.value.length === 0) return '根据节点依赖自动排布'
+  return `${graphLevels.value.length} 个阶段 · ${graphNodes.value.length} 个节点 · ${graphEdges.value.length} 条依赖`
+})
+
+const graphLayout = computed(() => {
+  const columns: GraphLayoutColumn[] = graphLevels.value.map((column, index) => ({
+    level: column.level,
+    x: GRAPH_PADDING_X + index * (GRAPH_NODE_WIDTH + GRAPH_COLUMN_GAP),
+    nodes: column.nodes,
+  }))
+
+  const maxRows = Math.max(1, ...columns.map((column) => column.nodes.length))
+  const width =
+    GRAPH_PADDING_X * 2 +
+    columns.length * GRAPH_NODE_WIDTH +
+    Math.max(0, columns.length - 1) * GRAPH_COLUMN_GAP
+  const height =
+    GRAPH_PADDING_TOP +
+    GRAPH_PADDING_BOTTOM +
+    maxRows * GRAPH_NODE_HEIGHT +
+    Math.max(0, maxRows - 1) * GRAPH_ROW_GAP
+
+  const nodes: GraphLayoutNode[] = []
+  const rectMap = new Map<
+    string,
+    { left: number; right: number; centerY: number }
+  >()
+
+  for (const column of columns) {
+    const columnHeight =
+      column.nodes.length * GRAPH_NODE_HEIGHT + Math.max(0, column.nodes.length - 1) * GRAPH_ROW_GAP
+    const startY = GRAPH_PADDING_TOP + Math.max(0, (height - GRAPH_PADDING_TOP - GRAPH_PADDING_BOTTOM - columnHeight) / 2)
+
+    column.nodes.forEach((node, index) => {
+      const x = column.x
+      const y = startY + index * (GRAPH_NODE_HEIGHT + GRAPH_ROW_GAP)
+      nodes.push({ node, x, y })
+      rectMap.set(String(node.node_key), {
+        left: x,
+        right: x + GRAPH_NODE_WIDTH,
+        centerY: y + GRAPH_NODE_HEIGHT / 2,
+      })
+    })
+  }
+
+  const edges: GraphLayoutEdge[] = graphEdges.value
+    .map((edge, index) => {
+      const from = rectMap.get(String(edge.from))
+      const to = rectMap.get(String(edge.to))
+      if (!from || !to) return null
+      const midX = from.right + (to.left - from.right) / 2
+      const path = [
+        `M ${from.right} ${from.centerY}`,
+        `C ${midX} ${from.centerY}, ${midX} ${to.centerY}, ${to.left} ${to.centerY}`,
+      ].join(' ')
+      return {
+        id: `edge-${index}-${edge.from}-${edge.to}`,
+        path,
+      }
+    })
+    .filter((edge): edge is GraphLayoutEdge => Boolean(edge))
+
+  return {
+    width: Math.max(width, 320),
+    height: Math.max(height, GRAPH_PADDING_TOP + GRAPH_PADDING_BOTTOM + GRAPH_NODE_HEIGHT),
+    columns,
+    nodes,
+    edges,
+  }
+})
+
+const graphCanvasStyle = computed(() => ({
+  width: `${graphLayout.value.width}px`,
+  height: `${graphLayout.value.height}px`,
+}))
+
 function senderName(memberId: string) {
   const member = props.members.find((item) => String(item.id) === String(memberId))
   return member?.display_name || String(memberId)
@@ -178,6 +435,12 @@ function taskStatusLabel(status: string) {
   if (status === 'running') return '进行中'
   if (status === 'blocked') return '已阻塞'
   return '待处理'
+}
+
+function reviewStatusLabel(status: string) {
+  if (status === 'approved') return '已通过'
+  if (status === 'rework') return '待返工'
+  return '待复核'
 }
 
 function nodeStatusClass(status: string) {
@@ -370,10 +633,15 @@ function isNodeMine(node: GroupTaskNode) {
 }
 .taskSectionHeader {
   display: flex;
-  align-items: center;
+  align-items: flex-start;
   justify-content: space-between;
   gap: 10px;
   margin-bottom: 12px;
+}
+.taskSectionCaption {
+  font-size: 12px;
+  color: rgba(31, 35, 41, 0.56);
+  line-height: 1.5;
 }
 .taskLoading,
 .taskEmpty,
@@ -385,6 +653,165 @@ function isNodeMine(node: GroupTaskNode) {
 .taskNodeList {
   display: grid;
   gap: 10px;
+}
+.taskGraphCard {
+  margin-top: 12px;
+  background:
+    radial-gradient(circle at top left, rgba(79, 140, 255, 0.12), transparent 34%),
+    linear-gradient(180deg, rgba(255, 255, 255, 0.96), rgba(246, 249, 255, 0.94));
+}
+.taskLegend {
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: flex-end;
+  gap: 8px 12px;
+  font-size: 12px;
+  color: rgba(31, 35, 41, 0.62);
+}
+.taskLegendItem {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+}
+.legendDot {
+  width: 8px;
+  height: 8px;
+  border-radius: 999px;
+  display: inline-block;
+  background: rgba(31, 35, 41, 0.2);
+}
+.legendDot.statusPending {
+  background: rgba(31, 35, 41, 0.32);
+}
+.legendDot.statusRun {
+  background: rgba(82, 183, 255, 0.9);
+}
+.legendDot.statusDone {
+  background: rgba(49, 175, 111, 0.9);
+}
+.legendDot.statusBlocked {
+  background: rgba(217, 45, 32, 0.9);
+}
+.taskGraphViewport {
+  overflow-x: auto;
+  overflow-y: hidden;
+  padding-bottom: 4px;
+}
+.taskGraphCanvas {
+  position: relative;
+  min-width: 100%;
+  border-radius: 18px;
+  background:
+    linear-gradient(90deg, rgba(79, 140, 255, 0.05) 1px, transparent 1px) 0 0 / 24px 24px,
+    linear-gradient(rgba(79, 140, 255, 0.05) 1px, transparent 1px) 0 0 / 24px 24px,
+    linear-gradient(180deg, rgba(240, 246, 255, 0.95), rgba(255, 255, 255, 0.9));
+  border: 1px solid rgba(79, 140, 255, 0.12);
+  box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.75);
+}
+.taskGraphEdgeLayer {
+  position: absolute;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+  overflow: visible;
+  pointer-events: none;
+}
+.taskGraphEdge {
+  fill: none;
+  stroke: url(#taskGraphEdgeGradient);
+  stroke-width: 2.5;
+  stroke-linecap: round;
+}
+.taskGraphColumnLabel {
+  position: absolute;
+  top: 18px;
+  transform: translateX(-2px);
+  font-size: 11px;
+  font-weight: 800;
+  letter-spacing: 0.06em;
+  color: rgba(13, 42, 79, 0.55);
+  text-transform: uppercase;
+}
+.taskGraphNode {
+  position: absolute;
+  width: 220px;
+  min-height: 144px;
+  padding: 12px;
+  border: 1px solid rgba(31, 35, 41, 0.08);
+  border-radius: 18px;
+  background: rgba(255, 255, 255, 0.94);
+  box-shadow:
+    0 18px 38px rgba(13, 42, 79, 0.08),
+    0 2px 8px rgba(13, 42, 79, 0.06);
+  backdrop-filter: blur(4px);
+}
+.taskGraphNode.statusRun {
+  background: linear-gradient(180deg, rgba(239, 249, 255, 0.98), rgba(226, 245, 255, 0.96));
+  border-color: rgba(82, 183, 255, 0.28);
+}
+.taskGraphNode.statusDone {
+  background: linear-gradient(180deg, rgba(240, 252, 246, 0.98), rgba(228, 247, 237, 0.96));
+  border-color: rgba(49, 175, 111, 0.28);
+}
+.taskGraphNode.statusBlocked {
+  background: linear-gradient(180deg, rgba(255, 243, 241, 0.98), rgba(252, 234, 231, 0.96));
+  border-color: rgba(217, 45, 32, 0.3);
+}
+.taskGraphNodeTop {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+}
+.taskGraphNodeKey {
+  font-size: 11px;
+  font-weight: 800;
+  color: rgba(13, 42, 79, 0.58);
+  letter-spacing: 0.04em;
+}
+.taskGraphNodeBadge {
+  white-space: nowrap;
+  font-size: 11px;
+  padding: 3px 8px;
+  border-radius: 999px;
+  background: rgba(13, 42, 79, 0.08);
+  color: rgba(13, 42, 79, 0.72);
+}
+.taskGraphNodeTitle {
+  margin-top: 10px;
+  font-size: 15px;
+  font-weight: 900;
+  line-height: 1.35;
+  color: #10233a;
+  display: -webkit-box;
+  -webkit-line-clamp: 2;
+  -webkit-box-orient: vertical;
+  overflow: hidden;
+}
+.taskGraphNodeRole {
+  margin-top: 6px;
+  font-size: 12px;
+  color: rgba(31, 35, 41, 0.56);
+}
+.taskGraphNodeDetail {
+  margin-top: 10px;
+  font-size: 12px;
+  line-height: 1.55;
+  color: rgba(31, 35, 41, 0.72);
+  display: -webkit-box;
+  -webkit-line-clamp: 3;
+  -webkit-box-orient: vertical;
+  overflow: hidden;
+}
+.taskGraphNodeMeta {
+  margin-top: 12px;
+  padding-top: 10px;
+  border-top: 1px solid rgba(31, 35, 41, 0.08);
+  display: flex;
+  justify-content: space-between;
+  gap: 8px;
+  font-size: 11px;
+  color: rgba(31, 35, 41, 0.6);
 }
 .taskNodeCard {
   border: 1px solid rgba(31, 35, 41, 0.06);
@@ -459,6 +886,14 @@ function isNodeMine(node: GroupTaskNode) {
 @media (max-width: 1200px) {
   .taskShell {
     grid-template-columns: 1fr;
+  }
+}
+@media (max-width: 900px) {
+  .taskSectionHeader {
+    flex-direction: column;
+  }
+  .taskLegend {
+    justify-content: flex-start;
   }
 }
 </style>

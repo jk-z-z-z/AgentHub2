@@ -33,6 +33,16 @@
           <button
             v-if="activeGroup?.type === 'project'"
             class="iconBtn iconBtnLarge"
+            @click="openDeployPanel"
+            aria-label="部署"
+          >
+            <el-icon>
+              <UploadFilled />
+            </el-icon>
+          </button>
+          <button
+            v-if="activeGroup?.type === 'project'"
+            class="iconBtn iconBtnLarge"
             @click="openTaskPlanner"
             aria-label="任务规划"
           >
@@ -99,6 +109,17 @@
         @toggle-dir="toggleProjectDir"
       />
 
+      <MessageDeploymentPanel
+        v-else-if="deployOpen"
+        :active-group="activeGroup"
+        :project-files-entries="projectFilesEntries"
+        :deployment-job="activeDeploymentJob"
+        :deploy-pending="deployPending"
+        @close="deployOpen = false"
+        @deploy="deployProject"
+        @retry-deploy="retryDeployment"
+      />
+
       <MessageManagePanel
         v-else-if="manageOpen"
         :active-group="activeGroup"
@@ -136,6 +157,7 @@
         :runs="taskRuns"
         :active-run-id="activeRunId"
         :active-run="activeTaskRun"
+        :graph="taskGraph"
         :nodes="taskNodes"
         :node-stats="taskNodeStats"
         :runs-loading="taskRunsLoading"
@@ -206,15 +228,17 @@
 <script setup lang="ts">
 import { computed, onBeforeUnmount, onMounted, ref, watch } from 'vue'
 import { useRoute } from 'vue-router'
-import { Monitor, Operation, FolderOpened, Select, Setting } from '@element-plus/icons-vue'
+import { Monitor, Operation, FolderOpened, Select, Setting, UploadFilled } from '@element-plus/icons-vue'
 import {
   type Group,
+  type GroupTaskGraph,
   type GroupTaskNode,
   type MemoryCompressorConfig,
   type MemoryCompressorStatus,
   type Member,
   type Message,
   apiCreateMessage,
+  apiGetGroupTaskGraph,
   apiListMessages,
   apiGetGroupAssistantConfig,
   apiUpdateGroupAssistantConfig,
@@ -244,8 +268,10 @@ import {
 import { apiListAgents } from '../api/agents'
 import { apiGetCurrentUser, apiListUsers, type User } from '../api/users'
 import { apiListProjectCode, type ProjectCodeEntry } from '../api/project-code'
+import { apiCreateDeployment, apiRetryDeployment, type DeploymentJob, type DeploymentRequest } from '../api/deployments'
 import MessageConversationList from '../components/messages/MessageConversationList.vue'
 import MessageComposer from '../components/messages/MessageComposer.vue'
+import MessageDeploymentPanel from '../components/messages/MessageDeploymentPanel.vue'
 import GroupCreateDialog from '../components/messages/GroupCreateDialog.vue'
 import MessageFilePanel from '../components/messages/MessageFilePanel.vue'
 import MessageManagePanel from '../components/messages/MessageManagePanel.vue'
@@ -328,6 +354,7 @@ const currentUserId = ref('')
 const manageOpen = ref(false)
 const taskOpen = ref(false)
 const projectFilesOpen = ref(false)
+const deployOpen = ref(false)
 const LEFT_PANE_WIDTH = 280
 const SIDE_PANE_MIN_WIDTH = 400
 const SIDE_PANE_DEFAULT_WIDTH = 540
@@ -370,6 +397,7 @@ const activeTaskRun = computed(
 )
 const taskNodesLoading = ref(false)
 const taskNodes = ref<GroupTaskNode[]>([])
+const taskGraph = ref<GroupTaskGraph | null>(null)
 const taskCreateOpen = ref(false)
 const taskCreateTitle = ref('')
 const taskCreateGoal = ref('')
@@ -378,6 +406,8 @@ const projectFilesLoading = ref(false)
 const projectFilesEntries = ref<ProjectCodeEntry[]>([])
 const projectOpenDirs = ref<Record<string, boolean>>({})
 const projectActiveFilePath = ref('')
+const deploymentJobs = ref<Record<string, DeploymentJob | null>>({})
+const deployPending = ref(false)
 
 const taskNodeStats = computed(() => {
   const counts = { total: taskNodes.value.length, pending: 0, running: 0, completed: 0, blocked: 0 }
@@ -389,7 +419,11 @@ const taskNodeStats = computed(() => {
   }
   return counts
 })
-const hasSidePane = computed(() => manageOpen.value || taskOpen.value || projectFilesOpen.value)
+const hasSidePane = computed(() => manageOpen.value || taskOpen.value || projectFilesOpen.value || deployOpen.value)
+const activeDeploymentJob = computed(() => {
+  if (!activeGroupId.value) return null
+  return deploymentJobs.value[activeGroupId.value] || null
+})
 const shellStyle = computed(() => ({
   '--side-pane-width': `${sidePaneWidth.value}px`,
 }))
@@ -694,6 +728,7 @@ function openManage() {
   addAgentId.value = ''
   taskOpen.value = false
   projectFilesOpen.value = false
+  deployOpen.value = false
   manageOpen.value = true
   if (activeGroup.value?.type === 'project') {
     void loadMemoryConfig()
@@ -707,8 +742,18 @@ function openTaskPlanner() {
   if (!activeGroup.value || activeGroup.value.type !== 'project') return
   manageOpen.value = false
   projectFilesOpen.value = false
+  deployOpen.value = false
   taskOpen.value = true
   void loadTaskRuns()
+}
+
+async function openDeployPanel() {
+  if (!activeGroup.value || activeGroup.value.type !== 'project') return
+  taskOpen.value = false
+  manageOpen.value = false
+  projectFilesOpen.value = false
+  deployOpen.value = true
+  await reloadProjectFiles()
 }
 
 async function loadAssistantConfig() {
@@ -761,10 +806,12 @@ async function loadTaskRuns() {
       await loadTaskRunDetails(activeRunId.value)
     } else {
       taskNodes.value = []
+      taskGraph.value = null
     }
   } catch (error) {
     taskRuns.value = []
     taskNodes.value = []
+    taskGraph.value = null
     manageErr.value = error instanceof Error ? error.message : String(error)
   } finally {
     taskRunsLoading.value = false
@@ -775,10 +822,12 @@ async function loadTaskRunDetails(runId: string) {
   if (!runId) return
   taskNodesLoading.value = true
   try {
-    const nodesRes = await apiListGroupTaskNodes(runId)
+    const [nodesRes, graphRes] = await Promise.all([apiListGroupTaskNodes(runId), apiGetGroupTaskGraph(runId)])
     taskNodes.value = nodesRes.data
+    taskGraph.value = graphRes.data
   } catch (error) {
     taskNodes.value = []
+    taskGraph.value = null
     manageErr.value = error instanceof Error ? error.message : String(error)
   } finally {
     taskNodesLoading.value = false
@@ -931,6 +980,7 @@ async function openProjectCode() {
   if (!activeGroup.value || activeGroup.value.type !== 'project') return
   taskOpen.value = false
   manageOpen.value = false
+  deployOpen.value = false
   projectFilesOpen.value = true
   await reloadProjectFiles()
 }
@@ -961,6 +1011,55 @@ function toggleProjectDir(path: string) {
 
 function openProjectFile(path: string) {
   projectActiveFilePath.value = path
+}
+
+function setDeploymentJob(groupId: string, job: DeploymentJob) {
+  deploymentJobs.value = {
+    ...deploymentJobs.value,
+    [groupId]: job,
+  }
+}
+
+async function deployProject(payload: DeploymentRequest) {
+  if (!activeGroupId.value) return
+  deployPending.value = true
+  manageErr.value = ''
+  try {
+    const res = await apiCreateDeployment(payload)
+    setDeploymentJob(activeGroupId.value, res.data)
+    if (res.data.status === 'succeeded') {
+      ElMessage.success('部署完成，可直接打开效果')
+      return
+    }
+    ElMessage.error(res.data.error_message || '部署失败，请查看日志')
+  } catch (error) {
+    const msg = error instanceof Error ? error.message : String(error)
+    manageErr.value = msg
+    ElMessage.error(msg)
+  } finally {
+    deployPending.value = false
+  }
+}
+
+async function retryDeployment(deploymentId: number) {
+  if (!activeGroupId.value) return
+  deployPending.value = true
+  manageErr.value = ''
+  try {
+    const res = await apiRetryDeployment(deploymentId)
+    setDeploymentJob(activeGroupId.value, res.data)
+    if (res.data.status === 'succeeded') {
+      ElMessage.success('重新部署完成')
+      return
+    }
+    ElMessage.error(res.data.error_message || '重新部署失败，请查看日志')
+  } catch (error) {
+    const msg = error instanceof Error ? error.message : String(error)
+    manageErr.value = msg
+    ElMessage.error(msg)
+  } finally {
+    deployPending.value = false
+  }
 }
 
 async function addMember() {
