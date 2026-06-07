@@ -68,6 +68,7 @@
         :active-group="activeGroup"
         :messages="messages"
         :members="members"
+        @open-code-diff="openCodeDiffPanel"
       />
 
       <MessageComposer
@@ -122,6 +123,15 @@
         @close-preview="closePreview"
         @deploy="deployProject"
         @retry-deploy="retryDeployment"
+      />
+
+      <MessageCodeDiffPanel
+        v-else-if="codeDiffOpen"
+        :active-group="activeGroup"
+        :loading="codeDiffLoading"
+        :diff="activeCodeDiff"
+        :error="codeDiffError"
+        @close="closeCodeDiffPanel"
       />
 
       <MessageManagePanel
@@ -242,6 +252,7 @@ import {
   type Member,
   type Message,
   apiCreateMessage,
+  apiGetMessageCodeDiff,
   apiGetGroupTaskGraph,
   apiListMessages,
   apiGetGroupAssistantConfig,
@@ -253,6 +264,7 @@ import {
   apiCompleteGroupTaskNode,
   apiReviewGroupTaskNode,
   type GroupAssistantConfig,
+  type MessageCodeDiffResponse,
   type GroupTaskRun,
 } from '../api/messages'
 import {
@@ -277,6 +289,7 @@ import { apiDeleteWorkspacePreview, apiGetWorkspacePreview, type PreviewJob } fr
 import MessageConversationList from '../components/messages/MessageConversationList.vue'
 import MessageComposer from '../components/messages/MessageComposer.vue'
 import MessageDeploymentPanel from '../components/messages/MessageDeploymentPanel.vue'
+import MessageCodeDiffPanel from '../components/messages/MessageCodeDiffPanel.vue'
 import GroupCreateDialog from '../components/messages/GroupCreateDialog.vue'
 import MessageFilePanel from '../components/messages/MessageFilePanel.vue'
 import MessageManagePanel from '../components/messages/MessageManagePanel.vue'
@@ -360,6 +373,7 @@ const manageOpen = ref(false)
 const taskOpen = ref(false)
 const projectFilesOpen = ref(false)
 const deployOpen = ref(false)
+const codeDiffOpen = ref(false)
 const LEFT_PANE_WIDTH = 280
 const SIDE_PANE_COMPACT_MIN_WIDTH = 260
 const SIDE_PANE_MIN_WIDTH = 400
@@ -416,6 +430,10 @@ const previewJobs = ref<Record<string, PreviewJob | null>>({})
 const previewPending = ref(false)
 const deploymentJobs = ref<Record<string, DeploymentJob | null>>({})
 const deployPending = ref(false)
+const codeDiffLoading = ref(false)
+const activeCodeDiff = ref<MessageCodeDiffResponse | null>(null)
+const codeDiffError = ref('')
+const activeCodeDiffMessageId = ref('')
 
 const taskNodeStats = computed(() => {
   const counts = { total: taskNodes.value.length, pending: 0, running: 0, completed: 0, blocked: 0 }
@@ -427,7 +445,7 @@ const taskNodeStats = computed(() => {
   }
   return counts
 })
-const hasSidePane = computed(() => manageOpen.value || taskOpen.value || projectFilesOpen.value || deployOpen.value)
+const hasSidePane = computed(() => manageOpen.value || taskOpen.value || projectFilesOpen.value || deployOpen.value || codeDiffOpen.value)
 const activeDeploymentJob = computed(() => {
   if (!activeGroupId.value) return null
   return deploymentJobs.value[activeGroupId.value] || null
@@ -503,6 +521,7 @@ async function loadGroups() {
 async function selectGroup(id: string) {
   const seq = ++loadSeq
   activeGroupId.value = id
+  closeCodeDiffPanel()
   const [mRes, msgRes] = await Promise.all([apiListMembers(id), apiListMessages(id, undefined, 50)])
   if (seq !== loadSeq || String(activeGroupId.value) !== String(id)) return
   members.value = mRes.data
@@ -770,6 +789,7 @@ function openManage() {
   taskOpen.value = false
   projectFilesOpen.value = false
   deployOpen.value = false
+  codeDiffOpen.value = false
   manageOpen.value = true
   if (activeGroup.value?.type === 'project') {
     void loadMemoryConfig()
@@ -784,6 +804,7 @@ function openTaskPlanner() {
   manageOpen.value = false
   projectFilesOpen.value = false
   deployOpen.value = false
+  codeDiffOpen.value = false
   taskOpen.value = true
   void loadTaskRuns()
 }
@@ -793,8 +814,42 @@ async function openDeployPanel() {
   taskOpen.value = false
   manageOpen.value = false
   projectFilesOpen.value = false
+  codeDiffOpen.value = false
   deployOpen.value = true
   await Promise.all([reloadProjectFiles(), loadCurrentPreview(), loadCurrentDeployment()])
+}
+
+function closeCodeDiffPanel() {
+  codeDiffOpen.value = false
+  codeDiffLoading.value = false
+  activeCodeDiff.value = null
+  codeDiffError.value = ''
+  activeCodeDiffMessageId.value = ''
+}
+
+async function openCodeDiffPanel(messageId: string) {
+  if (!activeGroup.value || activeGroup.value.type !== 'project') return
+  taskOpen.value = false
+  manageOpen.value = false
+  projectFilesOpen.value = false
+  deployOpen.value = false
+  codeDiffOpen.value = true
+  codeDiffLoading.value = true
+  activeCodeDiff.value = null
+  codeDiffError.value = ''
+  activeCodeDiffMessageId.value = String(messageId)
+  try {
+    const res = await apiGetMessageCodeDiff(messageId)
+    if (String(activeCodeDiffMessageId.value) !== String(messageId)) return
+    activeCodeDiff.value = res.data
+  } catch (error) {
+    if (String(activeCodeDiffMessageId.value) !== String(messageId)) return
+    codeDiffError.value = error instanceof Error ? error.message : String(error)
+  } finally {
+    if (String(activeCodeDiffMessageId.value) === String(messageId)) {
+      codeDiffLoading.value = false
+    }
+  }
 }
 
 async function loadAssistantConfig() {
@@ -1022,6 +1077,7 @@ async function openProjectCode() {
   taskOpen.value = false
   manageOpen.value = false
   deployOpen.value = false
+  codeDiffOpen.value = false
   projectFilesOpen.value = true
   await reloadProjectFiles()
 }

@@ -13,6 +13,16 @@
             <span v-if="appliedFileCount(m) > 0" class="msgDeliveryPill">已写入 {{ appliedFileCount(m) }} 个文件</span>
             <span class="msgDeliveryPill">{{ validationLabel(m) }}</span>
           </div>
+          <div v-if="codeDiffMeta(m)" class="msgDelivery" :data-status="codeDiffTone(m)">
+            <button
+              type="button"
+              class="msgDeliveryPill msgDeliveryButton"
+              :disabled="codeDiffDisabled(m)"
+              @click="$emit('open-code-diff', codeDiffMessageId(m) || String(m.id))"
+            >
+              {{ codeDiffLabel(m) }}
+            </button>
+          </div>
           <div v-if="previewUrl(m) || deployUrl(m)" class="msgActions">
             <a
               v-if="previewUrl(m)"
@@ -42,13 +52,18 @@
 
 <script setup lang="ts">
 import { computed, nextTick, onMounted, ref, watch } from 'vue'
-import type { Group, Member, Message } from '../../api/groups'
+import type { Group, Member } from '../../api/groups'
+import type { Message } from '../../api/messages'
 
 const props = defineProps<{
   loading: boolean
   activeGroup: Group | null
   messages: Message[]
   members: Member[]
+}>()
+
+defineEmits<{
+  (e: 'open-code-diff', messageId: string): void
 }>()
 
 const scrollContainerRef = ref<HTMLElement | null>(null)
@@ -115,6 +130,40 @@ function validationLabel(message: Message) {
   const validation = meta.validation_result
   if (!validation || typeof validation !== 'object' || Array.isArray(validation)) return '未验证'
   return Boolean((validation as { ok?: unknown }).ok) ? '验证通过' : '验证失败'
+}
+
+function codeDiffMeta(message: Message) {
+  const meta = messageMeta(message)
+  const diff = meta.code_diff
+  if (!diff || typeof diff !== 'object' || Array.isArray(diff)) return null
+  return diff as { status?: unknown; message_id?: unknown; has_code_changes?: unknown }
+}
+
+function codeDiffMessageId(message: Message) {
+  const diff = codeDiffMeta(message)
+  if (!diff) return ''
+  return String(diff.message_id || '')
+}
+
+function codeDiffTone(message: Message) {
+  const status = String(codeDiffMeta(message)?.status || '')
+  if (status === 'ready') return 'succeeded'
+  if (status === 'failed') return 'failed'
+  if (status === 'no_changes') return 'partial'
+  return 'idle'
+}
+
+function codeDiffDisabled(message: Message) {
+  return String(codeDiffMeta(message)?.status || '') === 'failed'
+}
+
+function codeDiffLabel(message: Message) {
+  const diff = codeDiffMeta(message)
+  const status = String(diff?.status || '')
+  if (status === 'ready') return '查看代码 Diff'
+  if (status === 'no_changes') return '本轮无代码变更'
+  if (status === 'failed') return '代码 Diff 不可用'
+  return '查看代码 Diff'
 }
 
 function sideClass(message: Message) {
@@ -240,6 +289,14 @@ onMounted(() => {
   color: rgba(31, 35, 41, 0.76);
   font-size: 12px;
   font-weight: 700;
+}
+.msgDeliveryButton {
+  border: 0;
+  cursor: pointer;
+}
+.msgDeliveryButton:disabled {
+  cursor: not-allowed;
+  opacity: 0.8;
 }
 .msgDelivery[data-status='succeeded'] .msgDeliveryPill {
   background: rgba(32, 122, 50, 0.1);

@@ -236,9 +236,22 @@ def test_manager_conversation_creates_hello_preview(monkeypatch) -> None:
         assert metadata["preview_result"]["url"].startswith("http://127.0.0.1:")
         assert metadata["delivery_result"]["mode"] == "static_page_shortcut"
         assert metadata["delivery_result"]["status"] == "succeeded"
+        assert metadata["code_diff"]["status"] in {"ready", "no_changes"}
+        assert int(metadata["code_diff"]["message_id"]) > 0
         assert "index.html" in str(reply.content)
         html_content = (get_project_code_root(group_id) / "index.html").read_text(encoding="utf-8")
         assert "<h1>Hello</h1>" in html_content
+
+        diff_response = client.get(
+            f"/api/v1/messages/{metadata['code_diff']['message_id']}/code-diff",
+            headers=headers,
+        )
+        assert diff_response.status_code == 200
+        diff_data = diff_response.json()["data"]
+        assert diff_data["status"] in {"ready", "no_changes"}
+        if diff_data["status"] == "ready":
+            assert diff_data["summary"]["changed_file_count"] >= 1
+            assert any(item["path"] == "index.html" for item in diff_data["files"])
 
 
 def test_manager_conversation_updates_preview_text_to_google(monkeypatch) -> None:

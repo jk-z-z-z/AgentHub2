@@ -25,6 +25,7 @@ class DeliveryExecutionResult:
     preview_result: dict[str, Any] | None = None
     deploy_result: dict[str, Any] | None = None
     delivery_result: dict[str, Any] = field(default_factory=dict)
+    code_diff: dict[str, Any] | None = None
 
     @property
     def metadata(self) -> dict[str, Any]:
@@ -33,6 +34,8 @@ class DeliveryExecutionResult:
             "validation_result": self.validation_result,
             "delivery_result": self.delivery_result,
         }
+        if self.code_diff:
+            payload["code_diff"] = self.code_diff
         if self.preview_result:
             payload["preview_result"] = self.preview_result
         if self.deploy_result:

@@ -25,6 +25,7 @@ from app.models.message import Message
 from app.event_runtime.reply import emit_ai_reply
 from app.services.project_conversation_service import handle_project_conversation, is_project_feature_delivery_request
 from app.services.project_delivery_service import execute_project_feature_delivery
+from app.services.message_code_diff_service import capture_code_diff_for_message
 
 EventHandler = Callable[[EventDispatchRequest, Any | None], Awaitable[None]]
 
@@ -158,6 +159,27 @@ async def handle_project_manager(request: EventDispatchRequest, event: Any | Non
                     short_term_memory=short_term_memory,
                     trace_message_id=int(ai_message.id),
                 )
+                diff_result = capture_code_diff_for_message(
+                    request.db,
+                    group_id=int(group.id),
+                    user_message_id=int(user_message.id),
+                    applied_files=[str(item.get("path") or "").strip() for item in delivery.applied_files if str(item.get("path") or "").strip()],
+                )
+                if diff_result.summary is not None:
+                    delivery.code_diff = {
+                        "message_id": int(user_message.id),
+                        "status": diff_result.status,
+                        "has_code_changes": bool(diff_result.summary.has_code_changes),
+                        "changed_file_count": len(diff_result.summary.changed_files),
+                        "insertions": int(diff_result.summary.insertions),
+                        "deletions": int(diff_result.summary.deletions),
+                    }
+                elif diff_result.status == "failed":
+                    delivery.code_diff = {
+                        "message_id": int(user_message.id),
+                        "status": "failed",
+                        "error": str(diff_result.error or "diff unavailable"),
+                    }
                 await emit_ai_reply(
                     request.db,
                     group_id=int(group.id),
@@ -176,6 +198,27 @@ async def handle_project_manager(request: EventDispatchRequest, event: Any | Non
                 input_text=str(request.content or ""),
             )
             if execution.handled:
+                diff_result = capture_code_diff_for_message(
+                    request.db,
+                    group_id=int(group.id),
+                    user_message_id=int(user_message.id),
+                    applied_files=list(execution.applied_files),
+                )
+                if diff_result.summary is not None:
+                    execution.metadata["code_diff"] = {
+                        "message_id": int(user_message.id),
+                        "status": diff_result.status,
+                        "has_code_changes": bool(diff_result.summary.has_code_changes),
+                        "changed_file_count": len(diff_result.summary.changed_files),
+                        "insertions": int(diff_result.summary.insertions),
+                        "deletions": int(diff_result.summary.deletions),
+                    }
+                elif diff_result.status == "failed":
+                    execution.metadata["code_diff"] = {
+                        "message_id": int(user_message.id),
+                        "status": "failed",
+                        "error": str(diff_result.error or "diff unavailable"),
+                    }
                 await emit_ai_reply(
                     request.db,
                     group_id=int(group.id),

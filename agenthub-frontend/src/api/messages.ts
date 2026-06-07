@@ -10,6 +10,7 @@ import type {
   GroupTaskRun,
   Id,
   Message,
+  MessageCodeDiffResponse,
   GroupTaskNode,
 } from './models'
 
@@ -25,6 +26,10 @@ export async function apiCreateMessage(body: {
   metadata_json: string
 }): Promise<ApiResult<Message>> {
   return httpPost<Message, typeof body>('/api/v1/messages', body)
+}
+
+export async function apiGetMessageCodeDiff(messageId: string | number): Promise<ApiResult<MessageCodeDiffResponse>> {
+  return httpGet<MessageCodeDiffResponse>(`/api/v1/messages/${messageId}/code-diff`)
 }
 
 export async function apiGetAgentRun(runId: string): Promise<ApiResult<AgentRun>> {
@@ -167,6 +172,9 @@ export type {
   GroupTaskNodeDraft,
   GroupTaskNodeIn,
   GroupTaskRun,
+  MessageCodeDiffFile,
+  MessageCodeDiffResponse,
+  MessageCodeDiffSummary,
   Member,
   Message,
   MemoryCompressRunResult,

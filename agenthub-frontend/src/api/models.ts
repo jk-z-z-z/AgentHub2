@@ -130,3 +130,34 @@ export type GroupTaskRun = {
   created_at: string
   updated_at?: string
 }
+
+export type MessageCodeDiffSummary = {
+  message_id: number | string
+  workspace_id?: number | null
+  group_id?: number | null
+  before_commit?: string | null
+  after_commit?: string | null
+  changed_file_count: number
+  insertions: number
+  deletions: number
+  has_code_changes: boolean
+  repo_initialized: boolean
+  diff_preview_available: boolean
+}
+
+export type MessageCodeDiffFile = {
+  path: string
+  change_type: 'added' | 'modified' | 'deleted' | 'renamed' | 'binary'
+  old_path?: string | null
+  additions: number
+  deletions: number
+  patch?: string | null
+  patch_truncated: boolean
+}
+
+export type MessageCodeDiffResponse = {
+  status: 'ready' | 'no_changes' | 'unavailable' | 'failed'
+  summary?: MessageCodeDiffSummary | null
+  files: MessageCodeDiffFile[]
+  error?: string | null
+}

@@ -136,6 +136,7 @@ class ProjectConversationResult:
     handled: bool
     content: str = ""
     metadata: dict[str, Any] = field(default_factory=dict)
+    applied_files: list[str] = field(default_factory=list)
 
 
 def _normalize_text(text: str) -> str:
@@ -443,6 +444,7 @@ def handle_project_conversation(
                     handled=True,
                     content=_build_complex_request_limit_text(),
                     metadata={},
+                    applied_files=[],
                 )
             dockerfile_path = project_root / "Dockerfile"
             dockerfile_content = dockerfile_path.read_text(encoding="utf-8") if dockerfile_path.exists() else ""
@@ -533,4 +535,9 @@ def handle_project_conversation(
         "validated": validation_ok,
         "summary": summary,
     }
-    return ProjectConversationResult(handled=True, content=reply_text or "已执行完成。", metadata=metadata)
+    return ProjectConversationResult(
+        handled=True,
+        content=reply_text or "已执行完成。",
+        metadata=metadata,
+        applied_files=list(changed_files),
+    )
