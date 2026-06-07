@@ -27,6 +27,9 @@ class PendingStateTool(ToolBase):
             "properties": {
                 "op": {"type": "string"},
                 "group_id": {"type": "integer"},
+                "context_key": {"type": "string"},
+                "trigger_message_id": {"type": "integer"},
+                "run_id": {"type": "integer"},
                 "creator_member_id": {"type": "integer"},
                 "goal_text": {"type": "string"},
                 "questions": {"type": "array"},
@@ -42,11 +45,22 @@ class PendingStateTool(ToolBase):
     async def __call__(self, **kwargs) -> ToolChunk:
         op = str(kwargs.get("op") or "").strip()
         group_id = int(kwargs.get("group_id"))
+        context_key = kwargs.get("context_key")
+        trigger_message_id = kwargs.get("trigger_message_id")
+        run_id = kwargs.get("run_id")
         if op == "load":
             return build_tool_chunk(
                 {
-                    "pending_plan": load_pending_plan(group_id=group_id),
-                    "pending_clarify": load_pending_clarify(group_id=group_id),
+                    "pending_plan": load_pending_plan(
+                        group_id=group_id,
+                        context_key=context_key,
+                        trigger_message_id=trigger_message_id,
+                    ),
+                    "pending_clarify": load_pending_clarify(
+                        group_id=group_id,
+                        context_key=context_key,
+                        trigger_message_id=trigger_message_id,
+                    ),
                 }
             )
         if op == "save_clarify":
@@ -55,6 +69,9 @@ class PendingStateTool(ToolBase):
                 creator_member_id=int(kwargs.get("creator_member_id")),
                 goal_text=str(kwargs.get("goal_text") or ""),
                 questions=list(kwargs.get("questions") or []),
+                context_key=context_key,
+                trigger_message_id=trigger_message_id,
+                run_id=run_id,
             )
             return build_tool_chunk({"saved": True})
         if op == "save_plan":
@@ -62,12 +79,23 @@ class PendingStateTool(ToolBase):
                 group_id=group_id,
                 creator_member_id=int(kwargs.get("creator_member_id")),
                 plan=dict(kwargs.get("plan") or {}),
+                context_key=context_key,
+                trigger_message_id=trigger_message_id,
+                run_id=run_id,
             )
             return build_tool_chunk({"saved": True})
         if op == "clear_clarify":
-            clear_pending_clarify(group_id=group_id)
+            clear_pending_clarify(
+                group_id=group_id,
+                context_key=context_key,
+                trigger_message_id=trigger_message_id,
+            )
             return build_tool_chunk({"cleared": True})
         if op == "clear_plan":
-            clear_pending_plan(group_id=group_id)
+            clear_pending_plan(
+                group_id=group_id,
+                context_key=context_key,
+                trigger_message_id=trigger_message_id,
+            )
             return build_tool_chunk({"cleared": True})
         return build_error_chunk("Unsupported op")

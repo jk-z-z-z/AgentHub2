@@ -57,6 +57,17 @@ def builtin_tools() -> list[dict]:
             "is_active": 1,
         },
         {
+            "name": "Project Code Write",
+            "code": "project_code_write",
+            "description": "Write a UTF-8 text file under project shared/code",
+            "source_type": "builtin",
+            "schema_json": json.dumps(
+                {"type": "object", "properties": {"path": {"type": "string"}, "content": {"type": "string"}}, "required": ["path", "content"]},
+                ensure_ascii=False,
+            ),
+            "is_active": 1,
+        },
+        {
             "name": "Worker File List",
             "code": "worker_file_list",
             "description": "List files in runtime workspace or project scope",
@@ -115,9 +126,82 @@ def builtin_tools() -> list[dict]:
         {
             "name": "Project Command Run",
             "code": "project_command_run",
-            "description": "Run a safe allowlisted build/type-check command under project shared/code",
+            "description": "Run a sandboxed command under the current project workspace",
             "source_type": "builtin",
-            "schema_json": json.dumps({"type": "object", "properties": {"command": {"type": "string"}}, "required": ["command"]}, ensure_ascii=False),
+            "schema_json": json.dumps(
+                {
+                    "type": "object",
+                    "properties": {
+                        "command": {"type": "string"},
+                        "cwd": {"type": "string"},
+                        "sandbox_image": {"type": "string"},
+                        "network_enabled": {"type": "boolean"},
+                        "env": {"type": "object", "additionalProperties": {"type": "string"}},
+                    },
+                    "required": ["command"],
+                },
+                ensure_ascii=False,
+            ),
+            "is_active": 1,
+        },
+        {
+            "name": "Project Preview Run",
+            "code": "project_preview_run",
+            "description": "Create or refresh a persistent local preview for the current project workspace",
+            "source_type": "builtin",
+            "schema_json": json.dumps(
+                {
+                    "type": "object",
+                    "properties": {
+                        "source_path": {"type": "string"},
+                        "sandbox_image": {"type": "string"},
+                        "install_command": {"type": "string"},
+                        "build_command": {"type": "string"},
+                        "host_port": {"type": "integer"},
+                        "env": {"type": "object", "additionalProperties": {"type": "string"}},
+                    },
+                    "required": [],
+                },
+                ensure_ascii=False,
+            ),
+            "is_active": 1,
+        },
+        {
+            "name": "Project Deploy Run",
+            "code": "project_deploy_run",
+            "description": "Run the deployment pipeline for the current project workspace",
+            "source_type": "builtin",
+            "schema_json": json.dumps(
+                {
+                    "type": "object",
+                    "properties": {
+                        "image_ref": {"type": "string"},
+                        "container_name": {"type": "string"},
+                        "sandbox_image": {"type": "string"},
+                        "dockerfile_path": {"type": "string"},
+                        "build_context_path": {"type": "string"},
+                        "install_command": {"type": "string"},
+                        "test_command": {"type": "string"},
+                        "build_command": {"type": "string"},
+                        "container_command": {"type": "string"},
+                        "env": {"type": "object", "additionalProperties": {"type": "string"}},
+                        "ports": {
+                            "type": "array",
+                            "items": {
+                                "type": "object",
+                                "properties": {
+                                    "host_port": {"type": "integer"},
+                                    "container_port": {"type": "integer"},
+                                    "protocol": {"type": "string"},
+                                },
+                                "required": ["host_port", "container_port"],
+                            },
+                        },
+                    },
+                    "required": ["image_ref", "container_name"],
+                },
+                ensure_ascii=False,
+            ),
             "is_active": 1,
         },
     ]

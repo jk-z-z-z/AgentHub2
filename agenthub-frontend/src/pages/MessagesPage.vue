@@ -1,7 +1,13 @@
 <template>
-  <div class="shell" :class="{ withSidePane: manageOpen || taskOpen || projectFilesOpen }">
+  <div
+    ref="shellRef"
+    class="shell"
+    :class="{ withSidePane: hasSidePane, isResizingSidePane: sidePaneDragging }"
+    :style="shellStyle"
+  >
     <MessageConversationList
-      :groups="groups"
+      v-model:search="groupSearch"
+      :groups="filteredGroups"
       :active-group-id="activeGroupId"
       :last-preview-map="lastPreviewMap"
       :last-time-map="lastTimeMap"
@@ -23,6 +29,9 @@
           <el-tooltip v-if="activeGroup?.type === 'project'" content="查看代码" placement="bottom">
             <el-button class="iconBtn iconBtnLarge" text :icon="FolderOpened" @click="openProjectCode" aria-label="查看代码" />
           </el-tooltip>
+          <el-tooltip v-if="activeGroup?.type === 'project'" content="部署" placement="bottom">
+            <el-button class="iconBtn iconBtnLarge" text :icon="UploadFilled" @click="openDeployPanel" aria-label="部署" />
+          </el-tooltip>
           <el-tooltip v-if="activeGroup?.type === 'project'" content="任务规划" placement="bottom">
             <el-button class="iconBtn iconBtnLarge" text :icon="Operation" @click="openTaskPlanner" aria-label="任务规划" />
           </el-tooltip>
@@ -37,6 +46,7 @@
         :active-group="activeGroup"
         :messages="messages"
         :members="members"
+        @open-code-diff="openCodeDiffPanel"
       />
 
       <MessageComposer
@@ -56,7 +66,15 @@
       />
     </section>
 
-    <aside v-if="manageOpen || taskOpen || projectFilesOpen" class="sidePane">
+    <aside v-if="hasSidePane" class="sidePane">
+      <div
+        class="sidePaneResize"
+        :class="{ dragging: sidePaneDragging }"
+        role="separator"
+        aria-label="调整右侧侧边栏宽度"
+        aria-orientation="vertical"
+        @pointerdown="startSidePaneResize"
+      />
       <MessageFilePanel
         v-if="projectFilesOpen"
         :active-group="activeGroup"
@@ -68,6 +86,30 @@
         @refresh="reloadProjectFiles"
         @open-file="openProjectFile"
         @toggle-dir="toggleProjectDir"
+      />
+
+      <MessageDeploymentPanel
+        v-else-if="deployOpen"
+        :active-group="activeGroup"
+        :messages="messages"
+        :project-files-entries="projectFilesEntries"
+        :preview-job="activePreviewJob"
+        :preview-pending="previewPending"
+        :deployment-job="activeDeploymentJob"
+        :deploy-pending="deployPending"
+        @close="deployOpen = false"
+        @close-preview="closePreview"
+        @deploy="deployProject"
+        @retry-deploy="retryDeployment"
+      />
+
+      <MessageCodeDiffPanel
+        v-else-if="codeDiffOpen"
+        :active-group="activeGroup"
+        :loading="codeDiffLoading"
+        :diff="activeCodeDiff"
+        :error="codeDiffError"
+        @close="closeCodeDiffPanel"
       />
 
       <MessageManagePanel
@@ -104,15 +146,23 @@
         v-else
         :active-group="activeGroup"
         :members="members"
+        :runs="taskRuns"
+        :active-run-id="activeRunId"
+        :active-run="activeTaskRun"
+        :graph="taskGraph"
         :nodes="taskNodes"
         :node-stats="taskNodeStats"
+        :runs-loading="taskRunsLoading"
         :nodes-loading="taskNodesLoading"
         :manage-err="manageErr"
         @close="taskOpen = false"
-        @refresh-nodes="loadTaskNodes"
-        @create-nodes="taskCreateOpen = true"
+        @refresh-runs="loadTaskRuns"
+        @select-run="selectTaskRun"
+        @create-run="taskCreateOpen = true"
+        @refresh-run-details="loadTaskRunDetails"
         @claim-node="claimNode"
         @complete-node="completeNode"
+        @review-node="reviewNode"
       />
     </aside>
   </div>
@@ -169,34 +219,43 @@
     @create="createGroup"
   />
 
-  <TaskNodeCreateDialog
+  <TaskRunCreateDialog
     v-model:open="taskCreateOpen"
+    v-model:title="taskCreateTitle"
+    v-model:goal="taskCreateGoal"
     v-model:node-text="taskCreateNodeText"
     :create-err="manageErr"
-    @create="createTaskNodesNow"
+    @create="createTaskRunNow"
   />
 </template>
 
 <script setup lang="ts">
 import { computed, onBeforeUnmount, onMounted, ref, watch } from 'vue'
 import { useRoute } from 'vue-router'
-import { Monitor, Operation, FolderOpened, Select, Setting } from '@element-plus/icons-vue'
+import { Monitor, Operation, FolderOpened, Select, Setting, UploadFilled } from '@element-plus/icons-vue'
 import {
   type Group,
+  type GroupTaskGraph,
   type GroupTaskNode,
   type MemoryCompressorConfig,
   type MemoryCompressorStatus,
   type Member,
   type Message,
   apiCreateMessage,
+  apiGetMessageCodeDiff,
+  apiGetGroupTaskGraph,
   apiListMessages,
   apiGetGroupAssistantConfig,
   apiUpdateGroupAssistantConfig,
-  apiCreateGroupTaskNodesFromText,
+  apiCreateGroupTaskRunFromText,
+  apiListGroupTaskRuns,
   apiListGroupTaskNodes,
   apiClaimGroupTaskNode,
   apiCompleteGroupTaskNode,
+  apiReviewGroupTaskNode,
   type GroupAssistantConfig,
+  type MessageCodeDiffResponse,
+  type GroupTaskRun,
 } from '../api/messages'
 import {
   type Agent,
@@ -213,19 +272,24 @@ import {
   apiUpdateGroupMemoryCompressorConfig,
 } from '../api/groups'
 import { apiListAgents } from '../api/agents'
-import { apiListUsers, type User } from '../api/users'
+import { apiGetCurrentUser, apiListUsers, type User } from '../api/users'
 import { apiListProjectCode, type ProjectCodeEntry } from '../api/project-code'
+import { apiCreateDeployment, apiGetDeployment, apiRetryDeployment, type DeploymentJob, type DeploymentRequest } from '../api/deployments'
+import { apiDeleteWorkspacePreview, apiGetWorkspacePreview, type PreviewJob } from '../api/previews'
 import MessageConversationList from '../components/messages/MessageConversationList.vue'
 import MessageComposer from '../components/messages/MessageComposer.vue'
+import MessageDeploymentPanel from '../components/messages/MessageDeploymentPanel.vue'
+import MessageCodeDiffPanel from '../components/messages/MessageCodeDiffPanel.vue'
 import GroupCreateDialog from '../components/messages/GroupCreateDialog.vue'
 import MessageFilePanel from '../components/messages/MessageFilePanel.vue'
 import MessageManagePanel from '../components/messages/MessageManagePanel.vue'
-import TaskNodeCreateDialog from '../components/messages/TaskNodeCreateDialog.vue'
+import TaskRunCreateDialog from '../components/messages/TaskRunCreateDialog.vue'
 import TaskPlannerPanel from '../components/messages/TaskPlannerPanel.vue'
 import MessageThread from '../components/messages/MessageThread.vue'
 import { ElMessage, ElMessageBox } from 'element-plus'
 
 const route = useRoute()
+const shellRef = ref<HTMLElement | null>(null)
 const draft = ref('')
 const groups = ref<Group[]>([])
 const loadingGroups = ref(false)
@@ -238,6 +302,8 @@ let wsSeq = 0
 
 const lastPreviewMap = ref<Record<string, string>>({})
 const lastTimeMap = ref<Record<string, string>>({})
+const groupSearch = ref('')
+
 const activeGroup = computed(() => groups.value.find((g) => g.id === activeGroupId.value) || null)
 const mentionNames = computed<Record<string, string>>(() => {
   const out: Record<string, string> = {}
@@ -246,6 +312,17 @@ const mentionNames = computed<Record<string, string>>(() => {
   }
   return out
 })
+const filteredGroups = computed(() => {
+  const query = groupSearch.value.trim().toLowerCase()
+  if (!query) return groups.value
+  return groups.value.filter((group) => {
+    const name = (group.name || '').toLowerCase()
+    const type = (group.type || '').toLowerCase()
+    const preview = (lastPreviewMap.value[group.id] || '').toLowerCase()
+    return name.includes(query) || type.includes(query) || preview.includes(query)
+  })
+})
+
 const canSend = computed(() => Boolean(activeGroup.value) && Boolean(draft.value.trim()))
 const canMentionAgents = computed(() => activeGroup.value?.type === 'project')
 const MANAGER_NAME = '管家'
@@ -280,10 +357,23 @@ const users = ref<User[]>([])
 const agents = ref<Agent[]>([])
 const pickedUserIds = ref<Set<string>>(new Set())
 const pickedAgentIds = ref<Set<string>>(new Set())
+const currentUserId = ref('')
 
 const manageOpen = ref(false)
 const taskOpen = ref(false)
 const projectFilesOpen = ref(false)
+const deployOpen = ref(false)
+const codeDiffOpen = ref(false)
+const LEFT_PANE_WIDTH = 280
+const SIDE_PANE_COMPACT_MIN_WIDTH = 260
+const SIDE_PANE_MIN_WIDTH = 400
+const SIDE_PANE_DEFAULT_WIDTH = 540
+const SIDE_PANE_MAX_WIDTH = 760
+const SIDE_PANE_MIN_CHAT_WIDTH = 320
+const SHELL_COLUMN_GAP = 24
+const SIDE_PANE_WIDTH_STORAGE_KEY = 'agenthub.messages.sidePaneWidth'
+const sidePaneWidth = ref(SIDE_PANE_DEFAULT_WIDTH)
+const sidePaneDragging = ref(false)
 const manageErr = ref('')
 const addKind = ref<'user' | 'agent'>('user')
 const addUserId = ref<string>('')
@@ -309,14 +399,31 @@ const assistantCfgEnabled = computed({
     assistantCfg.value.enabled = value ? 1 : 0
   },
 })
+const taskRunsLoading = ref(false)
+const taskRuns = ref<GroupTaskRun[]>([])
+const activeRunId = ref('')
+const activeTaskRun = computed(
+  () => taskRuns.value.find((run) => String(run.id) === String(activeRunId.value)) || null,
+)
 const taskNodesLoading = ref(false)
 const taskNodes = ref<GroupTaskNode[]>([])
+const taskGraph = ref<GroupTaskGraph | null>(null)
 const taskCreateOpen = ref(false)
+const taskCreateTitle = ref('')
+const taskCreateGoal = ref('')
 const taskCreateNodeText = ref('需求澄清与初始计划 | manager')
 const projectFilesLoading = ref(false)
 const projectFilesEntries = ref<ProjectCodeEntry[]>([])
 const projectOpenDirs = ref<Record<string, boolean>>({})
 const projectActiveFilePath = ref('')
+const previewJobs = ref<Record<string, PreviewJob | null>>({})
+const previewPending = ref(false)
+const deploymentJobs = ref<Record<string, DeploymentJob | null>>({})
+const deployPending = ref(false)
+const codeDiffLoading = ref(false)
+const activeCodeDiff = ref<MessageCodeDiffResponse | null>(null)
+const codeDiffError = ref('')
+const activeCodeDiffMessageId = ref('')
 
 const taskNodeStats = computed(() => {
   const counts = { total: taskNodes.value.length, pending: 0, running: 0, completed: 0, blocked: 0 }
@@ -328,6 +435,18 @@ const taskNodeStats = computed(() => {
   }
   return counts
 })
+const hasSidePane = computed(() => manageOpen.value || taskOpen.value || projectFilesOpen.value || deployOpen.value || codeDiffOpen.value)
+const activeDeploymentJob = computed(() => {
+  if (!activeGroupId.value) return null
+  return deploymentJobs.value[activeGroupId.value] || null
+})
+const activePreviewJob = computed(() => {
+  if (!activeGroupId.value) return null
+  return previewJobs.value[activeGroupId.value] || null
+})
+const shellStyle = computed(() => ({
+  '--side-pane-width': `${sidePaneWidth.value}px`,
+}))
 
 watch(
   () => createType.value,
@@ -354,6 +473,25 @@ function normalizeMessage(raw: Message ): Message {
   }
 }
 
+function messageMeta(raw: Message): Record<string, unknown> {
+  try {
+    return JSON.parse(String(raw.metadata_json || '{}')) as Record<string, unknown>
+  } catch {
+    return {}
+  }
+}
+
+function deployIdFromMessages() {
+  for (let index = messages.value.length - 1; index >= 0; index -= 1) {
+    const meta = messageMeta(messages.value[index]!)
+    const deploy = meta.deploy_result
+    if (!deploy || typeof deploy !== 'object' || Array.isArray(deploy)) continue
+    const deploymentId = Number((deploy as { deployment_id?: unknown }).deployment_id)
+    if (Number.isFinite(deploymentId) && deploymentId > 0) return deploymentId
+  }
+  return null
+}
+
 async function loadGroups() {
   loadingGroups.value = true
   try {
@@ -373,6 +511,7 @@ async function loadGroups() {
 async function selectGroup(id: string) {
   const seq = ++loadSeq
   activeGroupId.value = id
+  closeCodeDiffPanel()
   const [mRes, msgRes] = await Promise.all([apiListMembers(id), apiListMessages(id, undefined, 50)])
   if (seq !== loadSeq || String(activeGroupId.value) !== String(id)) return
   members.value = mRes.data
@@ -389,6 +528,21 @@ function updatePreview(groupId: string) {
   if (!last) return
   lastPreviewMap.value[groupId] = last.content
   lastTimeMap.value[groupId] = new Date(last.created_at).toLocaleDateString()
+}
+
+function upsertMessage(nextMessage: Message) {
+  const nextId = String(nextMessage.id)
+  const index = messages.value.findIndex((item) => String(item.id) === nextId)
+  if (index < 0) {
+    messages.value = [...messages.value, nextMessage]
+    return
+  }
+  const next = messages.value.slice()
+  next[index] = {
+    ...next[index],
+    ...nextMessage,
+  }
+  messages.value = next
 }
 
 function connectWs(groupId: string) {
@@ -433,16 +587,21 @@ function connectWs(groupId: string) {
     if (seq !== wsSeq || ws.value !== socket) return
     try {
       const payload = JSON.parse(evt.data)
-      if (payload.event === 'message.created') {
+      if (payload.event === 'message.created' || payload.event === 'message.updated') {
         const msg = normalizeMessage(payload.data)
         if (
           String(msg.group_id) === String(groupId) &&
           String(activeGroupId.value) === String(groupId)
         ) {
-          if (!messages.value.some((m) => String(m.id) === String(msg.id))) {
-            messages.value = [...messages.value, msg]
-          }
+          upsertMessage(msg)
           updatePreview(groupId)
+          const meta = messageMeta(msg)
+          if (meta.preview_result) {
+            void loadCurrentPreview()
+          }
+          if (meta.deploy_result) {
+            void loadCurrentDeployment()
+          }
         }
       } else if (payload.event === 'reply.failed') {
         const data = (payload.data || {})
@@ -503,10 +662,8 @@ async function send() {
   })
   // Optimistic append: even if WS is disconnected, show the sent message immediately.
   const created = normalizeMessage(res.data)
-  if (!messages.value.some((m) => String(m.id) === String(created.id))) {
-    messages.value = [...messages.value, created]
-    updatePreview(activeGroup.value.id)
-  }
+  upsertMessage(created)
+  updatePreview(activeGroup.value.id)
   selectedMentions.value = new Set()
 }
 
@@ -561,18 +718,82 @@ function pickMention(memberId: string) {
   mentionQuery.value = ''
 }
 
+function getSidePaneBounds() {
+  const shellWidth = shellRef.value?.clientWidth || window.innerWidth
+  const layoutMax =
+    shellWidth - LEFT_PANE_WIDTH - SIDE_PANE_MIN_CHAT_WIDTH - SHELL_COLUMN_GAP
+  const max = Math.min(
+    SIDE_PANE_MAX_WIDTH,
+    Math.max(SIDE_PANE_COMPACT_MIN_WIDTH, layoutMax),
+  )
+  return {
+    min: Math.min(SIDE_PANE_MIN_WIDTH, max),
+    max,
+  }
+}
+
+function clampSidePaneWidth(width: number) {
+  const bounds = getSidePaneBounds()
+  return Math.min(Math.max(width, bounds.min), bounds.max)
+}
+
+function syncSidePaneWidth(width: number) {
+  sidePaneWidth.value = clampSidePaneWidth(width)
+  try {
+    localStorage.setItem(SIDE_PANE_WIDTH_STORAGE_KEY, String(sidePaneWidth.value))
+  } catch {}
+}
+
+function updateSidePaneWidthFromClientX(clientX: number) {
+  const shellRect = shellRef.value?.getBoundingClientRect()
+  if (!shellRect) return
+  syncSidePaneWidth(shellRect.right - clientX)
+}
+
+function onSidePaneResize(event: PointerEvent) {
+  if (!sidePaneDragging.value) return
+  updateSidePaneWidthFromClientX(event.clientX)
+}
+
+function stopSidePaneResize() {
+  if (!sidePaneDragging.value) return
+  sidePaneDragging.value = false
+  document.body.style.cursor = ''
+  document.body.style.userSelect = ''
+  window.removeEventListener('pointermove', onSidePaneResize)
+  window.removeEventListener('pointerup', stopSidePaneResize)
+  window.removeEventListener('pointercancel', stopSidePaneResize)
+}
+
+function startSidePaneResize(event: PointerEvent) {
+  if (!hasSidePane.value) return
+  sidePaneDragging.value = true
+  document.body.style.cursor = 'col-resize'
+  document.body.style.userSelect = 'none'
+  updateSidePaneWidthFromClientX(event.clientX)
+  window.addEventListener('pointermove', onSidePaneResize)
+  window.addEventListener('pointerup', stopSidePaneResize)
+  window.addEventListener('pointercancel', stopSidePaneResize)
+}
+
+function handleWindowResize() {
+  syncSidePaneWidth(sidePaneWidth.value)
+}
+
 function openManage() {
   manageErr.value = ''
   addUserId.value = ''
   addAgentId.value = ''
   taskOpen.value = false
   projectFilesOpen.value = false
+  deployOpen.value = false
+  codeDiffOpen.value = false
   manageOpen.value = true
   if (activeGroup.value?.type === 'project') {
     void loadMemoryConfig()
     void loadMemoryStatus()
     void loadAssistantConfig()
-    void loadTaskNodes()
+    void loadTaskRuns()
   }
 }
 
@@ -580,8 +801,53 @@ function openTaskPlanner() {
   if (!activeGroup.value || activeGroup.value.type !== 'project') return
   manageOpen.value = false
   projectFilesOpen.value = false
+  deployOpen.value = false
+  codeDiffOpen.value = false
   taskOpen.value = true
-  void loadTaskNodes()
+  void loadTaskRuns()
+}
+
+async function openDeployPanel() {
+  if (!activeGroup.value || activeGroup.value.type !== 'project') return
+  taskOpen.value = false
+  manageOpen.value = false
+  projectFilesOpen.value = false
+  codeDiffOpen.value = false
+  deployOpen.value = true
+  await Promise.all([reloadProjectFiles(), loadCurrentPreview(), loadCurrentDeployment()])
+}
+
+function closeCodeDiffPanel() {
+  codeDiffOpen.value = false
+  codeDiffLoading.value = false
+  activeCodeDiff.value = null
+  codeDiffError.value = ''
+  activeCodeDiffMessageId.value = ''
+}
+
+async function openCodeDiffPanel(messageId: string) {
+  if (!activeGroup.value || activeGroup.value.type !== 'project') return
+  taskOpen.value = false
+  manageOpen.value = false
+  projectFilesOpen.value = false
+  deployOpen.value = false
+  codeDiffOpen.value = true
+  codeDiffLoading.value = true
+  activeCodeDiff.value = null
+  codeDiffError.value = ''
+  activeCodeDiffMessageId.value = String(messageId)
+  try {
+    const res = await apiGetMessageCodeDiff(messageId)
+    if (String(activeCodeDiffMessageId.value) !== String(messageId)) return
+    activeCodeDiff.value = res.data
+  } catch (error) {
+    if (String(activeCodeDiffMessageId.value) !== String(messageId)) return
+    codeDiffError.value = error instanceof Error ? error.message : String(error)
+  } finally {
+    if (String(activeCodeDiffMessageId.value) === String(messageId)) {
+      codeDiffLoading.value = false
+    }
+  }
 }
 
 async function loadAssistantConfig() {
@@ -615,38 +881,91 @@ async function saveAssistantConfig() {
   }
 }
 
-async function loadTaskNodes() {
+async function loadTaskRuns() {
   if (!activeGroup.value || activeGroup.value.type !== 'project') return
-  manageErr.value = ''
+  taskRunsLoading.value = true
+  try {
+    const res = await apiListGroupTaskRuns(activeGroup.value.id)
+    taskRuns.value = res.data
+    if (
+      activeRunId.value &&
+      !taskRuns.value.some((r) => String(r.id) === String(activeRunId.value))
+    ) {
+      activeRunId.value = ''
+    }
+    if (!activeRunId.value && taskRuns.value[0]) {
+      activeRunId.value = String(taskRuns.value[0].id)
+    }
+    if (activeRunId.value) {
+      await loadTaskRunDetails(activeRunId.value)
+    } else {
+      taskNodes.value = []
+      taskGraph.value = null
+    }
+  } catch (error) {
+    taskRuns.value = []
+    taskNodes.value = []
+    taskGraph.value = null
+    manageErr.value = error instanceof Error ? error.message : String(error)
+  } finally {
+    taskRunsLoading.value = false
+  }
+}
+
+async function loadTaskRunDetails(runId: string) {
+  if (!runId) return
   taskNodesLoading.value = true
   try {
-    const nodesRes = await apiListGroupTaskNodes(activeGroup.value.id)
+    const [nodesRes, graphRes] = await Promise.all([apiListGroupTaskNodes(runId), apiGetGroupTaskGraph(runId)])
     taskNodes.value = nodesRes.data
+    taskGraph.value = graphRes.data
   } catch (error) {
     taskNodes.value = []
+    taskGraph.value = null
     manageErr.value = error instanceof Error ? error.message : String(error)
   } finally {
     taskNodesLoading.value = false
   }
 }
 
-async function createTaskNodesNow() {
-  if (!activeGroup.value || activeGroup.value.type !== 'project') return
-  const nodeText = taskCreateNodeText.value.trim()
-  if (!nodeText) {
-    manageErr.value = '请输入任务节点'
+async function selectTaskRun(runId: string) {
+  activeRunId.value = String(runId)
+  await loadTaskRunDetails(activeRunId.value)
+}
+
+async function createTaskRunNow() {
+  if (!activeGroup.value) return
+  const me = members.value.find((m) => m.kind === 'user')
+  if (!me) {
+    manageErr.value = '当前会话缺少用户成员'
     return
   }
-  manageErr.value = ''
+  const title = taskCreateTitle.value.trim()
+  const goal = taskCreateGoal.value.trim()
+  if (!title || !goal) {
+    manageErr.value = '请输入任务标题与目标'
+    return
+  }
   try {
-    await apiCreateGroupTaskNodesFromText({
+    const res = await apiCreateGroupTaskRunFromText({
       group_id: activeGroup.value.id,
-      node_text: nodeText,
+      creator_member_id: me.id,
+      title,
+      goal_text: goal,
+      node_text: taskCreateNodeText.value,
     })
     taskCreateOpen.value = false
+    taskCreateTitle.value = ''
+    taskCreateGoal.value = ''
     taskCreateNodeText.value = '需求澄清与初始计划 | manager'
-    await loadTaskNodes()
-    ElMessage.success('任务节点已创建')
+    await loadTaskRuns()
+    if (res.data?.id) {
+      activeRunId.value = String(res.data.id)
+      await loadTaskRunDetails(activeRunId.value)
+    } else if (activeRunId.value) {
+      await loadTaskRunDetails(activeRunId.value)
+    }
+    ElMessage.success('任务运行已创建')
   } catch (e) {
     manageErr.value = e instanceof Error ? e.message : String(e)
   }
@@ -657,20 +976,28 @@ async function claimNode(node: GroupTaskNode) {
   if (!me) return
   try {
     await apiClaimGroupTaskNode(String(node.id), String(me.id))
-    await loadTaskNodes()
+    await loadTaskRunDetails(String(node.run_id))
   } catch (e) {
     manageErr.value = e instanceof Error ? e.message : String(e)
   }
 }
 
 async function completeNode(node: GroupTaskNode) {
-  const me = members.value.find((m) => m.kind === 'user')
-  if (!me) return
-  const summary = window.prompt('请输入节点完成总结') || ''
+  const summary = window.prompt('请输入节点完成总结（会用于管家复核）') || ''
   if (!summary.trim()) return
   try {
-    await apiCompleteGroupTaskNode(String(node.id), String(me.id), summary.trim())
-    await loadTaskNodes()
+    await apiCompleteGroupTaskNode(String(node.id), summary.trim())
+    await loadTaskRunDetails(String(node.run_id))
+  } catch (e) {
+    manageErr.value = e instanceof Error ? e.message : String(e)
+  }
+}
+
+async function reviewNode(node: GroupTaskNode, status: 'approved' | 'rework') {
+  const note = status === 'rework' ? window.prompt('请输入返工说明') || '' : ''
+  try {
+    await apiReviewGroupTaskNode(String(node.id), { manager_review_status: status, note })
+    await loadTaskRunDetails(String(node.run_id))
   } catch (e) {
     manageErr.value = e instanceof Error ? e.message : String(e)
   }
@@ -747,6 +1074,8 @@ async function openProjectCode() {
   if (!activeGroup.value || activeGroup.value.type !== 'project') return
   taskOpen.value = false
   manageOpen.value = false
+  deployOpen.value = false
+  codeDiffOpen.value = false
   projectFilesOpen.value = true
   await reloadProjectFiles()
 }
@@ -777,6 +1106,108 @@ function toggleProjectDir(path: string) {
 
 function openProjectFile(path: string) {
   projectActiveFilePath.value = path
+}
+
+function setDeploymentJob(groupId: string, job: DeploymentJob | null) {
+  deploymentJobs.value = {
+    ...deploymentJobs.value,
+    [groupId]: job,
+  }
+}
+
+function setPreviewJob(groupId: string, job: PreviewJob | null) {
+  previewJobs.value = {
+    ...previewJobs.value,
+    [groupId]: job,
+  }
+}
+
+async function loadCurrentPreview() {
+  const group = activeGroup.value
+  const workspaceId = Number(group?.workspace_id || 0)
+  if (!group || group.type !== 'project' || !workspaceId) return
+  try {
+    const res = await apiGetWorkspacePreview(workspaceId)
+    setPreviewJob(activeGroupId.value, res.data)
+  } catch {
+    setPreviewJob(activeGroupId.value, null)
+  }
+}
+
+async function loadCurrentDeployment() {
+  if (!activeGroupId.value) return
+  const deploymentId = deployIdFromMessages()
+  if (!deploymentId) {
+    setDeploymentJob(activeGroupId.value, null)
+    return
+  }
+  try {
+    const res = await apiGetDeployment(deploymentId)
+    setDeploymentJob(activeGroupId.value, res.data)
+  } catch {
+    // keep current state if fetch fails
+  }
+}
+
+async function deployProject(payload: DeploymentRequest) {
+  if (!activeGroupId.value) return
+  deployPending.value = true
+  manageErr.value = ''
+  try {
+    const res = await apiCreateDeployment(payload)
+    setDeploymentJob(activeGroupId.value, res.data)
+    if (res.data.status === 'succeeded') {
+      ElMessage.success('部署完成，可直接打开效果')
+      return
+    }
+    ElMessage.error(res.data.error_message || '部署失败，请查看日志')
+  } catch (error) {
+    const msg = error instanceof Error ? error.message : String(error)
+    manageErr.value = msg
+    ElMessage.error(msg)
+  } finally {
+    deployPending.value = false
+  }
+}
+
+async function retryDeployment(deploymentId: number) {
+  if (!activeGroupId.value) return
+  deployPending.value = true
+  manageErr.value = ''
+  try {
+    const res = await apiRetryDeployment(deploymentId)
+    setDeploymentJob(activeGroupId.value, res.data)
+    if (res.data.status === 'succeeded') {
+      ElMessage.success('重新部署完成')
+      return
+    }
+    ElMessage.error(res.data.error_message || '重新部署失败，请查看日志')
+  } catch (error) {
+    const msg = error instanceof Error ? error.message : String(error)
+    manageErr.value = msg
+    ElMessage.error(msg)
+  } finally {
+    deployPending.value = false
+  }
+}
+
+async function closePreview() {
+  const group = activeGroup.value
+  const workspaceId = Number(group?.workspace_id || 0)
+  if (!group || group.type !== 'project' || !workspaceId || !activeGroupId.value) return
+  previewPending.value = true
+  manageErr.value = ''
+  try {
+    const res = await apiDeleteWorkspacePreview(workspaceId)
+    setPreviewJob(activeGroupId.value, res.data)
+    ElMessage.success('预览已关闭')
+  } catch (error) {
+    const msg = error instanceof Error ? error.message : String(error)
+    manageErr.value = msg
+    ElMessage.error(msg)
+  } finally {
+    previewPending.value = false
+  }
 }
 
 async function addMember() {
@@ -873,12 +1304,26 @@ async function deleteActiveGroup() {
 onMounted(loadGroups)
 
 onMounted(async () => {
-  const [u, a] = await Promise.all([apiListUsers(), apiListAgents()])
-  users.value = u.data
+  try {
+    const saved = Number(localStorage.getItem(SIDE_PANE_WIDTH_STORAGE_KEY) || '')
+    if (Number.isFinite(saved) && saved > 0) {
+      sidePaneWidth.value = clampSidePaneWidth(saved)
+    } else {
+      sidePaneWidth.value = clampSidePaneWidth(SIDE_PANE_DEFAULT_WIDTH)
+    }
+  } catch {
+    sidePaneWidth.value = clampSidePaneWidth(SIDE_PANE_DEFAULT_WIDTH)
+  }
+  window.addEventListener('resize', handleWindowResize)
+  const [u, a, me] = await Promise.all([apiListUsers(), apiListAgents(), apiGetCurrentUser()])
+  currentUserId.value = String(me.data.id || '')
+  users.value = u.data.filter((item) => String(item.id) !== currentUserId.value)
   agents.value = a.data
 })
 
 onBeforeUnmount(() => {
+  stopSidePaneResize()
+  window.removeEventListener('resize', handleWindowResize)
   try {
     ws.value?.close()
   } catch {}
@@ -902,7 +1347,7 @@ function togglePickAgent(a: Agent) {
 
 async function createGroup() {
   createErr.value = ''
-  const pickedUsers = Array.from(pickedUserIds.value)
+  const pickedUsers = Array.from(pickedUserIds.value).filter((id) => String(id) !== currentUserId.value)
   const pickedAgents = Array.from(pickedAgentIds.value)
 
   if (createType.value === 'personal') {
@@ -957,85 +1402,161 @@ async function createGroup() {
 
 <style scoped>
 .shell {
-  height: 100%;
+  height: calc(100vh - 36px);
   display: grid;
-  grid-template-columns: 360px minmax(0, 1fr);
-  gap: 18px;
+  grid-template-columns: 340px minmax(0, 1fr);
+  gap: 12px;
   align-items: stretch;
+  min-width: 0;
+  min-height: 0;
 }
 
 .shell.withSidePane {
-  grid-template-columns: 340px minmax(0, 1fr) 430px;
+  grid-template-columns: 280px minmax(0, 1fr) var(--side-pane-width);
+}
+
+.shell > * {
+  min-width: 0;
+  min-height: 0;
 }
 
 .chatPane {
-  background: var(--ah-surface);
+  background: rgba(255, 255, 255, 0.84);
   backdrop-filter: blur(10px);
-  border: 1px solid var(--ah-border);
-  border-radius: 26px;
+  border: 1px solid rgba(31, 35, 41, 0.08);
+  border-radius: 18px;
   overflow: hidden;
   min-width: 0;
+  min-height: 0;
   display: flex;
   flex-direction: column;
-  box-shadow: var(--ah-shadow-md);
 }
 
 .sidePane {
   min-width: 0;
+  min-height: 0;
   height: 100%;
+  position: relative;
+  overflow: hidden;
+  display: flex;
 }
+
+.sidePane > * {
+  flex: 1;
+  min-width: 0;
+  min-height: 0;
+}
+.sidePaneResize {
+  position: absolute;
+  top: 0;
+  bottom: 0;
+  left: -18px;
+  width: 24px;
+  cursor: col-resize;
+  z-index: 3;
+  touch-action: none;
+}
+.sidePaneResize::before {
+  content: '';
+  position: absolute;
+  top: 18px;
+  bottom: 18px;
+  left: 50%;
+  width: 4px;
+  transform: translateX(-50%);
+  border-radius: 999px;
+  background: rgba(31, 35, 41, 0.1);
+  transition: background 0.18s ease, box-shadow 0.18s ease;
+}
+.sidePaneResize:hover::before,
+.sidePaneResize.dragging::before,
+.shell.isResizingSidePane .sidePaneResize::before {
+  background: rgba(79, 140, 255, 0.72);
+  box-shadow: 0 0 0 4px rgba(79, 140, 255, 0.16);
+}
+.searchInput :deep() {
+  height: 38px;
+  border-radius: 12px;
+  background: rgba(255, 255, 255, 0.92);
+  box-shadow: none;
+}
+.searchInput :deep() {
+  color: rgba(31, 35, 41, 0.42);
+}
+
+.taskStat span {
+  display: block;
+  font-size: 12px;
+  color: rgba(31, 35, 41, 0.58);
+}
+.taskStat strong {
+  display: block;
+  margin-top: 4px;
+  font-size: 18px;
+}
+
+.fileTreeWrap :deep() {
+  margin-bottom: 4px;
+}
+
+.mName {
+  font-weight: 900;
+}
+
 .chatHeader {
-  min-height: 74px;
+  height: 58px;
   display: flex;
   align-items: center;
   justify-content: space-between;
-  padding: 14px 24px;
-  border-bottom: 1px solid var(--ah-border-soft);
+  padding: 0 18px;
+  border-bottom: 1px solid rgba(31, 35, 41, 0.06);
+  gap: 12px;
+  flex: 0 0 auto;
 }
 .chatHeading {
   display: grid;
-  gap: 6px;
+  gap: 4px;
   min-width: 0;
 }
 .chatTitle {
-  font-size: 18px;
+  font-size: 16px;
   font-weight: 900;
-  color: var(--ah-text-primary);
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
 }
 .chatMeta {
   display: flex;
-  align-items: center;
-  gap: 14px;
+  gap: 12px;
   font-size: 12px;
-  color: var(--ah-text-tertiary);
+  color: rgba(31, 35, 41, 0.56);
 }
 .chatActions {
   display: flex;
-  gap: 10px;
+  gap: 8px;
   align-items: center;
+  flex: 0 0 auto;
 }
 .iconBtn {
-  width: 40px;
-  height: 40px;
-  border-radius: 14px;
-  font-size: 16px;
+  width: 34px;
+  height: 34px;
   padding: 0;
-  background: var(--ah-surface-soft);
-  color: var(--ah-text-secondary);
+  border-radius: 10px;
+  background: rgba(31, 35, 41, 0.06);
+  font-size: 16px;
 }
 .iconBtnLarge {
   font-size: 17px;
 }
-.iconBtn:hover {
-  background: var(--ah-conv-item-hover-bg, var(--ah-hover-strong));
+.iconBtn:hover,
+.iconBtn:focus-visible {
+  background: rgba(31, 35, 41, 0.1);
 }
 .iconBtn:disabled {
   opacity: 0.45;
 }
 
-.mentionList {
-  width: 100%;
-}
 .mentionList :deep(.el-table__row) {
   cursor: pointer;
 }
@@ -1048,14 +1569,14 @@ async function createGroup() {
   border-radius: 12px;
   display: grid;
   place-items: center;
-  background: var(--ah-surface-soft);
+  background: rgba(79, 140, 255, 0.14);
   font-size: 16px;
 }
 .mName {
   font-weight: 800;
 }
 .mCheck {
-  color: var(--ah-primary-strong);
+  color: #2f6bff;
   display: flex;
   justify-content: center;
   font-size: 16px;

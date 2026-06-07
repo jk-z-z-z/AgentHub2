@@ -15,9 +15,10 @@ from app.models.message import Message
 from app.services.group_task_service import get_node
 
 
-def _build_request_payload(*, group_id: int, node_id: int, member_id: int) -> dict[str, Any]:
+def _build_request_payload(*, group_id: int, run_id: int, node_id: int, member_id: int) -> dict[str, Any]:
     return {
         "group_id": int(group_id),
+        "run_id": int(run_id),
         "node_id": int(node_id),
         "member_id": int(member_id),
     }
@@ -79,7 +80,13 @@ class NodeExecuteTool(ToolBase):
                 self._db,
                 message_id=int(trace_message_id),
                 event_type=MessageEventType.Task.NODE_EXEC_STARTED,
-                payload=_build_request_payload(group_id=int(node.group_id), node_id=int(node.id), member_id=int(member.id)),
+                payload=_build_request_payload(
+                    group_id=int(node.group_id),
+                    run_id=int(node.run_id),
+                    node_id=int(node.id),
+                    member_id=int(member.id),
+                ),
+                run_id=int(node.run_id),
                 status=MessageEventStatus.PENDING,
             )
             await dispatch_message_event_chain(
@@ -100,6 +107,7 @@ class NodeExecuteTool(ToolBase):
                     "ok": True,
                     "result": {
                         "node_id": int(completed.id) if completed else int(node.id),
+                        "run_id": int(completed.run_id) if completed else int(node.run_id),
                         "node_key": str(completed.node_key) if completed else str(node.node_key),
                         "status": str(completed.status) if completed else "queued",
                         "output_summary": str(completed.output_summary or "") if completed else "",
@@ -123,7 +131,13 @@ class NodeExecuteTool(ToolBase):
             self._db,
             message_id=int(control_message.id),
             event_type=MessageEventType.Task.NODE_EXEC_STARTED,
-            payload=_build_request_payload(group_id=int(node.group_id), node_id=int(node.id), member_id=int(member.id)),
+            payload=_build_request_payload(
+                group_id=int(node.group_id),
+                run_id=int(node.run_id),
+                node_id=int(node.id),
+                member_id=int(member.id),
+            ),
+            run_id=int(node.run_id),
             status=MessageEventStatus.PENDING,
         )
         from app.event_runtime.dispatcher import dispatch_message_event_chain
@@ -146,6 +160,7 @@ class NodeExecuteTool(ToolBase):
                 "ok": True,
                 "result": {
                     "node_id": int(completed.id) if completed else int(node.id),
+                    "run_id": int(completed.run_id) if completed else int(node.run_id),
                     "node_key": str(completed.node_key) if completed else str(node.node_key),
                     "status": str(completed.status) if completed else "queued",
                     "output_summary": str(completed.output_summary or "") if completed else "",

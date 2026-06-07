@@ -74,8 +74,8 @@ def was_read(runtime_context: dict | None, path: str) -> bool:
 
 def require_project_group(runtime_context: dict | None) -> int:
     group_type = runtime_str(runtime_context, "group_type")
-    group_id = runtime_int(runtime_context, "group_id")
-    if group_type != "project" or not group_id:
+    group_id = runtime_int(runtime_context, "group_id") or runtime_int(runtime_context, "project_id")
+    if group_type not in {None, "", "project"} or not group_id:
         raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail="Requires project group context")
     ensure_project_space(group_id)
     return int(group_id)

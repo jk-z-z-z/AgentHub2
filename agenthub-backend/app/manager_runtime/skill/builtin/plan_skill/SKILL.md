@@ -9,6 +9,7 @@
 ## 使用工具
 - `manager.project_md`
 - `manager.dag_view`
+- `manager.dag_apply`
 - `manager.pending_state`
 
 ## 最佳实践
@@ -19,6 +20,7 @@
 5. 如果目标不清楚，先回到澄清阶段
 6. 规划阶段只做方向与拆解，不要直接分配、执行或改 DAG
 7. 如果计划已经进入执行态，交给 DAG / node skill 处理，不要在这里越权
+8. 如果用户是在创建一个全新的任务流程图，可以直接用 `manager.dag_apply` 创建新的 run 与节点图
 
 ## 失败处理
 - 如果目标不清楚，优先澄清，不要硬出 graph
@@ -26,6 +28,6 @@
 - 不要把规划写成纯阶段名
 
 ## 输出要求
-- 只输出 graph JSON 或简短澄清结果
-- 不要直接改图
+- 如果只是先做草案，输出 graph JSON 或简短澄清结果
+- 如果用户明确要求“创建任务流程图”，优先直接调用 `manager.dag_apply`
 - 不要直接分配节点

@@ -25,6 +25,10 @@ def runtime_root() -> Path:
     return _root() / "runtime"
 
 
+def workspaces_root() -> Path:
+    return _root() / "workspaces"
+
+
 def agent_dir(agent_id: int) -> Path:
     return agents_root() / str(agent_id)
 
@@ -44,3 +48,18 @@ def runtime_personal_dir(agent_id: int, user_id: int) -> Path:
 def runtime_project_dir(agent_id: int, project_id: int) -> Path:
     return runtime_root() / "project" / f"{agent_id}@{project_id}"
 
+
+def workspace_meta_dir(workspace_id: int) -> Path:
+    return workspaces_root() / str(workspace_id)
+
+
+def workspace_snapshots_dir(workspace_id: int) -> Path:
+    return workspace_meta_dir(workspace_id) / "snapshots"
+
+
+def sandbox_runs_root() -> Path:
+    return runtime_root() / "sandboxes"
+
+
+def sandbox_run_dir(sandbox_id: str) -> Path:
+    return sandbox_runs_root() / str(sandbox_id)

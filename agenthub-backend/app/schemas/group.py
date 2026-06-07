@@ -30,5 +30,6 @@ class GroupOut(ORMBaseModel):
     name: str
     description: str | None
     type: str
+    workspace_id: str | None = None
     created_at: datetime
     updated_at: datetime

@@ -633,15 +633,15 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
-    "/api/v1/group-tasks/groups/{group_id}/graph": {
+    "/api/v1/workspaces/{workspace_id}": {
         parameters: {
             query?: never;
             header?: never;
             path?: never;
             cookie?: never;
         };
-        /** Get Group Task Graph Api */
-        get: operations["get_group_task_graph_api_api_v1_group_tasks_groups__group_id__graph_get"];
+        /** Get Workspace Api */
+        get: operations["get_workspace_api_api_v1_workspaces__workspace_id__get"];
         put?: never;
         post?: never;
         delete?: never;
@@ -650,18 +650,273 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
-    "/api/v1/group-tasks/groups/{group_id}/nodes": {
+    "/api/v1/workspaces/{workspace_id}/snapshots": {
         parameters: {
             query?: never;
             header?: never;
             path?: never;
             cookie?: never;
         };
-        /** List Group Task Nodes Api */
-        get: operations["list_group_task_nodes_api_api_v1_group_tasks_groups__group_id__nodes_get"];
+        get?: never;
         put?: never;
-        /** Create Group Task Nodes Api */
-        post: operations["create_group_task_nodes_api_api_v1_group_tasks_groups__group_id__nodes_post"];
+        /** Create Workspace Snapshot Api */
+        post: operations["create_workspace_snapshot_api_api_v1_workspaces__workspace_id__snapshots_post"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/executions": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** Create Execution Api */
+        post: operations["create_execution_api_api_v1_executions_post"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/executions/{execution_id}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** Get Execution Api */
+        get: operations["get_execution_api_api_v1_executions__execution_id__get"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/deployments": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** Create Deployment Api */
+        post: operations["create_deployment_api_api_v1_deployments_post"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/deployments/{deployment_id}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** Get Deployment Api */
+        get: operations["get_deployment_api_api_v1_deployments__deployment_id__get"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/deployments/{deployment_id}/retry": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** Retry Deployment Api */
+        post: operations["retry_deployment_api_api_v1_deployments__deployment_id__retry_post"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/group-tasks/groups/{group_id}/assistant": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** Get Group Assistant Config Api */
+        get: operations["get_group_assistant_config_api_api_v1_group_tasks_groups__group_id__assistant_get"];
+        /** Update Group Assistant Config Api */
+        put: operations["update_group_assistant_config_api_api_v1_group_tasks_groups__group_id__assistant_put"];
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/group-tasks/runs": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** Create Group Task Run Api */
+        post: operations["create_group_task_run_api_api_v1_group_tasks_runs_post"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/group-tasks/groups/{group_id}/runs": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** List Group Task Runs Api */
+        get: operations["list_group_task_runs_api_api_v1_group_tasks_groups__group_id__runs_get"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/group-tasks/runs/{run_id}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** Get Group Task Run Api */
+        get: operations["get_group_task_run_api_api_v1_group_tasks_runs__run_id__get"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/group-tasks/runs/{run_id}/nodes": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** List Group Task Run Nodes Api */
+        get: operations["list_group_task_run_nodes_api_api_v1_group_tasks_runs__run_id__nodes_get"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/group-tasks/runs/{run_id}/events": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** List Group Task Run Events Api */
+        get: operations["list_group_task_run_events_api_api_v1_group_tasks_runs__run_id__events_get"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/group-tasks/runs/{run_id}/graph": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** Get Group Task Run Graph Api */
+        get: operations["get_group_task_run_graph_api_api_v1_group_tasks_runs__run_id__graph_get"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/group-tasks/runs/{run_id}/dag": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        /** Update Group Task Run Dag Api */
+        put: operations["update_group_task_run_dag_api_api_v1_group_tasks_runs__run_id__dag_put"];
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/group-tasks/runs/{run_id}/branches/{role_required}/block": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** Block Group Task Role Branch Api */
+        post: operations["block_group_task_role_branch_api_api_v1_group_tasks_runs__run_id__branches__role_required__block_post"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/group-tasks/runs/{run_id}/branches/{role_required}/unblock": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** Unblock Group Task Role Branch Api */
+        post: operations["unblock_group_task_role_branch_api_api_v1_group_tasks_runs__run_id__branches__role_required__unblock_post"];
         delete?: never;
         options?: never;
         head?: never;
@@ -696,6 +951,23 @@ export interface paths {
         put?: never;
         /** Complete Group Task Node Api */
         post: operations["complete_group_task_node_api_api_v1_group_tasks_nodes__node_id__complete_post"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/group-tasks/nodes/{node_id}/review": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** Review Group Task Node Api */
+        post: operations["review_group_task_node_api_api_v1_group_tasks_nodes__node_id__review_post"];
         delete?: never;
         options?: never;
         head?: never;
@@ -1142,6 +1414,48 @@ export interface components {
             message: string;
             data: components["schemas"]["AgentToolTogglesOut"];
         };
+        /** ApiResponse[DeploymentJobOut] */
+        ApiResponse_DeploymentJobOut_: {
+            /**
+             * Code
+             * @default 0
+             */
+            code: number;
+            /**
+             * Message
+             * @default ok
+             */
+            message: string;
+            data: components["schemas"]["DeploymentJobOut"];
+        };
+        /** ApiResponse[ExecutionJobOut] */
+        ApiResponse_ExecutionJobOut_: {
+            /**
+             * Code
+             * @default 0
+             */
+            code: number;
+            /**
+             * Message
+             * @default ok
+             */
+            message: string;
+            data: components["schemas"]["ExecutionJobOut"];
+        };
+        /** ApiResponse[GroupAssistantConfigOut] */
+        ApiResponse_GroupAssistantConfigOut_: {
+            /**
+             * Code
+             * @default 0
+             */
+            code: number;
+            /**
+             * Message
+             * @default ok
+             */
+            message: string;
+            data: components["schemas"]["GroupAssistantConfigOut"];
+        };
         /** ApiResponse[GroupOut] */
         ApiResponse_GroupOut_: {
             /**
@@ -1156,6 +1470,20 @@ export interface components {
             message: string;
             data: components["schemas"]["GroupOut"];
         };
+        /** ApiResponse[GroupTaskGraphOut] */
+        ApiResponse_GroupTaskGraphOut_: {
+            /**
+             * Code
+             * @default 0
+             */
+            code: number;
+            /**
+             * Message
+             * @default ok
+             */
+            message: string;
+            data: components["schemas"]["GroupTaskGraphOut"];
+        };
         /** ApiResponse[GroupTaskNodeOut] */
         ApiResponse_GroupTaskNodeOut_: {
             /**
@@ -1169,6 +1497,20 @@ export interface components {
              */
             message: string;
             data: components["schemas"]["GroupTaskNodeOut"];
+        };
+        /** ApiResponse[GroupTaskRunOut] */
+        ApiResponse_GroupTaskRunOut_: {
+            /**
+             * Code
+             * @default 0
+             */
+            code: number;
+            /**
+             * Message
+             * @default ok
+             */
+            message: string;
+            data: components["schemas"]["GroupTaskRunOut"];
         };
         /** ApiResponse[LoginOut] */
         ApiResponse_LoginOut_: {
@@ -1352,6 +1694,34 @@ export interface components {
             message: string;
             data: components["schemas"]["WorkspaceFileTogglesOut"];
         };
+        /** ApiResponse[WorkspaceOut] */
+        ApiResponse_WorkspaceOut_: {
+            /**
+             * Code
+             * @default 0
+             */
+            code: number;
+            /**
+             * Message
+             * @default ok
+             */
+            message: string;
+            data: components["schemas"]["WorkspaceOut"];
+        };
+        /** ApiResponse[WorkspaceSnapshotOut] */
+        ApiResponse_WorkspaceSnapshotOut_: {
+            /**
+             * Code
+             * @default 0
+             */
+            code: number;
+            /**
+             * Message
+             * @default ok
+             */
+            message: string;
+            data: components["schemas"]["WorkspaceSnapshotOut"];
+        };
         /** ApiResponse[bool] */
         ApiResponse_bool_: {
             /**
@@ -1367,8 +1737,8 @@ export interface components {
             /** Data */
             data: boolean;
         };
-        /** ApiResponse[dict] */
-        ApiResponse_dict_: {
+        /** ApiResponse[int] */
+        ApiResponse_int_: {
             /**
              * Code
              * @default 0
@@ -1380,9 +1750,7 @@ export interface components {
              */
             message: string;
             /** Data */
-            data: {
-                [key: string]: unknown;
-            };
+            data: number;
         };
         /** ApiResponse[list[ACPProviderOut]] */
         ApiResponse_list_ACPProviderOut__: {
@@ -1459,6 +1827,21 @@ export interface components {
             /** Data */
             data: components["schemas"]["GroupOut"][];
         };
+        /** ApiResponse[list[GroupTaskEventOut]] */
+        ApiResponse_list_GroupTaskEventOut__: {
+            /**
+             * Code
+             * @default 0
+             */
+            code: number;
+            /**
+             * Message
+             * @default ok
+             */
+            message: string;
+            /** Data */
+            data: components["schemas"]["GroupTaskEventOut"][];
+        };
         /** ApiResponse[list[GroupTaskNodeOut]] */
         ApiResponse_list_GroupTaskNodeOut__: {
             /**
@@ -1473,6 +1856,21 @@ export interface components {
             message: string;
             /** Data */
             data: components["schemas"]["GroupTaskNodeOut"][];
+        };
+        /** ApiResponse[list[GroupTaskRunOut]] */
+        ApiResponse_list_GroupTaskRunOut__: {
+            /**
+             * Code
+             * @default 0
+             */
+            code: number;
+            /**
+             * Message
+             * @default ok
+             */
+            message: string;
+            /** Data */
+            data: components["schemas"]["GroupTaskRunOut"][];
         };
         /** ApiResponse[list[MCPOut]] */
         ApiResponse_list_MCPOut__: {
@@ -1594,6 +1992,196 @@ export interface components {
             /** Data */
             data: string[];
         };
+        /** DeploymentJobOut */
+        DeploymentJobOut: {
+            /** Id */
+            id: number;
+            /** Workspace Id */
+            workspace_id: number;
+            /** Project Id */
+            project_id: number;
+            /** Sandbox Run Id */
+            sandbox_run_id: number | null;
+            /** Status */
+            status: string;
+            /** Target Type */
+            target_type: string;
+            /** Image Ref */
+            image_ref: string;
+            /** Container Name */
+            container_name: string;
+            /** Sandbox Image */
+            sandbox_image: string;
+            /** Dockerfile Path */
+            dockerfile_path: string;
+            /** Build Context Path */
+            build_context_path: string;
+            /** Deployed Container Id */
+            deployed_container_id: string | null;
+            /** Rollback Image Ref */
+            rollback_image_ref: string | null;
+            /** Rollback Status */
+            rollback_status: string | null;
+            /** Attempt Count */
+            attempt_count: number;
+            /** Logs Text */
+            logs_text: string;
+            /** Error Message */
+            error_message: string | null;
+            /** Spec */
+            spec: {
+                [key: string]: unknown;
+            };
+            /** Context */
+            context: {
+                [key: string]: unknown;
+            };
+            /** Result */
+            result: {
+                [key: string]: unknown;
+            };
+            /**
+             * Created At
+             * Format: date-time
+             */
+            created_at: string;
+            /**
+             * Updated At
+             * Format: date-time
+             */
+            updated_at: string;
+            /** Started At */
+            started_at: string | null;
+            /** Finished At */
+            finished_at: string | null;
+        };
+        /** DeploymentPortBindingIn */
+        DeploymentPortBindingIn: {
+            /** Host Port */
+            host_port: number;
+            /** Container Port */
+            container_port: number;
+            /**
+             * Protocol
+             * @default tcp
+             */
+            protocol: string;
+        };
+        /** DeploymentRequest */
+        DeploymentRequest: {
+            /** Workspace Id */
+            workspace_id: number;
+            /** Image Ref */
+            image_ref: string;
+            /** Container Name */
+            container_name: string;
+            /** Sandbox Image */
+            sandbox_image?: string | null;
+            /**
+             * Dockerfile Path
+             * @default Dockerfile
+             */
+            dockerfile_path: string;
+            /**
+             * Build Context Path
+             * @default .
+             */
+            build_context_path: string;
+            /** Install Command */
+            install_command?: string | null;
+            /** Test Command */
+            test_command?: string | null;
+            /** Build Command */
+            build_command?: string | null;
+            /** Container Command */
+            container_command?: string | null;
+            /** Env */
+            env?: {
+                [key: string]: string;
+            };
+            /** Ports */
+            ports?: components["schemas"]["DeploymentPortBindingIn"][];
+        };
+        /** ExecutionJobOut */
+        ExecutionJobOut: {
+            /** Id */
+            id: number;
+            /** Workspace Id */
+            workspace_id: number;
+            /** Project Id */
+            project_id: number;
+            /** Sandbox Run Id */
+            sandbox_run_id: number | null;
+            /** Status */
+            status: string;
+            /** Job Type */
+            job_type: string;
+            /** Command */
+            command: string;
+            /** Cwd */
+            cwd: string;
+            /** Sandbox Image */
+            sandbox_image: string;
+            /** Network Enabled */
+            network_enabled: boolean;
+            /** Attempt Count */
+            attempt_count: number;
+            /** Stdout */
+            stdout: string;
+            /** Stderr */
+            stderr: string;
+            /** Error Message */
+            error_message: string | null;
+            /** Spec */
+            spec: {
+                [key: string]: unknown;
+            };
+            /** Context */
+            context: {
+                [key: string]: unknown;
+            };
+            /** Result */
+            result: {
+                [key: string]: unknown;
+            };
+            /**
+             * Created At
+             * Format: date-time
+             */
+            created_at: string;
+            /**
+             * Updated At
+             * Format: date-time
+             */
+            updated_at: string;
+            /** Started At */
+            started_at: string | null;
+            /** Finished At */
+            finished_at: string | null;
+        };
+        /** ExecutionRequest */
+        ExecutionRequest: {
+            /** Workspace Id */
+            workspace_id: number;
+            /** Command */
+            command: string;
+            /**
+             * Cwd
+             * @default .
+             */
+            cwd: string;
+            /** Sandbox Image */
+            sandbox_image?: string | null;
+            /**
+             * Network Enabled
+             * @default false
+             */
+            network_enabled: boolean;
+            /** Env */
+            env?: {
+                [key: string]: string;
+            };
+        };
         /** FsEntryOut */
         FsEntryOut: {
             /** Path */
@@ -1605,6 +2193,29 @@ export interface components {
              * @default 0
              */
             size: number;
+        };
+        /** GroupAssistantConfigOut */
+        GroupAssistantConfigOut: {
+            /** Group Id */
+            group_id: string;
+            /** Manager Member Id */
+            manager_member_id?: string | null;
+            /** Enabled */
+            enabled: number;
+            /** Creator User Id */
+            creator_user_id: string;
+            /** Created At */
+            created_at?: string | null;
+            /** Updated At */
+            updated_at?: string | null;
+        };
+        /** GroupAssistantConfigUpdateRequest */
+        GroupAssistantConfigUpdateRequest: {
+            /**
+             * Enabled
+             * @default 0
+             */
+            enabled: number;
         };
         /** GroupCreateRequest */
         GroupCreateRequest: {
@@ -1650,6 +2261,8 @@ export interface components {
             description: string | null;
             /** Type */
             type: string;
+            /** Workspace Id */
+            workspace_id?: string | null;
             /**
              * Created At
              * Format: date-time
@@ -1661,20 +2274,65 @@ export interface components {
              */
             updated_at: string;
         };
+        /** GroupTaskDagUpdateRequest */
+        GroupTaskDagUpdateRequest: {
+            /** Nodes */
+            nodes?: components["schemas"]["GroupTaskNodeIn"][];
+        };
+        /** GroupTaskEventOut */
+        GroupTaskEventOut: {
+            /** Id */
+            id: string;
+            /** Message Id */
+            message_id: string;
+            /** Run Id */
+            run_id: string | null;
+            /** Seq */
+            seq: number;
+            /** Event Type */
+            event_type: string;
+            /** Category */
+            category: string;
+            /** Status */
+            status: string;
+            /** Payload Json */
+            payload_json: string;
+            /**
+             * Created At
+             * Format: date-time
+             */
+            created_at: string;
+            /**
+             * Updated At
+             * Format: date-time
+             */
+            updated_at: string;
+        };
+        /** GroupTaskGraphOut */
+        GroupTaskGraphOut: {
+            /** Run Id */
+            run_id: string;
+            /** Nodes */
+            nodes: components["schemas"]["GroupTaskNodeOut"][];
+            /** Edges */
+            edges: {
+                [key: string]: unknown;
+            }[];
+        };
+        /** GroupTaskNodeBlockRequest */
+        GroupTaskNodeBlockRequest: {
+            /** Reason */
+            reason: string;
+        };
         /** GroupTaskNodeCompleteRequest */
         GroupTaskNodeCompleteRequest: {
             /** Member Id */
-            member_id: string | number;
+            member_id?: string | number | null;
             /**
              * Output Summary
              * @default
              */
             output_summary: string;
-        };
-        /** GroupTaskNodeCreateRequest */
-        GroupTaskNodeCreateRequest: {
-            /** Nodes */
-            nodes?: components["schemas"]["GroupTaskNodeIn"][];
         };
         /** GroupTaskNodeIn */
         GroupTaskNodeIn: {
@@ -1705,6 +2363,8 @@ export interface components {
             id: string;
             /** Group Id */
             group_id: string;
+            /** Run Id */
+            run_id: string;
             /** Parent Node Id */
             parent_node_id: string | null;
             /** Parent Node Key */
@@ -1747,6 +2407,72 @@ export interface components {
             error: string;
             /** Output Summary */
             output_summary: string;
+            /**
+             * Manager Review Status
+             * @default pending
+             */
+            manager_review_status: string;
+            /**
+             * Manager Review Note
+             * @default
+             */
+            manager_review_note: string;
+            /** Reviewed At */
+            reviewed_at?: string | null;
+            /** Reviewed By Member Id */
+            reviewed_by_member_id?: string | null;
+            /**
+             * Created At
+             * Format: date-time
+             */
+            created_at: string;
+            /**
+             * Updated At
+             * Format: date-time
+             */
+            updated_at: string;
+        };
+        /** GroupTaskNodeReviewRequest */
+        GroupTaskNodeReviewRequest: {
+            /** Manager Review Status */
+            manager_review_status: string;
+            /**
+             * Note
+             * @default
+             */
+            note: string;
+        };
+        /** GroupTaskRunCreateRequest */
+        GroupTaskRunCreateRequest: {
+            /** Group Id */
+            group_id: string | number;
+            /** Creator Member Id */
+            creator_member_id: string | number;
+            /** Title */
+            title: string;
+            /** Goal Text */
+            goal_text: string;
+            /** Nodes */
+            nodes?: components["schemas"]["GroupTaskNodeIn"][];
+            /** Trigger Message Id */
+            trigger_message_id?: string | number | null;
+        };
+        /** GroupTaskRunOut */
+        GroupTaskRunOut: {
+            /** Id */
+            id: string;
+            /** Group Id */
+            group_id: string;
+            /** Creator Member Id */
+            creator_member_id: string;
+            /** Trigger Message Id */
+            trigger_message_id: string | null;
+            /** Title */
+            title: string;
+            /** Goal Text */
+            goal_text: string;
+            /** Status */
+            status: string;
             /**
              * Created At
              * Format: date-time
@@ -1872,6 +2598,8 @@ export interface components {
             id: string;
             /** Message Id */
             message_id: string;
+            /** Run Id */
+            run_id?: string | null;
             /** Seq */
             seq: number;
             /** Event Type */
@@ -2133,6 +2861,59 @@ export interface components {
              * @default
              */
             content: string;
+        };
+        /** WorkspaceOut */
+        WorkspaceOut: {
+            /** Id */
+            id: number;
+            /** Project Id */
+            project_id: number;
+            /** Tenant Id */
+            tenant_id: string;
+            /** Name */
+            name: string;
+            /** Backend Type */
+            backend_type: string;
+            /** Source Path */
+            source_path: string;
+            /** Last Snapshot Id */
+            last_snapshot_id: string | null;
+            /** Last Snapshot Digest */
+            last_snapshot_digest: string | null;
+            /** Last Snapshot File Count */
+            last_snapshot_file_count: number;
+            /**
+             * Created At
+             * Format: date-time
+             */
+            created_at: string;
+            /**
+             * Updated At
+             * Format: date-time
+             */
+            updated_at: string;
+        };
+        /** WorkspaceSnapshotCreateRequest */
+        WorkspaceSnapshotCreateRequest: {
+            /** Label */
+            label?: string | null;
+        };
+        /** WorkspaceSnapshotOut */
+        WorkspaceSnapshotOut: {
+            /** Workspace Id */
+            workspace_id: number;
+            /** Snapshot Id */
+            snapshot_id: string;
+            /** Snapshot Path */
+            snapshot_path: string;
+            /** Source Path */
+            source_path: string;
+            /** Digest */
+            digest: string;
+            /** File Count */
+            file_count: number;
+            /** Created At */
+            created_at: string;
         };
     };
     responses: never;
@@ -3743,7 +4524,232 @@ export interface operations {
             };
         };
     };
-    get_group_task_graph_api_api_v1_group_tasks_groups__group_id__graph_get: {
+    get_workspace_api_api_v1_workspaces__workspace_id__get: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                workspace_id: number;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiResponse_WorkspaceOut_"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    create_workspace_snapshot_api_api_v1_workspaces__workspace_id__snapshots_post: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                workspace_id: number;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["WorkspaceSnapshotCreateRequest"];
+            };
+        };
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiResponse_WorkspaceSnapshotOut_"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    create_execution_api_api_v1_executions_post: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["ExecutionRequest"];
+            };
+        };
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiResponse_ExecutionJobOut_"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    get_execution_api_api_v1_executions__execution_id__get: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                execution_id: number;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiResponse_ExecutionJobOut_"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    create_deployment_api_api_v1_deployments_post: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["DeploymentRequest"];
+            };
+        };
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiResponse_DeploymentJobOut_"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    get_deployment_api_api_v1_deployments__deployment_id__get: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                deployment_id: number;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiResponse_DeploymentJobOut_"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    retry_deployment_api_api_v1_deployments__deployment_id__retry_post: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                deployment_id: number;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiResponse_DeploymentJobOut_"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    get_group_assistant_config_api_api_v1_group_tasks_groups__group_id__assistant_get: {
         parameters: {
             query?: never;
             header?: never;
@@ -3760,7 +4766,7 @@ export interface operations {
                     [name: string]: unknown;
                 };
                 content: {
-                    "application/json": components["schemas"]["ApiResponse_dict_"];
+                    "application/json": components["schemas"]["ApiResponse_GroupAssistantConfigOut_"];
                 };
             };
             /** @description Validation Error */
@@ -3774,38 +4780,7 @@ export interface operations {
             };
         };
     };
-    list_group_task_nodes_api_api_v1_group_tasks_groups__group_id__nodes_get: {
-        parameters: {
-            query?: never;
-            header?: never;
-            path: {
-                group_id: number;
-            };
-            cookie?: never;
-        };
-        requestBody?: never;
-        responses: {
-            /** @description Successful Response */
-            200: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content: {
-                    "application/json": components["schemas"]["ApiResponse_list_GroupTaskNodeOut__"];
-                };
-            };
-            /** @description Validation Error */
-            422: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content: {
-                    "application/json": components["schemas"]["HTTPValidationError"];
-                };
-            };
-        };
-    };
-    create_group_task_nodes_api_api_v1_group_tasks_groups__group_id__nodes_post: {
+    update_group_assistant_config_api_api_v1_group_tasks_groups__group_id__assistant_put: {
         parameters: {
             query?: never;
             header?: never;
@@ -3816,7 +4791,7 @@ export interface operations {
         };
         requestBody: {
             content: {
-                "application/json": components["schemas"]["GroupTaskNodeCreateRequest"];
+                "application/json": components["schemas"]["GroupAssistantConfigUpdateRequest"];
             };
         };
         responses: {
@@ -3826,7 +4801,302 @@ export interface operations {
                     [name: string]: unknown;
                 };
                 content: {
+                    "application/json": components["schemas"]["ApiResponse_GroupAssistantConfigOut_"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    create_group_task_run_api_api_v1_group_tasks_runs_post: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["GroupTaskRunCreateRequest"];
+            };
+        };
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiResponse_GroupTaskRunOut_"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    list_group_task_runs_api_api_v1_group_tasks_groups__group_id__runs_get: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                group_id: number;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiResponse_list_GroupTaskRunOut__"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    get_group_task_run_api_api_v1_group_tasks_runs__run_id__get: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                run_id: number;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiResponse_GroupTaskRunOut_"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    list_group_task_run_nodes_api_api_v1_group_tasks_runs__run_id__nodes_get: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                run_id: number;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
                     "application/json": components["schemas"]["ApiResponse_list_GroupTaskNodeOut__"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    list_group_task_run_events_api_api_v1_group_tasks_runs__run_id__events_get: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                run_id: number;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiResponse_list_GroupTaskEventOut__"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    get_group_task_run_graph_api_api_v1_group_tasks_runs__run_id__graph_get: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                run_id: number;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiResponse_GroupTaskGraphOut_"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    update_group_task_run_dag_api_api_v1_group_tasks_runs__run_id__dag_put: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                run_id: number;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["GroupTaskDagUpdateRequest"];
+            };
+        };
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiResponse_GroupTaskRunOut_"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    block_group_task_role_branch_api_api_v1_group_tasks_runs__run_id__branches__role_required__block_post: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                run_id: number;
+                role_required: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["GroupTaskNodeBlockRequest"];
+            };
+        };
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiResponse_int_"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    unblock_group_task_role_branch_api_api_v1_group_tasks_runs__run_id__branches__role_required__unblock_post: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                run_id: number;
+                role_required: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["GroupTaskNodeBlockRequest"];
+            };
+        };
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiResponse_int_"];
                 };
             };
             /** @description Validation Error */
@@ -3887,6 +5157,41 @@ export interface operations {
         requestBody: {
             content: {
                 "application/json": components["schemas"]["GroupTaskNodeCompleteRequest"];
+            };
+        };
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiResponse_GroupTaskNodeOut_"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    review_group_task_node_api_api_v1_group_tasks_nodes__node_id__review_post: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                node_id: number;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["GroupTaskNodeReviewRequest"];
             };
         };
         responses: {

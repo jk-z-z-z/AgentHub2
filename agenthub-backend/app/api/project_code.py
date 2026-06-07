@@ -5,12 +5,13 @@ from app.db.session import get_db
 from app.dependencies.auth import get_current_user
 from app.models.user import User
 from app.schemas.common import ApiResponse
-from app.schemas.fs import FsEntryOut, TextFileOut
+from app.schemas.fs import FsEntryOut, TextFileOut, TextFileWriteRequest
 from app.services.project_code_service import (
     ensure_user_can_access_project_code,
     list_project_code_fs,
     normalize_project_rel_path,
     read_project_code_file,
+    write_project_code_file,
 )
 
 
@@ -44,3 +45,21 @@ def read_project_code_api(
     except Exception as e:
         raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail=str(e)) from e
     return ApiResponse(data=TextFileOut(path=rel, content=content))
+
+
+@router.put("/{group_id}/{path:path}", response_model=ApiResponse[TextFileOut])
+def write_project_code_api(
+    group_id: int,
+    path: str,
+    payload: TextFileWriteRequest,
+    db: Session = Depends(get_db),
+    user: User = Depends(get_current_user),
+):
+    ensure_user_can_access_project_code(db, group_id=group_id, user_id=int(user.id))
+    try:
+        data = write_project_code_file(group_id, path, payload.content)
+    except HTTPException:
+        raise
+    except Exception as e:
+        raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail=str(e)) from e
+    return ApiResponse(data=TextFileOut.model_validate(data))

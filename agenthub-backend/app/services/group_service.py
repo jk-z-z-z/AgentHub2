@@ -14,8 +14,20 @@ def list_groups(db: Session) -> list[Group]:
     return db.query(Group).order_by(Group.id.asc()).all()
 
 
-def create_group(db: Session, name: str, description: str | None, group_type: str = "project") -> Group:
-    item = Group(name=name, description=description, type=group_type)
+def create_group(
+    db: Session,
+    name: str,
+    description: str | None,
+    *,
+    creator_user_id: int,
+    group_type: str = "project",
+) -> Group:
+    item = Group(
+        creator_user_id=int(creator_user_id),
+        name=name,
+        description=description,
+        type=group_type,
+    )
     db.add(item)
     try:
         db.commit()
@@ -23,7 +35,12 @@ def create_group(db: Session, name: str, description: str | None, group_type: st
         # Backward compatible with old sqlite schema where groups.name was UNIQUE.
         db.rollback()
         # Ensure a deterministic unique suffix for retries.
-        item = Group(name=f"{name} ({time.time_ns()})", description=description, type=group_type)
+        item = Group(
+            creator_user_id=int(creator_user_id),
+            name=f"{name} ({time.time_ns()})",
+            description=description,
+            type=group_type,
+        )
         db.add(item)
         db.commit()
     db.refresh(item)
@@ -32,6 +49,9 @@ def create_group(db: Session, name: str, description: str | None, group_type: st
         ensure_personal_group_space(int(item.id))
     else:
         ensure_project_space(int(item.id))
+        from app.services.workspace_runtime_service import ensure_workspace_for_group
+
+        ensure_workspace_for_group(db, group=item)
     return item
 
 

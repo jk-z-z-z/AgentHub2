@@ -71,6 +71,8 @@ When editing the DAG, follow this order:
 - what was removed
 - what execution impact this has
 
+If the user is asking for a brand-new task graph and there is no bound `run_id` yet, prefer `manager.dag_apply` to create the new run first.
+
 ## Failure Handling
 - If the current graph is unclear, read it first.
 - If a patch would break dependencies, fix the dependency chain before editing.
@@ -153,7 +155,7 @@ Dependency edits should be intentional. Avoid adding deps just to "make the grap
 
 Use:
 ```json
-{"tool_code":"manager.dag_view","args":{"group_id":123}}
+{"tool_code":"manager.dag_view","args":{"run_id":456}}
 ```
 
 Use this before patching when:
@@ -168,7 +170,7 @@ Use:
 {
   "tool_code":"manager.dag_patch",
   "args":{
-    "group_id":123,
+    "run_id":456,
     "ops":[]
   }
 }
@@ -182,8 +184,8 @@ Supported ops:
 - `delete_nodes`
 - `replace_deps`
 
-This tool works directly on the current graph stored in `group_task_nodes`.
-It does not use `run_id`.
+This tool works directly on the graph for one task run stored in `group_task_nodes`.
+It requires `run_id` and never patches another run in the same group.
 It does not directly execute nodes.
 
 ## Node Assignment and Completion
@@ -223,7 +225,7 @@ Use the node tools when you need to move a task forward after the graph is alrea
 {
   "tool_code":"manager.dag_patch",
   "args":{
-    "group_id":123,
+    "run_id":456,
     "ops":[
       {
         "op":"add_node",
@@ -246,7 +248,7 @@ Use the node tools when you need to move a task forward after the graph is alrea
 {
   "tool_code":"manager.dag_patch",
   "args":{
-    "group_id":123,
+    "run_id":456,
     "ops":[
       {
         "op":"add_nodes",
@@ -278,7 +280,7 @@ Use the node tools when you need to move a task forward after the graph is alrea
 {
   "tool_code":"manager.dag_patch",
   "args":{
-    "group_id":123,
+    "run_id":456,
     "ops":[
       {
         "op":"update_node",
@@ -300,7 +302,7 @@ Use the node tools when you need to move a task forward after the graph is alrea
 {
   "tool_code":"manager.dag_patch",
   "args":{
-    "group_id":123,
+    "run_id":456,
     "ops":[
       {
         "op":"replace_deps",
@@ -318,7 +320,7 @@ Use the node tools when you need to move a task forward after the graph is alrea
 {
   "tool_code":"manager.dag_patch",
   "args":{
-    "group_id":123,
+    "run_id":456,
     "ops":[
       {
         "op":"delete_nodes",
@@ -337,7 +339,7 @@ If the user asks to "split one node, add validation, and move acceptance later",
 {
   "tool_code":"manager.dag_patch",
   "args":{
-    "group_id":123,
+    "run_id":456,
     "ops":[
       {
         "op":"add_nodes",

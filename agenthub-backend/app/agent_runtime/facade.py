@@ -53,6 +53,14 @@ def _normalize_short_term_memory(short_term_memory: list[dict[str, Any]] | list[
     return normalized
 
 
+def _runtime_int(runtime_context: dict[str, Any], key: str) -> int | None:
+    value = runtime_context.get(key)
+    try:
+        return int(value) if value not in (None, "") else None
+    except (TypeError, ValueError):
+        return None
+
+
 async def invoke_agent(
     db: Session,
     *,
@@ -94,7 +102,23 @@ async def invoke_agent(
         except (TypeError, ValueError):
             trace_id = None
 
-    trace = AgentRuntimeTrace(db=db, message_id=int(trace_id) if trace_id else None)
+    trace = AgentRuntimeTrace(
+        db=db,
+        message_id=int(trace_id) if trace_id else None,
+        run_id=_runtime_int(runtime_context, "run_id"),
+    )
+
+    def _builtin_tool_executor(tool_code: str, args: dict[str, Any]) -> dict[str, Any]:
+        payload_args = args or {}
+        executor = tool_executor
+        if executor is None:
+            return execute_builtin_tool(
+                agent_id=int(agent_id),
+                tool_code=str(tool_code),
+                args=payload_args,
+                runtime_context=runtime_context,
+            )
+        return executor(str(tool_code), payload_args)
 
     built_agent = build_complete_agent(
         db,
@@ -102,6 +126,7 @@ async def invoke_agent(
         extra_context=runtime_context,
         runtime_context=runtime_context,
         trace=trace,
+        tool_executor=_builtin_tool_executor,
     )
 
     engine = create_engine(built_agent.engine_ctx.engine_type)

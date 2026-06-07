@@ -3,14 +3,11 @@ from __future__ import annotations
 import json
 from dataclasses import dataclass
 
-from fastapi import HTTPException, status
 from fastapi.encoders import jsonable_encoder
 from sqlalchemy.orm import Session
 
-from app.agent_runtime.message_store import create_message, update_message, create_pending_ai_message
 from app.event_runtime.facade import build_group_short_term_memory_from_events, create_message_event, list_message_events, update_message_event_status
 from app.event_runtime.types import MessageEventStatus, MessageEventType
-from app.models.agent_instance import AgentInstance
 from app.models.group import Group
 from app.models.group_assistant_config import GroupAssistantConfig
 from app.models.member import Member
@@ -117,6 +114,8 @@ async def broadcast_reply_failed(*, group_id: int, message_id: int, sender_membe
 
 
 async def mark_failed_reply(ai_message: Message, *, reply_to_message_id: int, trigger: str, db: Session) -> None:
+    from app.agent_runtime.message_store import update_message
+
     await update_message(
         db,
         message_id=int(ai_message.id),

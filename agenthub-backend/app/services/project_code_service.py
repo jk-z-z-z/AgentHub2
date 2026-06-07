@@ -88,3 +88,15 @@ def read_project_code_file(group_id: int, rel_path: str) -> str:
     if not path.exists() or not path.is_file():
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="File not found")
     return path.read_text(encoding="utf-8")
+
+
+def write_project_code_file(group_id: int, rel_path: str, content: str) -> dict[str, str]:
+    path = safe_project_code_path(group_id, rel_path)
+    if path.exists() and path.is_dir():
+        raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail="Cannot overwrite a directory")
+    path.parent.mkdir(parents=True, exist_ok=True)
+    path.write_text(str(content), encoding="utf-8")
+    return {
+        "path": normalize_project_rel_path(rel_path),
+        "content": str(content),
+    }

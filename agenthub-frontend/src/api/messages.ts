@@ -7,8 +7,10 @@ import type {
   GroupTaskGraph,
   GroupTaskNodeDraft,
   GroupTaskNodeIn,
+  GroupTaskRun,
   Id,
   Message,
+  MessageCodeDiffResponse,
   GroupTaskNode,
 } from './models'
 
@@ -24,6 +26,10 @@ export async function apiCreateMessage(body: {
   metadata_json: string
 }): Promise<ApiResult<Message>> {
   return httpPost<Message, typeof body>('/api/v1/messages', body)
+}
+
+export async function apiGetMessageCodeDiff(messageId: string | number): Promise<ApiResult<MessageCodeDiffResponse>> {
+  return httpGet<MessageCodeDiffResponse>(`/api/v1/messages/${messageId}/code-diff`)
 }
 
 export async function apiGetAgentRun(runId: string): Promise<ApiResult<AgentRun>> {
@@ -45,6 +51,17 @@ export async function apiUpdateGroupAssistantConfig(
   return httpPut<GroupAssistantConfig, typeof body>(`/api/v1/group-tasks/groups/${groupId}/assistant`, body)
 }
 
+export async function apiCreateGroupTaskRun(body: {
+  group_id: Id
+  creator_member_id: Id
+  title: string
+  goal_text: string
+  nodes: GroupTaskNodeIn[]
+  trigger_message_id?: Id | null
+}): Promise<ApiResult<GroupTaskRun>> {
+  return httpPost<GroupTaskRun, typeof body>('/api/v1/group-tasks/runs', body)
+}
+
 export function parseGroupTaskNodeDraftLine(line: string): GroupTaskNodeDraft {
   const parts = line.split('|').map((item) => item.trim())
   return {
@@ -60,10 +77,14 @@ export function parseGroupTaskNodeDraftLine(line: string): GroupTaskNodeDraft {
   }
 }
 
-export async function apiCreateGroupTaskNodesFromText(body: {
+export async function apiCreateGroupTaskRunFromText(body: {
   group_id: Id
+  creator_member_id: Id
+  title: string
+  goal_text: string
   node_text: string
-}): Promise<ApiResult<GroupTaskNode[]>> {
+  trigger_message_id?: Id | null
+}): Promise<ApiResult<GroupTaskRun>> {
   const lines = body.node_text
     .split('\n')
     .map((item) => item.trim())
@@ -76,34 +97,68 @@ export async function apiCreateGroupTaskNodesFromText(body: {
     role_required: item.role_required || null,
     deps: item.deps || [],
   }))
-  return httpPost<GroupTaskNode[], { nodes: GroupTaskNodeIn[] }>(`/api/v1/group-tasks/groups/${body.group_id}/nodes`, { nodes })
+  return apiCreateGroupTaskRun({
+    group_id: body.group_id,
+    creator_member_id: body.creator_member_id,
+    title: body.title,
+    goal_text: body.goal_text,
+    nodes,
+    trigger_message_id: body.trigger_message_id,
+  })
 }
 
-export async function apiListGroupTaskNodes(groupId: string): Promise<ApiResult<GroupTaskNode[]>> {
-  return httpGet<GroupTaskNode[]>(`/api/v1/group-tasks/groups/${groupId}/nodes`)
+export async function apiListGroupTaskRuns(groupId: string): Promise<ApiResult<GroupTaskRun[]>> {
+  return httpGet<GroupTaskRun[]>(`/api/v1/group-tasks/groups/${groupId}/runs`)
 }
 
-export async function apiListGroupTaskEvents(groupId: string): Promise<ApiResult<GroupTaskEvent[]>> {
-  return httpGet<GroupTaskEvent[]>(`/api/v1/group-tasks/groups/${groupId}/events`)
+export async function apiListGroupTaskNodes(runId: string): Promise<ApiResult<GroupTaskNode[]>> {
+  return httpGet<GroupTaskNode[]>(`/api/v1/group-tasks/runs/${runId}/nodes`)
 }
 
-export async function apiGetGroupTaskGraph(groupId: string): Promise<ApiResult<GroupTaskGraph>> {
-  return httpGet<GroupTaskGraph>(`/api/v1/group-tasks/groups/${groupId}/graph`)
+export async function apiListGroupTaskEvents(runId: string): Promise<ApiResult<GroupTaskEvent[]>> {
+  return httpGet<GroupTaskEvent[]>(`/api/v1/group-tasks/runs/${runId}/events`)
+}
+
+export async function apiGetGroupTaskGraph(runId: string): Promise<ApiResult<GroupTaskGraph>> {
+  return httpGet<GroupTaskGraph>(`/api/v1/group-tasks/runs/${runId}/graph`)
+}
+
+export async function apiUpdateGroupTaskDag(runId: string, nodes: GroupTaskNodeIn[]): Promise<ApiResult<GroupTaskRun>> {
+  return httpPut<GroupTaskRun, { nodes: GroupTaskNodeIn[] }>(`/api/v1/group-tasks/runs/${runId}/dag`, { nodes })
 }
 
 export async function apiClaimGroupTaskNode(nodeId: string, memberId: string): Promise<ApiResult<GroupTaskNode>> {
   return httpPost<GroupTaskNode, { member_id: Id }>(`/api/v1/group-tasks/nodes/${nodeId}/claim`, { member_id: memberId })
 }
 
-export async function apiCompleteGroupTaskNode(
-  nodeId: string,
-  memberId: string,
-  outputSummary: string,
-): Promise<ApiResult<GroupTaskNode>> {
-  return httpPost<GroupTaskNode, { member_id: Id; output_summary: string }>(`/api/v1/group-tasks/nodes/${nodeId}/complete`, {
-    member_id: memberId,
+export async function apiCompleteGroupTaskNode(nodeId: string, outputSummary: string): Promise<ApiResult<GroupTaskNode>> {
+  return httpPost<GroupTaskNode, { output_summary: string }>(`/api/v1/group-tasks/nodes/${nodeId}/complete`, {
     output_summary: outputSummary,
   })
+}
+
+export async function apiReviewGroupTaskNode(
+  nodeId: string,
+  body: { manager_review_status: 'approved' | 'rework'; note?: string },
+): Promise<ApiResult<GroupTaskNode>> {
+  return httpPost<GroupTaskNode, { manager_review_status: 'approved' | 'rework'; note: string }>(
+    `/api/v1/group-tasks/nodes/${nodeId}/review`,
+    { manager_review_status: body.manager_review_status, note: body.note || '' },
+  )
+}
+
+export async function apiBlockGroupTaskRoleBranch(runId: string, roleRequired: string, reason: string): Promise<ApiResult<number>> {
+  return httpPost<number, { reason: string }>(
+    `/api/v1/group-tasks/runs/${runId}/branches/${encodeURIComponent(roleRequired)}/block`,
+    { reason },
+  )
+}
+
+export async function apiUnblockGroupTaskRoleBranch(runId: string, roleRequired: string, reason: string): Promise<ApiResult<number>> {
+  return httpPost<number, { reason: string }>(
+    `/api/v1/group-tasks/runs/${runId}/branches/${encodeURIComponent(roleRequired)}/unblock`,
+    { reason },
+  )
 }
 
 export type {
@@ -116,6 +171,10 @@ export type {
   GroupTaskNode,
   GroupTaskNodeDraft,
   GroupTaskNodeIn,
+  GroupTaskRun,
+  MessageCodeDiffFile,
+  MessageCodeDiffResponse,
+  MessageCodeDiffSummary,
   Member,
   Message,
   MemoryCompressRunResult,

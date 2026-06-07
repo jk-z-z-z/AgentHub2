@@ -9,7 +9,7 @@ from sqlalchemy.orm import Session
 
 from app.manager_runtime.engine.base import ManagerEngineContext
 from app.models.group import Group
-from app.manager_runtime.skill._loader import load_manager_skill_prompt_sections
+from app.manager_runtime.skill._loader import load_manager_skill_loaders, load_manager_skill_prompt_sections
 from app.manager_runtime.tool._loader import load_manager_toolkit
 from app.services.storage_paths import project_dir
 
@@ -167,7 +167,7 @@ def build_complete_manager(
         extra_context=extra_context,
     )
     group = db.query(Group).filter(Group.id == int(group_id)).first()
-    runtime_context = dict(context)
+    runtime_context = {**context, **dict(extra_context or {})}
     runtime_context["purpose"] = str(extra_context.get("purpose") or "chat")
     engine_ctx = ManagerEngineContext(
         group_id=int(group_id),
@@ -184,6 +184,7 @@ def build_complete_manager(
         toolkit=load_manager_toolkit(
             db,
             group_id=int(group_id),
+            runtime_context=runtime_context,
             trace=extra_context.get("trace"),
             extra_skill_loaders=extra_skill_loaders,
         ),

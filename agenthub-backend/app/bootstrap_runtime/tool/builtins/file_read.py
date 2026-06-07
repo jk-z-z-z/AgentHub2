@@ -2,7 +2,7 @@ from __future__ import annotations
 
 from agentscope.tool import ToolBase, ToolChunk
 
-from app.bootstrap_runtime.tool.base import build_error_chunk, build_tool_chunk
+from app.bootstrap_runtime.tool.base import build_error_chunk, build_tool_chunk, permission_passthrough_decision
 from app.bootstrap_runtime.tool.common import agent_root, safe_resolve_under_agent
 
 
@@ -23,7 +23,7 @@ class FileReadTool(ToolBase):
         }
 
     async def check_permissions(self, _tool_input: dict, _context: object) -> object:
-        return object()
+        return permission_passthrough_decision()
 
     async def __call__(self, **kwargs) -> ToolChunk:
         agent_id = kwargs.get("agent_id")

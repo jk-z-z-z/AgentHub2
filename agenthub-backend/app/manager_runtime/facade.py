@@ -61,6 +61,14 @@ def _trace_message_id(extra_context: dict[str, Any], explicit: int | None) -> in
         return None
 
 
+def _runtime_int(runtime_context: dict[str, Any], key: str) -> int | None:
+    value = runtime_context.get(key)
+    try:
+        return int(value) if value not in (None, "") else None
+    except (TypeError, ValueError):
+        return None
+
+
 async def invoke_manager(
     db: Session,
     *,
@@ -70,7 +78,11 @@ async def invoke_manager(
     trace_message_id: int | None = None,
 ) -> ManagerInvokeResult:
     runtime_context = dict(extra_context or {})
-    trace = ManagerRuntimeTrace(db=db, message_id=_trace_message_id(runtime_context, trace_message_id))
+    trace = ManagerRuntimeTrace(
+        db=db,
+        message_id=_trace_message_id(runtime_context, trace_message_id),
+        run_id=_runtime_int(runtime_context, "run_id"),
+    )
     built = build_complete_manager(
         db,
         group_id=int(group_id),

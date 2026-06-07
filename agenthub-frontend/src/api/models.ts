@@ -25,7 +25,8 @@ export type AgentMemberCreateRequest = Schema['AgentMemberCreateRequest']
 export type MessageCreateRequest = Schema['MessageCreateRequest']
 export type GroupTaskNodeIn = Schema['GroupTaskNodeIn']
 export type GroupTaskNode = Schema['GroupTaskNodeOut'] & {
-  manager_review_status?: string
+  run_id: string
+  manager_review_status: string
 }
 export type FsEntry = Schema['FsEntryOut']
 export type ProjectCodeEntry = FsEntry
@@ -49,6 +50,7 @@ export type MCPCreateRequest = Schema['MCPCreateRequest']
 export type AgentCreateBody = Pick<AgentInstanceCreateRequest, 'display_name'> &
   Partial<Omit<AgentInstanceCreateRequest, 'display_name'>>
 export type AgentSkillConfigUpdateRequest = Schema['AgentSkillConfigUpdateRequest']
+export type ProjectMemoryCompressorConfigUpdateRequest = Schema['ProjectMemoryCompressorConfigUpdateRequest']
 export type TextFile = Schema['TextFileOut']
 export type ProjectMemoryCompressorStatus = Schema['ProjectMemoryCompressorStatusOut']
 export type ProjectMemoryCompressorConfig = Schema['ProjectMemoryCompressorConfigOut']
@@ -65,7 +67,7 @@ export type MemoryCompressRunResult = {
   last_message_id?: number | null
 }
 
-export type GroupTaskGraph = Record<string, unknown>
+export type GroupTaskGraph = Schema['GroupTaskGraphOut']
 
 export type GroupTaskNodeDraft = {
   title: string
@@ -105,4 +107,57 @@ export type AgentRunEvent = {
   updated_at?: string
 }
 
-export type GroupTaskEvent = Record<string, unknown>
+export type GroupTaskEvent = {
+  id: string | number
+  run_id: string | number
+  seq?: number
+  event_type?: string | null
+  category?: string | null
+  status?: string | null
+  payload_json?: string | null
+  created_at?: string
+  updated_at?: string
+}
+
+export type GroupTaskRun = {
+  id: string | number
+  group_id?: string | number | null
+  creator_member_id?: string | number | null
+  title: string
+  goal_text: string
+  status: string
+  trigger_message_id?: string | number | null
+  created_at: string
+  updated_at?: string
+}
+
+export type MessageCodeDiffSummary = {
+  message_id: number | string
+  workspace_id?: number | null
+  group_id?: number | null
+  before_commit?: string | null
+  after_commit?: string | null
+  changed_file_count: number
+  insertions: number
+  deletions: number
+  has_code_changes: boolean
+  repo_initialized: boolean
+  diff_preview_available: boolean
+}
+
+export type MessageCodeDiffFile = {
+  path: string
+  change_type: 'added' | 'modified' | 'deleted' | 'renamed' | 'binary'
+  old_path?: string | null
+  additions: number
+  deletions: number
+  patch?: string | null
+  patch_truncated: boolean
+}
+
+export type MessageCodeDiffResponse = {
+  status: 'ready' | 'no_changes' | 'unavailable' | 'failed'
+  summary?: MessageCodeDiffSummary | null
+  files: MessageCodeDiffFile[]
+  error?: string | null
+}
