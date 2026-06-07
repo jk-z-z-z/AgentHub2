@@ -23,7 +23,8 @@ from app.models.group import Group
 from app.models.member import Member
 from app.models.message import Message
 from app.event_runtime.reply import emit_ai_reply
-from app.services.project_conversation_service import handle_project_conversation
+from app.services.project_conversation_service import handle_project_conversation, is_project_feature_delivery_request
+from app.services.project_delivery_service import execute_project_feature_delivery
 
 EventHandler = Callable[[EventDispatchRequest, Any | None], Awaitable[None]]
 
@@ -147,6 +148,27 @@ async def handle_project_manager(request: EventDispatchRequest, event: Any | Non
     try:
         effective_user_id = int(sender.user_ref) if sender.user_ref else None
         if effective_user_id is not None:
+            short_term_memory = build_short_term_memory(request.db, group_id=int(group.id), exclude_message_id=int(user_message.id))
+            if is_project_feature_delivery_request(str(request.content or "")):
+                delivery = await execute_project_feature_delivery(
+                    request.db,
+                    group=group,
+                    user_id=int(effective_user_id),
+                    input_text=str(request.content or ""),
+                    short_term_memory=short_term_memory,
+                    trace_message_id=int(ai_message.id),
+                )
+                await emit_ai_reply(
+                    request.db,
+                    group_id=int(group.id),
+                    user_message_id=int(user_message.id),
+                    sender_member_id=int(manager_member.id),
+                    content=str(delivery.text or ""),
+                    trigger="manager_runtime",
+                    ai_message_id=int(ai_message.id),
+                    extra_metadata=delivery.metadata,
+                )
+                return
             execution = handle_project_conversation(
                 request.db,
                 group=group,
@@ -168,7 +190,7 @@ async def handle_project_manager(request: EventDispatchRequest, event: Any | Non
         result = await invoke_manager(
             request.db,
             group_id=int(group.id),
-            short_term_memory=build_short_term_memory(request.db, group_id=int(group.id), exclude_message_id=int(user_message.id)),
+            short_term_memory=short_term_memory if effective_user_id is not None else build_short_term_memory(request.db, group_id=int(group.id), exclude_message_id=int(user_message.id)),
             extra_context={
                 "purpose": "assistant",
                 "input_text": str(request.content or ""),

@@ -108,12 +108,25 @@ async def invoke_agent(
         run_id=_runtime_int(runtime_context, "run_id"),
     )
 
+    def _builtin_tool_executor(tool_code: str, args: dict[str, Any]) -> dict[str, Any]:
+        payload_args = args or {}
+        executor = tool_executor
+        if executor is None:
+            return execute_builtin_tool(
+                agent_id=int(agent_id),
+                tool_code=str(tool_code),
+                args=payload_args,
+                runtime_context=runtime_context,
+            )
+        return executor(str(tool_code), payload_args)
+
     built_agent = build_complete_agent(
         db,
         agent_id=int(agent_id),
         extra_context=runtime_context,
         runtime_context=runtime_context,
         trace=trace,
+        tool_executor=_builtin_tool_executor,
     )
 
     engine = create_engine(built_agent.engine_ctx.engine_type)

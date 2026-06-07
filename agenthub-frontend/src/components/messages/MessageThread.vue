@@ -8,6 +8,11 @@
         <div class="bubble">
           <div class="msgMeta">{{ senderName(m.sender_member_id) }}</div>
           <div class="msgText">{{ m.content }}</div>
+          <div v-if="deliveryResult(m)" class="msgDelivery" :data-status="deliveryStatus(m)">
+            <span class="msgDeliveryPill">查看交付结果</span>
+            <span v-if="appliedFileCount(m) > 0" class="msgDeliveryPill">已写入 {{ appliedFileCount(m) }} 个文件</span>
+            <span class="msgDeliveryPill">{{ validationLabel(m) }}</span>
+          </div>
           <div v-if="previewUrl(m) || deployUrl(m)" class="msgActions">
             <a
               v-if="previewUrl(m)"
@@ -79,6 +84,33 @@ function deployUrl(message: Message) {
   return String((deploy as { url?: unknown }).url || '')
 }
 
+function deliveryResult(message: Message) {
+  const meta = messageMeta(message)
+  const delivery = meta.delivery_result
+  if (!delivery || typeof delivery !== 'object' || Array.isArray(delivery)) return null
+  return delivery as { status?: unknown }
+}
+
+function deliveryStatus(message: Message) {
+  return String(deliveryResult(message)?.status || 'idle')
+}
+
+function appliedFileCount(message: Message) {
+  const meta = messageMeta(message)
+  const applied = meta.applied_files
+  return Array.isArray(applied) ? applied.length : 0
+}
+
+function validationLabel(message: Message) {
+  const delivery = deliveryResult(message)
+  const deliveryStatus = String(delivery?.status || '')
+  if (deliveryStatus === 'failed' && appliedFileCount(message) === 0) return '未写入文件'
+  const meta = messageMeta(message)
+  const validation = meta.validation_result
+  if (!validation || typeof validation !== 'object' || Array.isArray(validation)) return '未验证'
+  return Boolean((validation as { ok?: unknown }).ok) ? '验证通过' : '验证失败'
+}
+
 function sideClass(message: Message) {
   const sender = props.members.find((item) => String(item.id) === String(message.sender_member_id))
   if (sender?.kind === 'user') return 'right'
@@ -134,6 +166,35 @@ function sideClass(message: Message) {
   display: flex;
   gap: 8px;
   flex-wrap: wrap;
+}
+.msgDelivery {
+  margin-top: 10px;
+  display: flex;
+  gap: 8px;
+  flex-wrap: wrap;
+}
+.msgDeliveryPill {
+  display: inline-flex;
+  align-items: center;
+  min-height: 28px;
+  padding: 0 12px;
+  border-radius: 999px;
+  background: rgba(31, 35, 41, 0.06);
+  color: rgba(31, 35, 41, 0.76);
+  font-size: 12px;
+  font-weight: 700;
+}
+.msgDelivery[data-status='succeeded'] .msgDeliveryPill {
+  background: rgba(32, 122, 50, 0.1);
+  color: #207a32;
+}
+.msgDelivery[data-status='failed'] .msgDeliveryPill {
+  background: rgba(220, 38, 38, 0.1);
+  color: #b91c1c;
+}
+.msgDelivery[data-status='partial'] .msgDeliveryPill {
+  background: rgba(217, 119, 6, 0.12);
+  color: #b45309;
 }
 .msgActionLink {
   display: inline-flex;

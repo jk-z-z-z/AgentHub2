@@ -170,6 +170,50 @@
             <pre class="logBlock">{{ deploymentJob.logs_text }}</pre>
           </details>
         </div>
+
+        <div class="panelCard">
+          <div class="sectionTitle">最近一次交付</div>
+          <template v-if="latestDelivery">
+            <div class="statusRow">
+              <span class="statusLabel">模式</span>
+              <span class="statusValue">{{ String(latestDelivery.mode || 'unknown') }}</span>
+            </div>
+            <div class="statusRow">
+              <span class="statusLabel">状态</span>
+              <span class="statusValue" :data-status="String(latestDelivery.status || 'idle')">{{ latestDeliveryStatusLabel }}</span>
+            </div>
+            <div class="statusRow">
+              <span class="statusLabel">文件数</span>
+              <span class="statusValue">{{ Number(latestDelivery.changed_file_count || 0) }}</span>
+            </div>
+            <div class="statusRow">
+              <span class="statusLabel">验证</span>
+              <span class="statusValue">{{ latestDeliveryValidationLabel }}</span>
+            </div>
+            <div class="statusRow">
+              <span class="statusLabel">说明</span>
+              <span class="statusValue">{{ String(latestDelivery.summary || '') || '暂无说明' }}</span>
+            </div>
+            <div class="statusRow">
+              <span class="statusLabel">预览地址</span>
+              <a v-if="latestDeliveryPreviewUrl" class="previewLink" :href="latestDeliveryPreviewUrl" target="_blank" rel="noreferrer">
+                {{ latestDeliveryPreviewUrl }}
+              </a>
+              <span v-else class="statusValue">暂无预览</span>
+            </div>
+            <div class="statusRow">
+              <span class="statusLabel">部署地址</span>
+              <a v-if="latestDeliveryDeployUrl" class="previewLink" :href="latestDeliveryDeployUrl" target="_blank" rel="noreferrer">
+                {{ latestDeliveryDeployUrl }}
+              </a>
+              <span v-else class="statusValue">暂无部署</span>
+            </div>
+            <div v-if="latestDeliveryValidation?.details" class="hint">
+              {{ String(latestDeliveryValidation.details || '') }}
+            </div>
+          </template>
+          <div v-else class="statusValue">暂无交付记录</div>
+        </div>
       </div>
 
       <div v-else class="sideEmpty">
@@ -182,7 +226,7 @@
 <script setup lang="ts">
 import { computed, reactive, ref, watch } from 'vue'
 import { Close } from '@element-plus/icons-vue'
-import type { Group, ProjectCodeEntry } from '../../api/groups'
+import type { Group, Message, ProjectCodeEntry } from '../../api/groups'
 import type { DeploymentJob, DeploymentRequest } from '../../api/deployments'
 import type { PreviewJob } from '../../api/previews'
 
@@ -201,6 +245,7 @@ type DeployDraft = {
 
 const props = defineProps<{
   activeGroup: Group | null
+  messages: Message[]
   projectFilesEntries: ProjectCodeEntry[]
   previewJob: PreviewJob | null
   previewPending: boolean
@@ -214,6 +259,14 @@ const emit = defineEmits<{
   (e: 'deploy', payload: DeploymentRequest): void
   (e: 'retry-deploy', deploymentId: number): void
 }>()
+
+function messageMeta(message: Message) {
+  try {
+    return JSON.parse(String(message.metadata_json || '{}')) as Record<string, unknown>
+  } catch {
+    return {}
+  }
+}
 
 const draft = reactive<DeployDraft>({
   imageRef: '',
@@ -348,6 +401,65 @@ const previewUrl = computed(() => {
 const shortContainerId = computed(() => {
   const containerId = props.deploymentJob?.deployed_container_id || ''
   return containerId ? containerId.slice(0, 12) : '尚未生成'
+})
+
+const latestDeliveryMeta = computed(() => {
+  for (let index = props.messages.length - 1; index >= 0; index -= 1) {
+    const meta = messageMeta(props.messages[index]!)
+    const delivery = meta.delivery_result
+    if (!delivery || typeof delivery !== 'object' || Array.isArray(delivery)) continue
+    return meta
+  }
+  return null
+})
+
+const latestDelivery = computed(() => {
+  const delivery = latestDeliveryMeta.value?.delivery_result
+  if (!delivery || typeof delivery !== 'object' || Array.isArray(delivery)) return null
+  return delivery as {
+    mode?: unknown
+    status?: unknown
+    changed_file_count?: unknown
+    validated?: unknown
+    summary?: unknown
+  }
+})
+
+const latestDeliveryValidation = computed(() => {
+  const validation = latestDeliveryMeta.value?.validation_result
+  if (!validation || typeof validation !== 'object' || Array.isArray(validation)) return null
+  return validation as {
+    ok?: unknown
+    details?: unknown
+  }
+})
+
+const latestDeliveryPreviewUrl = computed(() => {
+  const preview = latestDeliveryMeta.value?.preview_result
+  if (!preview || typeof preview !== 'object' || Array.isArray(preview)) return ''
+  return String((preview as { url?: unknown }).url || '')
+})
+
+const latestDeliveryDeployUrl = computed(() => {
+  const deploy = latestDeliveryMeta.value?.deploy_result
+  if (!deploy || typeof deploy !== 'object' || Array.isArray(deploy)) return ''
+  return String((deploy as { url?: unknown }).url || '')
+})
+
+const latestDeliveryStatusLabel = computed(() => {
+  const status = String(latestDelivery.value?.status || '')
+  if (status === 'succeeded') return '已完成'
+  if (status === 'partial') return '部分完成'
+  if (status === 'failed') return '失败'
+  return '暂无记录'
+})
+
+const latestDeliveryValidationLabel = computed(() => {
+  if (!latestDeliveryValidation.value) return '未验证'
+  if (String(latestDelivery.value?.status || '') === 'failed' && Number(latestDelivery.value?.changed_file_count || 0) === 0) {
+    return '未写入文件'
+  }
+  return Boolean(latestDeliveryValidation.value.ok) ? '验证通过' : '验证失败'
 })
 
 function parseEnvText() {

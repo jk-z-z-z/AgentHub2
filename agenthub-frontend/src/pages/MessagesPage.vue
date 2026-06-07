@@ -112,6 +112,7 @@
       <MessageDeploymentPanel
         v-else-if="deployOpen"
         :active-group="activeGroup"
+        :messages="messages"
         :project-files-entries="projectFilesEntries"
         :preview-job="activePreviewJob"
         :preview-pending="previewPending"

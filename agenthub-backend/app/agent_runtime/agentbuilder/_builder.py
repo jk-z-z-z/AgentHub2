@@ -91,6 +91,7 @@ def build_complete_agent(
     extra_context: dict[str, Any],
     runtime_context: dict[str, Any] | None = None,
     trace: Any | None = None,
+    tool_executor: Any | None = None,
 ) -> BuiltAgent:
     agent_instance = db.query(AgentInstance).filter(AgentInstance.id == int(agent_id)).first()
     if not agent_instance:
@@ -115,6 +116,7 @@ def build_complete_agent(
         runtime_context=runtime_context,
         trace=trace,
         extra_skill_loaders=extra_skill_loaders,
+        tool_executor=tool_executor,
     )
 
     engine_type = str(getattr(agent_instance, "engine_type", "internal_llm") or "internal_llm")

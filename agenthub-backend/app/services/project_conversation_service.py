@@ -155,7 +155,13 @@ def _looks_like_page_request(text: str) -> bool:
 def _looks_like_complex_feature_request(text: str) -> bool:
     keywords = [
         "登录流程",
+        "登录界面",
+        "登录页面",
+        "登录页",
         "注册流程",
+        "注册界面",
+        "注册页面",
+        "注册页",
         "认证",
         "接口",
         "后端",
@@ -176,6 +182,13 @@ def _looks_like_complex_feature_request(text: str) -> bool:
     return any(keyword in text for keyword in keywords)
 
 
+def is_project_feature_delivery_request(text: str) -> bool:
+    normalized = _normalize_text(text)
+    if not normalized:
+        return False
+    return _looks_like_complex_feature_request(normalized) and not _looks_like_page_request(normalized)
+
+
 def _wants_preview(text: str) -> bool:
     if any(keyword in text for keyword in ["不预览", "只改页面", "只写文件", "只修改页面"]):
         return False
@@ -194,7 +207,10 @@ def _pick_target_path(text: str) -> str:
 
 
 def _extract_requested_port(text: str) -> int | None:
-    match = re.search(r"(?:端口|部署到|预览到|运行到)\s*(\d{2,5})", str(text or ""), flags=re.IGNORECASE)
+    raw = str(text or "")
+    match = re.search(r"(?:端口|部署到|预览到|运行到)\s*(\d{2,5})", raw, flags=re.IGNORECASE)
+    if not match and any(keyword in raw.lower() for keyword in ["部署", "预览", "运行"]):
+        match = re.search(r"到\s*(\d{2,5})", raw, flags=re.IGNORECASE)
     if not match:
         return None
     try:
@@ -343,6 +359,8 @@ def _build_reply_text(
     if changed_files:
         lines.append("已创建或修改文件：")
         lines.extend([f"- {path}" for path in changed_files])
+    elif preview_url and not deploy_status:
+        lines.append("未检测到代码写入，本次仅返回现有项目预览地址。")
     if preview_url:
         lines.append(f"本地预览地址：{preview_url}")
     if deploy_status:
@@ -385,11 +403,7 @@ def handle_project_conversation(
     complex_feature_request = _looks_like_complex_feature_request(normalized)
 
     if complex_feature_request and not looks_like_page:
-        return ProjectConversationResult(
-            handled=True,
-            content=_build_complex_request_limit_text(),
-            metadata={},
-        )
+        return ProjectConversationResult(handled=False)
 
     if not wants_deploy and not looks_like_page and not wants_preview:
         return ProjectConversationResult(handled=False)
@@ -474,8 +488,49 @@ def handle_project_conversation(
         error_message=error_message,
     )
     metadata: dict[str, Any] = {}
+    metadata["applied_files"] = [{"path": path, "action": "overwrite"} for path in changed_files]
     if preview_result:
         metadata["preview_result"] = preview_result
     if deploy_result:
         metadata["deploy_result"] = deploy_result
+    validation_kind = "none"
+    validation_ok = False
+    validation_details = "未执行验证"
+    if deploy_result:
+        validation_kind = "deploy"
+        validation_ok = str(deploy_result.get("status") or "") == "succeeded"
+        validation_details = str(deploy_result.get("url") or error_message or "部署未返回访问地址")
+    elif preview_result:
+        validation_kind = "preview"
+        validation_ok = bool(preview_result.get("url"))
+        validation_details = str(preview_result.get("url") or error_message or "预览未返回访问地址")
+    elif changed_files and not error_message:
+        validation_details = "本次仅写入文件，未启动预览或部署"
+    elif error_message:
+        validation_details = error_message
+    delivery_status = "failed"
+    if changed_files and not error_message:
+        if wants_deploy:
+            delivery_status = "succeeded" if validation_ok else "partial"
+        elif wants_preview:
+            delivery_status = "succeeded" if validation_ok else "partial"
+        else:
+            delivery_status = "succeeded"
+    elif changed_files:
+        delivery_status = "partial"
+    summary = error_message or ("已写入静态页面并生成可访问结果" if validation_ok else validation_details)
+    if not changed_files and preview_result and not deploy_result and not error_message:
+        summary = "未检测到文件写入，本次仅返回现有项目预览地址"
+    metadata["validation_result"] = {
+        "kind": validation_kind,
+        "ok": validation_ok,
+        "details": validation_details,
+    }
+    metadata["delivery_result"] = {
+        "mode": "static_page_shortcut",
+        "status": delivery_status,
+        "changed_file_count": len(changed_files),
+        "validated": validation_ok,
+        "summary": summary,
+    }
     return ProjectConversationResult(handled=True, content=reply_text or "已执行完成。", metadata=metadata)

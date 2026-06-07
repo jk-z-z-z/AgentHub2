@@ -31,11 +31,13 @@ class BuiltinAgentTool(ToolBase):
         schema_json: str | None,
         runtime_context: dict[str, Any] | None = None,
         trace: Any | None = None,
+        tool_executor: Any | None = None,
     ):
         self._agent_id = int(agent_id)
         self._code = str(code)
         self._runtime_context = runtime_context or {}
         self._trace = trace
+        self._tool_executor = tool_executor
         self.name = str(code)
         self.description = description or f"Builtin tool: {code}"
         self.input_schema = self._safe_schema(schema_json)
@@ -72,14 +74,17 @@ class BuiltinAgentTool(ToolBase):
             "timestamp": time.time(),
         }
         try:
-            from app.agent_runtime.tool._executor import execute_builtin_tool
+            if self._tool_executor is not None:
+                result = self._tool_executor(self._code, kwargs or {})
+            else:
+                from app.agent_runtime.tool._executor import execute_builtin_tool
 
-            result = execute_builtin_tool(
-                agent_id=self._agent_id,
-                tool_code=self._code,
-                args=kwargs or {},
-                runtime_context=self._runtime_context,
-            )
+                result = execute_builtin_tool(
+                    agent_id=self._agent_id,
+                    tool_code=self._code,
+                    args=kwargs or {},
+                    runtime_context=self._runtime_context,
+                )
             duration_ms = round((time.perf_counter() - start_time) * 1000, 2)
             trace_record.update({"status": "success", "duration_ms": duration_ms, "result_preview": str(result)[:200]})
             self._call_traces.append(trace_record)
@@ -171,6 +176,7 @@ def load_toolkit_for_agent(
     runtime_context: dict[str, Any] | None = None,
     trace: Any | None = None,
     extra_skill_loaders: list[LocalSkillLoader] | None = None,
+    tool_executor: Any | None = None,
 ) -> Toolkit:
     allowed_codes = [str(k) for k in sorted(BUILTIN_TOOL_DEFS.keys())]
     tools_json_path = _get_tools_json_path(int(agent_id))
@@ -200,6 +206,7 @@ def load_toolkit_for_agent(
                 schema_json=json.dumps(spec.spec.get("input_schema", {}), ensure_ascii=False),
                 runtime_context=runtime_context,
                 trace=trace,
+                tool_executor=tool_executor,
             )
         )
     skill_loaders = load_skill_loaders_for_agent(int(agent_id))
