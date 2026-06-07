@@ -8,6 +8,26 @@
         <div class="bubble">
           <div class="msgMeta">{{ senderName(m.sender_member_id) }}</div>
           <div class="msgText">{{ m.content }}</div>
+          <div v-if="previewUrl(m) || deployUrl(m)" class="msgActions">
+            <a
+              v-if="previewUrl(m)"
+              class="msgActionLink"
+              :href="previewUrl(m) || '#'"
+              target="_blank"
+              rel="noreferrer"
+            >
+              打开预览
+            </a>
+            <a
+              v-if="deployUrl(m)"
+              class="msgActionLink"
+              :href="deployUrl(m) || '#'"
+              target="_blank"
+              rel="noreferrer"
+            >
+              打开部署
+            </a>
+          </div>
         </div>
       </div>
     </template>
@@ -35,6 +55,28 @@ const memberNameMap = computed(() => {
 
 function senderName(memberId: string) {
   return memberNameMap.value[String(memberId)] || String(memberId)
+}
+
+function messageMeta(message: Message) {
+  try {
+    return JSON.parse(String(message.metadata_json || '{}')) as Record<string, unknown>
+  } catch {
+    return {}
+  }
+}
+
+function previewUrl(message: Message) {
+  const meta = messageMeta(message)
+  const preview = meta.preview_result
+  if (!preview || typeof preview !== 'object' || Array.isArray(preview)) return ''
+  return String((preview as { url?: unknown }).url || '')
+}
+
+function deployUrl(message: Message) {
+  const meta = messageMeta(message)
+  const deploy = meta.deploy_result
+  if (!deploy || typeof deploy !== 'object' || Array.isArray(deploy)) return ''
+  return String((deploy as { url?: unknown }).url || '')
 }
 
 function sideClass(message: Message) {
@@ -86,5 +128,27 @@ function sideClass(message: Message) {
 }
 .msgText {
   white-space: pre-wrap;
+}
+.msgActions {
+  margin-top: 10px;
+  display: flex;
+  gap: 8px;
+  flex-wrap: wrap;
+}
+.msgActionLink {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  min-height: 30px;
+  padding: 0 12px;
+  border-radius: 999px;
+  background: rgba(37, 99, 235, 0.1);
+  color: #1d4ed8;
+  font-size: 12px;
+  font-weight: 700;
+  text-decoration: none;
+}
+.msgActionLink:hover {
+  background: rgba(37, 99, 235, 0.16);
 }
 </style>

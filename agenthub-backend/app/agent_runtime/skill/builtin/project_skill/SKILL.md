@@ -10,19 +10,24 @@
 ## 可用工具
 - `project_code_list`
 - `project_code_read`
+- `project_code_write`
 - `project_command_run`
+- `project_preview_run`
 - `project_deploy_run`
 
 ## 最佳实践
 1. 先定位相关目录，再读取具体文件
 2. 只读取回答问题所需的最小文件集
 3. 默认关闭网络，只有安装依赖等确实需要时才开启 `network_enabled`
-4. 优先做读操作，再做写操作
-5. 部署前尽量先跑 `test_command` 或 `build_command`
+4. 需要落文件时，直接写入项目共享代码，不要只给用户教程
+5. 默认先做本地预览，只有用户明确说“部署/上线”时再走部署
+6. 部署前尽量先跑 `test_command` 或 `build_command`
 
 ## 失败处理
 - 如果项目结构不清楚，先用代码列表工具确认
+- 如果用户要页面效果，回复里必须明确给出预览地址或部署地址
 
 ## 输出要求
 - 简洁说明发现了什么
+- 明确列出修改了哪些文件
 - 对命令结果给出可执行结论

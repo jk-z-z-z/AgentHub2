@@ -11,6 +11,7 @@ from app.models.mcp import MCP
 from app.models.member import Member
 from app.models.message import Message
 from app.models.message_event import MessageEvent
+from app.models.preview_job import PreviewJob
 from app.models.sandbox_run import SandboxRun
 from app.models.tool import Tool
 from app.models.user import User
@@ -30,6 +31,7 @@ __all__ = [
     "Member",
     "Message",
     "MessageEvent",
+    "PreviewJob",
     "SandboxRun",
     "Tool",
     "User",

@@ -15,6 +15,46 @@
     <div class="sideBody">
       <div v-if="activeGroup?.type === 'project'" class="deployShell">
         <div class="panelCard">
+          <div class="sectionTitle">当前预览</div>
+          <div class="toolbar">
+            <el-button
+              v-if="previewJob?.url"
+              size="small"
+              type="primary"
+              plain
+              tag="a"
+              :href="previewJob.url"
+              target="_blank"
+              rel="noreferrer"
+            >
+              打开预览
+            </el-button>
+            <el-button
+              v-if="previewJob && previewJob.status !== 'stopped'"
+              size="small"
+              :disabled="previewPending"
+              @click="$emit('close-preview')"
+            >
+              {{ previewPending ? '关闭中…' : '关闭预览' }}
+            </el-button>
+          </div>
+          <div class="statusRow">
+            <span class="statusLabel">状态</span>
+            <span class="statusValue" :data-status="previewTone">{{ previewLabel }}</span>
+          </div>
+          <div class="statusRow">
+            <span class="statusLabel">地址</span>
+            <a v-if="previewJob?.url" class="previewLink" :href="previewJob.url" target="_blank" rel="noreferrer">{{ previewJob.url }}</a>
+            <span v-else class="statusValue">暂无预览</span>
+          </div>
+          <div class="statusRow">
+            <span class="statusLabel">最近刷新</span>
+            <span class="statusValue">{{ previewUpdatedAt }}</span>
+          </div>
+          <div v-if="previewJob?.error_message" class="errBox">{{ previewJob.error_message }}</div>
+        </div>
+
+        <div class="panelCard">
           <div class="toolbar">
             <el-button size="small" type="primary" :loading="deployPending" @click="submitDeploy">
               {{ deployPending ? '部署中…' : deploymentJob ? '重新部署' : '开始部署' }}
@@ -144,6 +184,7 @@ import { computed, reactive, ref, watch } from 'vue'
 import { Close } from '@element-plus/icons-vue'
 import type { Group, ProjectCodeEntry } from '../../api/groups'
 import type { DeploymentJob, DeploymentRequest } from '../../api/deployments'
+import type { PreviewJob } from '../../api/previews'
 
 type DeployDraft = {
   imageRef: string
@@ -161,12 +202,15 @@ type DeployDraft = {
 const props = defineProps<{
   activeGroup: Group | null
   projectFilesEntries: ProjectCodeEntry[]
+  previewJob: PreviewJob | null
+  previewPending: boolean
   deploymentJob: DeploymentJob | null
   deployPending: boolean
 }>()
 
 const emit = defineEmits<{
   (e: 'close'): void
+  (e: 'close-preview'): void
   (e: 'deploy', payload: DeploymentRequest): void
   (e: 'retry-deploy', deploymentId: number): void
 }>()
@@ -264,11 +308,35 @@ const deploymentTone = computed(() => {
   return 'idle'
 })
 
+const previewTone = computed(() => {
+  const status = props.previewJob?.status || ''
+  if (props.previewPending || status === 'running') return 'running'
+  if (status === 'active') return 'succeeded'
+  if (status === 'failed') return 'failed'
+  return 'idle'
+})
+
 const deploymentLabel = computed(() => {
   if (props.deployPending || props.deploymentJob?.status === 'running') return '部署中'
   if (props.deploymentJob?.status === 'succeeded') return '已完成'
   if (props.deploymentJob?.status === 'failed') return '部署失败'
   return '未开始'
+})
+
+const previewLabel = computed(() => {
+  const status = props.previewJob?.status || ''
+  if (props.previewPending || status === 'running') return '刷新中'
+  if (status === 'active') return '运行中'
+  if (status === 'failed') return '预览失败'
+  if (status === 'stopped') return '已关闭'
+  return '未启动'
+})
+
+const previewUpdatedAt = computed(() => {
+  const value = props.previewJob?.updated_at
+  if (!value) return '暂无记录'
+  const date = new Date(value)
+  return Number.isNaN(date.getTime()) ? value : date.toLocaleString()
 })
 
 const previewUrl = computed(() => {

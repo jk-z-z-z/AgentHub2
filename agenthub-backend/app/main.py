@@ -18,6 +18,7 @@ from app.api.workspaces import router as workspaces_router
 from app.api.ws_groups import router as ws_groups_router
 from app.api.ai import router as ai_router
 from app.api.project_code import router as project_code_router
+from app.api.previews import router as previews_router
 from app.api.group_tasks import router as group_tasks_router
 from app.api.acp_providers import router as acp_providers_router
 import app.models  # noqa: F401
@@ -77,6 +78,7 @@ app.include_router(members_router, prefix=settings.api_prefix)
 app.include_router(messages_router, prefix=settings.api_prefix)
 app.include_router(ai_router, prefix=settings.api_prefix)
 app.include_router(project_code_router, prefix=settings.api_prefix)
+app.include_router(previews_router, prefix=settings.api_prefix)
 app.include_router(workspaces_router, prefix=settings.api_prefix)
 app.include_router(executions_router, prefix=settings.api_prefix)
 app.include_router(deployments_router, prefix=settings.api_prefix)

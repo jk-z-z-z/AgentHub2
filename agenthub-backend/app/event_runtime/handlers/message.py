@@ -23,6 +23,7 @@ from app.models.group import Group
 from app.models.member import Member
 from app.models.message import Message
 from app.event_runtime.reply import emit_ai_reply
+from app.services.project_conversation_service import handle_project_conversation
 
 EventHandler = Callable[[EventDispatchRequest, Any | None], Awaitable[None]]
 
@@ -144,6 +145,26 @@ async def handle_project_manager(request: EventDispatchRequest, event: Any | Non
         trigger="manager_runtime",
     )
     try:
+        effective_user_id = int(sender.user_ref) if sender.user_ref else None
+        if effective_user_id is not None:
+            execution = handle_project_conversation(
+                request.db,
+                group=group,
+                user_id=int(effective_user_id),
+                input_text=str(request.content or ""),
+            )
+            if execution.handled:
+                await emit_ai_reply(
+                    request.db,
+                    group_id=int(group.id),
+                    user_message_id=int(user_message.id),
+                    sender_member_id=int(manager_member.id),
+                    content=str(execution.content or ""),
+                    trigger="manager_runtime",
+                    ai_message_id=int(ai_message.id),
+                    extra_metadata=execution.metadata,
+                )
+                return
         result = await invoke_manager(
             request.db,
             group_id=int(group.id),
@@ -167,6 +188,7 @@ async def handle_project_manager(request: EventDispatchRequest, event: Any | Non
             content=str(result.text or ""),
             trigger="manager_runtime",
             ai_message_id=int(ai_message.id),
+            extra_metadata=result.meta,
         )
     except Exception:
         await mark_failed_reply(ai_message, reply_to_message_id=int(user_message.id), trigger="manager_runtime", db=request.db)
@@ -252,6 +274,7 @@ async def handle_reply_finished(request: EventDispatchRequest, event: Any | None
             content=str(result.text or ""),
             trigger="manager_runtime",
             ai_message_id=int(ai_message.id),
+            extra_metadata=result.meta,
         )
     except Exception:
         await mark_failed_reply(ai_message, reply_to_message_id=int(user_message.id), trigger="manager_runtime", db=request.db)
@@ -301,6 +324,7 @@ async def _handle_single_project_agent(request: EventDispatchRequest, agent_memb
             content=str(result.text or ""),
             trigger="mention",
             ai_message_id=int(ai_message.id),
+            extra_metadata=result.meta,
         )
     except Exception as exc:
         fallback_text = (

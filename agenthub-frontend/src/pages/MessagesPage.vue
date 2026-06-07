@@ -113,9 +113,12 @@
         v-else-if="deployOpen"
         :active-group="activeGroup"
         :project-files-entries="projectFilesEntries"
+        :preview-job="activePreviewJob"
+        :preview-pending="previewPending"
         :deployment-job="activeDeploymentJob"
         :deploy-pending="deployPending"
         @close="deployOpen = false"
+        @close-preview="closePreview"
         @deploy="deployProject"
         @retry-deploy="retryDeployment"
       />
@@ -268,7 +271,8 @@ import {
 import { apiListAgents } from '../api/agents'
 import { apiGetCurrentUser, apiListUsers, type User } from '../api/users'
 import { apiListProjectCode, type ProjectCodeEntry } from '../api/project-code'
-import { apiCreateDeployment, apiRetryDeployment, type DeploymentJob, type DeploymentRequest } from '../api/deployments'
+import { apiCreateDeployment, apiGetDeployment, apiRetryDeployment, type DeploymentJob, type DeploymentRequest } from '../api/deployments'
+import { apiDeleteWorkspacePreview, apiGetWorkspacePreview, type PreviewJob } from '../api/previews'
 import MessageConversationList from '../components/messages/MessageConversationList.vue'
 import MessageComposer from '../components/messages/MessageComposer.vue'
 import MessageDeploymentPanel from '../components/messages/MessageDeploymentPanel.vue'
@@ -406,6 +410,8 @@ const projectFilesLoading = ref(false)
 const projectFilesEntries = ref<ProjectCodeEntry[]>([])
 const projectOpenDirs = ref<Record<string, boolean>>({})
 const projectActiveFilePath = ref('')
+const previewJobs = ref<Record<string, PreviewJob | null>>({})
+const previewPending = ref(false)
 const deploymentJobs = ref<Record<string, DeploymentJob | null>>({})
 const deployPending = ref(false)
 
@@ -423,6 +429,10 @@ const hasSidePane = computed(() => manageOpen.value || taskOpen.value || project
 const activeDeploymentJob = computed(() => {
   if (!activeGroupId.value) return null
   return deploymentJobs.value[activeGroupId.value] || null
+})
+const activePreviewJob = computed(() => {
+  if (!activeGroupId.value) return null
+  return previewJobs.value[activeGroupId.value] || null
 })
 const shellStyle = computed(() => ({
   '--side-pane-width': `${sidePaneWidth.value}px`,
@@ -451,6 +461,25 @@ function normalizeMessage(raw: Message ): Message {
     created_at: String(raw.created_at ?? ''),
     updated_at: String(raw.updated_at ?? ''),
   }
+}
+
+function messageMeta(raw: Message): Record<string, unknown> {
+  try {
+    return JSON.parse(String(raw.metadata_json || '{}')) as Record<string, unknown>
+  } catch {
+    return {}
+  }
+}
+
+function deployIdFromMessages() {
+  for (let index = messages.value.length - 1; index >= 0; index -= 1) {
+    const meta = messageMeta(messages.value[index]!)
+    const deploy = meta.deploy_result
+    if (!deploy || typeof deploy !== 'object' || Array.isArray(deploy)) continue
+    const deploymentId = Number((deploy as { deployment_id?: unknown }).deployment_id)
+    if (Number.isFinite(deploymentId) && deploymentId > 0) return deploymentId
+  }
+  return null
 }
 
 async function loadGroups() {
@@ -555,6 +584,13 @@ function connectWs(groupId: string) {
         ) {
           upsertMessage(msg)
           updatePreview(groupId)
+          const meta = messageMeta(msg)
+          if (meta.preview_result) {
+            void loadCurrentPreview()
+          }
+          if (meta.deploy_result) {
+            void loadCurrentDeployment()
+          }
         }
       } else if (payload.event === 'reply.failed') {
         const data = (payload.data || {})
@@ -753,7 +789,7 @@ async function openDeployPanel() {
   manageOpen.value = false
   projectFilesOpen.value = false
   deployOpen.value = true
-  await reloadProjectFiles()
+  await Promise.all([reloadProjectFiles(), loadCurrentPreview(), loadCurrentDeployment()])
 }
 
 async function loadAssistantConfig() {
@@ -1013,10 +1049,44 @@ function openProjectFile(path: string) {
   projectActiveFilePath.value = path
 }
 
-function setDeploymentJob(groupId: string, job: DeploymentJob) {
+function setDeploymentJob(groupId: string, job: DeploymentJob | null) {
   deploymentJobs.value = {
     ...deploymentJobs.value,
     [groupId]: job,
+  }
+}
+
+function setPreviewJob(groupId: string, job: PreviewJob | null) {
+  previewJobs.value = {
+    ...previewJobs.value,
+    [groupId]: job,
+  }
+}
+
+async function loadCurrentPreview() {
+  const group = activeGroup.value
+  const workspaceId = Number(group?.workspace_id || 0)
+  if (!group || group.type !== 'project' || !workspaceId) return
+  try {
+    const res = await apiGetWorkspacePreview(workspaceId)
+    setPreviewJob(activeGroupId.value, res.data)
+  } catch {
+    setPreviewJob(activeGroupId.value, null)
+  }
+}
+
+async function loadCurrentDeployment() {
+  if (!activeGroupId.value) return
+  const deploymentId = deployIdFromMessages()
+  if (!deploymentId) {
+    setDeploymentJob(activeGroupId.value, null)
+    return
+  }
+  try {
+    const res = await apiGetDeployment(deploymentId)
+    setDeploymentJob(activeGroupId.value, res.data)
+  } catch {
+    // keep current state if fetch fails
   }
 }
 
@@ -1059,6 +1129,25 @@ async function retryDeployment(deploymentId: number) {
     ElMessage.error(msg)
   } finally {
     deployPending.value = false
+  }
+}
+
+async function closePreview() {
+  const group = activeGroup.value
+  const workspaceId = Number(group?.workspace_id || 0)
+  if (!group || group.type !== 'project' || !workspaceId || !activeGroupId.value) return
+  previewPending.value = true
+  manageErr.value = ''
+  try {
+    const res = await apiDeleteWorkspacePreview(workspaceId)
+    setPreviewJob(activeGroupId.value, res.data)
+    ElMessage.success('预览已关闭')
+  } catch (error) {
+    const msg = error instanceof Error ? error.message : String(error)
+    manageErr.value = msg
+    ElMessage.error(msg)
+  } finally {
+    previewPending.value = false
   }
 }
 

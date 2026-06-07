@@ -57,6 +57,17 @@ def builtin_tools() -> list[dict]:
             "is_active": 1,
         },
         {
+            "name": "Project Code Write",
+            "code": "project_code_write",
+            "description": "Write a UTF-8 text file under project shared/code",
+            "source_type": "builtin",
+            "schema_json": json.dumps(
+                {"type": "object", "properties": {"path": {"type": "string"}, "content": {"type": "string"}}, "required": ["path", "content"]},
+                ensure_ascii=False,
+            ),
+            "is_active": 1,
+        },
+        {
             "name": "Worker File List",
             "code": "worker_file_list",
             "description": "List files in runtime workspace or project scope",
@@ -128,6 +139,28 @@ def builtin_tools() -> list[dict]:
                         "env": {"type": "object", "additionalProperties": {"type": "string"}},
                     },
                     "required": ["command"],
+                },
+                ensure_ascii=False,
+            ),
+            "is_active": 1,
+        },
+        {
+            "name": "Project Preview Run",
+            "code": "project_preview_run",
+            "description": "Create or refresh a persistent local preview for the current project workspace",
+            "source_type": "builtin",
+            "schema_json": json.dumps(
+                {
+                    "type": "object",
+                    "properties": {
+                        "source_path": {"type": "string"},
+                        "sandbox_image": {"type": "string"},
+                        "install_command": {"type": "string"},
+                        "build_command": {"type": "string"},
+                        "host_port": {"type": "integer"},
+                        "env": {"type": "object", "additionalProperties": {"type": "string"}},
+                    },
+                    "required": [],
                 },
                 ensure_ascii=False,
             ),
