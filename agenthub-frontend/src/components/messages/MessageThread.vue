@@ -7,7 +7,7 @@
       <div v-for="m in messages" :key="m.id" class="msgRow" :class="sideClass(m)">
         <div class="bubble">
           <div class="msgMeta">{{ senderName(m.sender_member_id) }}</div>
-          <div class="msgText">{{ m.content }}</div>
+          <MessageMarkdown class="msgText" :content="m.content" />
           <div v-if="deliveryResult(m)" class="msgDelivery" :data-status="deliveryStatus(m)">
             <span class="msgDeliveryPill">查看交付结果</span>
             <span v-if="appliedFileCount(m) > 0" class="msgDeliveryPill">已写入 {{ appliedFileCount(m) }} 个文件</span>
@@ -54,6 +54,7 @@
 import { computed, nextTick, onMounted, ref, watch } from 'vue'
 import type { Group, Member } from '../../api/groups'
 import type { Message } from '../../api/messages'
+import MessageMarkdown from './MessageMarkdown.vue'
 
 const props = defineProps<{
   loading: boolean
@@ -249,23 +250,31 @@ onMounted(() => {
 }
 .bubble {
   max-width: 72%;
-  padding: 10px 12px;
-  border-radius: 14px;
-  background: #fff;
+  padding: 11px 13px;
+  border-radius: 16px;
+  background: var(--ah-chat-bubble-ai);
   border: 1px solid rgba(31, 35, 41, 0.06);
   line-height: 1.5;
+  color: var(--ah-text-primary);
+  box-shadow: var(--ah-shadow-sm);
 }
 .msgRow.right .bubble {
-  background: rgba(79, 140, 255, 0.14);
-  border-color: rgba(79, 140, 255, 0.18);
+  background: var(--ah-chat-bubble-user);
+  border-color: var(--ah-chat-bubble-user-border);
+  color: var(--ah-text-primary);
 }
 .msgMeta {
   font-size: 12px;
-  opacity: 0.6;
+  color: var(--ah-text-secondary);
   margin-bottom: 4px;
 }
+.msgRow.right .msgMeta {
+  color: var(--ah-text-secondary);
+}
 .msgText {
-  white-space: pre-wrap;
+  font-size: 14px;
+  line-height: 1.6;
+  overflow-wrap: anywhere;
 }
 .msgActions {
   margin-top: 10px;

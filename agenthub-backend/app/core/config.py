@@ -11,6 +11,9 @@ class Settings(BaseSettings):
     data_root: str = "~/.multiproj-agent"
     skill_pool_dir: str = "./skill-pool"
     cors_origins: list[str] = Field(default_factory=lambda: ["http://127.0.0.1:5173", "http://localhost:5173"])
+    jwt_secret_key: str = "agenthub-dev-secret-key-change-me-please-32chars"
+    jwt_algorithm: str = "HS256"
+    jwt_access_token_expire_minutes: int = 60 * 24 * 7
     openai_api_key: str = ""
     openai_base_url: str = "https://dashscope.aliyuncs.com/compatible-mode/v1"
     openai_model: str = "qwen3.6-plus"

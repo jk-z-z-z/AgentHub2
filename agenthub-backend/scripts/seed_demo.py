@@ -4,6 +4,7 @@ import argparse
 import json
 from dataclasses import dataclass
 from pathlib import Path
+from typing import Any
 
 import httpx
 
@@ -104,30 +105,31 @@ def ensure_user(ctx: Ctx, *, email: str, username: str, display_name: str) -> di
 
 
 def ensure_agent_profile(ctx: Ctx, *, name: str, role: str, soul_md: str) -> dict:
-    profiles = _get(ctx, "/agent-profiles")
-    for profile in profiles:
-        if profile.get("name") == name:
-            return profile
-    return _post(
+    return ensure_agent_profile_with_payload(
         ctx,
-        "/agent-profiles",
         {
             "name": name,
             "role": role,
             "description": "seeded template profile",
             "soul_md": soul_md,
-            "agents_md": "# Agent AGENTS\n- 回答简洁\n- 优先给可执行方案",
-            "profile_md": "",
+            "profile_md": "# 工作方式\n- 回答简洁\n- 优先给可执行方案\n- 保持最小改动\n",
             "bootstrap_md": "",
-            "memory_md": "",
-            "heartbeat_md": "",
-            "enabled_files_json": "{}",
+            "tools_json": json.dumps({"preferred": ["file_list", "file_read", "file_write"]}, ensure_ascii=False),
+            "skills_json": json.dumps({"notes": ["优先使用技能和工具完成任务"]}, ensure_ascii=False),
+            "enabled_files_json": json.dumps(
+                {
+                    "SOUL.md": True,
+                    "PROFILE.md": True,
+                    "BOOTSTRAP.md": False,
+                    "tools.json": True,
+                    "skills.json": True,
+                },
+                ensure_ascii=False,
+            ),
             "model_name": "qwen3.6-plus",
             "temperature": 0.7,
             "top_p": 1.0,
             "max_output_tokens": None,
-            "reasoning_effort": None,
-            "planning_mode": None,
             "is_active": 1,
         },
     )
@@ -138,7 +140,23 @@ def ensure_agent_profile_with_payload(ctx: Ctx, payload: dict) -> dict:
     for profile in profiles:
         if profile.get("name") == payload.get("name"):
             return profile
-    return _post(ctx, "/agent-profiles", payload)
+    normalized = {
+        "name": payload["name"],
+        "role": payload["role"],
+        "description": payload.get("description"),
+        "soul_md": payload.get("soul_md") or "# 身份\n你是一个可靠的智能体。\n",
+        "profile_md": payload.get("profile_md") or "",
+        "bootstrap_md": payload.get("bootstrap_md") or "",
+        "tools_json": payload.get("tools_json") or "{}",
+        "skills_json": payload.get("skills_json") or "{}",
+        "enabled_files_json": payload.get("enabled_files_json") or "{}",
+        "model_name": payload.get("model_name") or "qwen3.6-plus",
+        "temperature": payload.get("temperature", 0.7),
+        "top_p": payload.get("top_p", 1.0),
+        "max_output_tokens": payload.get("max_output_tokens"),
+        "is_active": payload.get("is_active", 1),
+    }
+    return _post(ctx, "/agent-profiles", normalized)
 
 
 def ensure_agent(ctx: Ctx, *, display_name: str, profile_id: int) -> dict:
@@ -154,6 +172,8 @@ def ensure_agent(ctx: Ctx, *, display_name: str, profile_id: int) -> dict:
             "description": "seeded demo agent",
             "base_url": None,
             "api_key_ref": None,
+            "engine_type": "internal_llm",
+            "engine_config_json": "{}",
             "status": "active",
             "template_profile_id": profile_id,
             "soul_md": None,
@@ -281,6 +301,75 @@ def ensure_message(
     )
 
 
+def ensure_group_assistant_enabled(ctx: Ctx, *, group_id: int | str, enabled: bool = True) -> dict:
+    current = _get(ctx, f"/group-tasks/groups/{group_id}/assistant")
+    if bool(int(current.get("enabled", 0))) == bool(enabled):
+        return current
+    return _put(ctx, f"/group-tasks/groups/{group_id}/assistant", {"enabled": 1 if enabled else 0})
+
+
+def ensure_group_task_run(
+    ctx: Ctx,
+    *,
+    group_id: int | str,
+    creator_member_id: int | str,
+    title: str,
+    goal_text: str,
+    nodes: list[dict[str, Any]],
+    trigger_message_id: int | str | None = None,
+) -> dict:
+    runs = _get(ctx, f"/group-tasks/groups/{group_id}/runs")
+    for run in runs:
+        if str(run.get("title")) == title:
+            return run
+    payload: dict[str, Any] = {
+        "group_id": str(group_id),
+        "creator_member_id": str(creator_member_id),
+        "title": title,
+        "goal_text": goal_text,
+        "nodes": nodes,
+    }
+    if trigger_message_id not in (None, ""):
+        payload["trigger_message_id"] = str(trigger_message_id)
+    return _post(ctx, "/group-tasks/runs", payload)
+
+
+def write_project_code_file(ctx: Ctx, *, group_id: int | str, path: str, content: str) -> dict:
+    return _put(ctx, f"/project-code/{group_id}/{path}", {"content": content})
+
+
+def seed_project_code(ctx: Ctx, *, project_group: dict) -> None:
+    group_id = project_group["id"]
+    files = {
+        "README.md": "# Demo Project\n\n这是为当前 AgentHub 项目群聊准备的演示代码。\n\n- 包含最小前端入口\n- 可用于代码面板/部署面板/任务规划联动展示\n",
+        "package.json": json.dumps(
+            {
+                "name": "agenthub-demo-project",
+                "private": True,
+                "version": "0.1.0",
+                "scripts": {
+                    "dev": "vite",
+                    "build": "vite build",
+                },
+                "dependencies": {
+                    "vue": "^3.5.0",
+                },
+                "devDependencies": {
+                    "vite": "^5.4.0",
+                },
+            },
+            ensure_ascii=False,
+            indent=2,
+        )
+        + "\n",
+        "src/main.ts": "const app = document.querySelector('#app')\nif (app) {\n  app.innerHTML = `<main><h1>AgentHub Demo Project</h1><p>Seeded project workspace is ready.</p></main>`\n}\n",
+        "index.html": "<!doctype html>\n<html lang=\"zh-CN\">\n  <head>\n    <meta charset=\"UTF-8\" />\n    <meta name=\"viewport\" content=\"width=device-width, initial-scale=1.0\" />\n    <title>AgentHub Demo</title>\n  </head>\n  <body>\n    <div id=\"app\"></div>\n    <script type=\"module\" src=\"/src/main.ts\"></script>\n  </body>\n</html>\n",
+        "Dockerfile": "FROM node:20-alpine\nWORKDIR /app\nCOPY package.json ./\nRUN npm install\nCOPY . .\nEXPOSE 4173\nCMD [\"npm\", \"run\", \"dev\", \"--\", \"--host\", \"0.0.0.0\", \"--port\", \"4173\"]\n",
+    }
+    for path, content in files.items():
+        write_project_code_file(ctx, group_id=group_id, path=path, content=content)
+
+
 def ensure_agent_tools_and_skills(ctx: Ctx, *, agent_id: int, pool_skill_codes: list[str]) -> None:
     tools_res = _get(ctx, "/tools")
     enabled = {}
@@ -318,7 +407,7 @@ def write_agent_workspace_files(ctx: Ctx, *, agent_id: int) -> None:
     )
 
 
-def seed_messages(ctx: Ctx, *, personal_group: dict, personal_sender: dict, project_group: dict, project_sender: dict, project_agent_member: dict) -> None:
+def seed_messages(ctx: Ctx, *, personal_group: dict, personal_sender: dict, project_group: dict, project_sender: dict) -> None:
     ensure_message(
         ctx,
         group_id=personal_group["id"],
@@ -327,20 +416,73 @@ def seed_messages(ctx: Ctx, *, personal_group: dict, personal_sender: dict, proj
         content="你好，我是项目助手，有问题可以直接 @ 我。",
         metadata_json="{}",
     )
-    ensure_message(
+    mention_message = ensure_message(
         ctx,
         group_id=project_group["id"],
         sender_member_id=project_sender["id"],
-        message_type="seed_text",
-        content="@助手 帮我列一下今天要做的后端任务（seed示例，未触发模型调用）",
-        metadata_json="{}",
+        message_type="text",
+        content="@助手 帮我列一下今天要做的后端任务。",
+        metadata_json=json.dumps({"seed_demo": True}, ensure_ascii=False),
     )
     ensure_message(
         ctx,
         group_id=project_group["id"],
         sender_member_id=project_sender["id"],
-        content="这条消息不@agent，只做群聊消息展示。",
+        message_type="text",
+        content="这条消息不 @ agent，只做群聊消息展示。",
         metadata_json="{}",
+    )
+    ensure_group_assistant_enabled(ctx, group_id=project_group["id"], enabled=True)
+    ensure_group_task_run(
+        ctx,
+        group_id=project_group["id"],
+        creator_member_id=project_sender["id"],
+        title="Demo 项目交付任务",
+        goal_text="围绕当前演示项目，补齐首页、检查构建命令，并准备部署前检查项。",
+        trigger_message_id=mention_message["id"],
+        nodes=[
+            {
+                "node_key": "inspect-current-project",
+                "title": "检查当前项目结构",
+                "detail": "读取 README、package.json 与 src 目录，确认当前项目入口与脚本。",
+                "role_required": "analyst",
+                "deps": [],
+            },
+            {
+                "node_key": "refine-homepage-copy",
+                "title": "完善首页展示文案",
+                "detail": "调整首页标题与说明文案，确保符合演示项目语义。",
+                "role_required": "frontend-engineer",
+                "deps": ["inspect-current-project"],
+            },
+            {
+                "node_key": "prepare-deployment-checklist",
+                "title": "准备部署检查项",
+                "detail": "补一份最小部署检查单，确认端口、安装命令和构建命令。",
+                "role_required": "backend-engineer",
+                "deps": ["inspect-current-project"],
+            },
+        ],
+    )
+
+
+def get_bootstrap_group(ctx: Ctx, *, agent_id: int | str) -> dict | None:
+    return _get(ctx, f"/agents/{agent_id}/bootstrap-group")
+
+
+def seed_bootstrap_messages(ctx: Ctx, *, bootstrap_group: dict, admin_user: dict, bootstrap_agent: dict) -> None:
+    members = list_members(ctx, bootstrap_group["id"])
+    admin_member = find_member(members, kind="user", ref=str(admin_user["id"]))
+    agent_member = find_member(members, kind="agent", ref=str(bootstrap_agent["id"]))
+    if not admin_member or not agent_member:
+        raise RuntimeError("Failed to resolve bootstrap members")
+    ensure_message(
+        ctx,
+        group_id=bootstrap_group["id"],
+        sender_member_id=admin_member["id"],
+        message_type="seed_text",
+        content="我想先完成这个智能体的 bootstrap 配置，确认它的工作方式和交付节奏。",
+        metadata_json=json.dumps({"seed_demo": True, "group_type": "bootstrap"}, ensure_ascii=False),
     )
 
 
@@ -400,29 +542,32 @@ def main() -> None:
             role="backend-engineer",
             soul_md="你是一个严谨的后端工程师助手，回答简洁、可执行、优先给最小改动方案。",
         )
-        ensure_agent_profile_with_payload(
+        agent = ensure_agent(
+            ctx,
+            display_name="后端助手-Alpha",
+            profile_id=int(profile["id"]),
+        )
+        frontend_profile = ensure_agent_profile_with_payload(
             ctx,
             {
                 "name": "前端工程助手模版",
                 "role": "frontend-engineer",
                 "description": "面向 Vue3 + TypeScript + Element Plus 的前端工程助手",
-                "soul_md": "# 身份\n你是一个经验扎实的前端工程师，擅长在现有 Vue 项目中做最小可控改动。\n\n# 工作原则\n- 先读代码，再下结论\n- 优先做小步修改，避免无关重构\n- 能验证就验证，至少运行 type-check 或 build\n- 输出要说明改了哪些文件、为什么这么改\n",
-                "agents_md": "# 通用执行规则\n- 优先使用项目代码读取工具理解上下文\n- 先在 runtime_workspace 起草，再写入 project_code\n- 修改前确认当前页面路由、API、组件边界\n- 使用 Element Plus 时保持现有设计语言一致\n- 完成后执行 `project_command_run` 做最小验证\n",
-                "profile_md": "# 前端助手档案\n- 技术栈：Vue3 / TypeScript / Element Plus\n- 风格：结构清晰、命名语义化、最小修改优先\n",
-                "bootstrap_md": "# 首次接手项目时\n1. 读取目录结构\n2. 读取目标页面、相关 API、路由\n3. 输出最小改动计划\n4. 在 workspace 中落稿\n5. 写入正式代码并验证\n",
-                "memory_md": "# 长期偏好\n- 不要盲目重构\n- 优先保留现有代码风格\n- 先保证可运行，再考虑抽象\n",
-                "heartbeat_md": "",
+                "soul_md": "# 身份\n你是一个经验扎实的前端工程师，擅长在现有 Vue 项目中做最小可控改动。\n",
+                "profile_md": "# 工作方式\n- 先读目录和接口\n- 保持最小修改\n- 完成后至少做一次 type-check 或 build\n",
+                "bootstrap_md": "# Bootstrap\n1. 先确认项目结构\n2. 再确认关键页面和 API\n3. 形成最小改动计划\n",
                 "enabled_files_json": json.dumps(
                     {
                         "SOUL.md": True,
-                        "AGENTS.md": True,
                         "PROFILE.md": True,
                         "BOOTSTRAP.md": True,
-                        "MEMORY.md": True,
-                        "HEARTBEAT.md": False,
+                        "tools.json": True,
+                        "skills.json": True,
                     },
                     ensure_ascii=False,
                 ),
+                "tools_json": json.dumps({"preferred": ["file_list", "file_read", "file_write"]}, ensure_ascii=False),
+                "skills_json": json.dumps({"preferred_pool": ["vue-feature-delivery", "frontend-spec-reader"]}, ensure_ascii=False),
                 "model_name": "qwen3.6-plus",
                 "temperature": 0.3,
                 "top_p": 1.0,
@@ -430,17 +575,20 @@ def main() -> None:
                 "is_active": 1,
             },
         )
-        agent = ensure_agent(
+        frontend_agent = ensure_agent(
             ctx,
-            display_name="后端助手-Alpha",
-            profile_id=int(profile["id"]),
+            display_name="前端助手-Beta",
+            profile_id=int(frontend_profile["id"]),
         )
 
         ensure_agent_tools_and_skills(ctx, agent_id=int(agent["id"]), pool_skill_codes=pool_codes)
+        ensure_agent_tools_and_skills(ctx, agent_id=int(frontend_agent["id"]), pool_skill_codes=pool_codes)
         write_agent_workspace_files(ctx, agent_id=int(agent["id"]))
+        write_agent_workspace_files(ctx, agent_id=int(frontend_agent["id"]))
 
         personal_group, personal_admin_member = ensure_personal_agent_chat(ctx, admin_user=admin_user, agent=agent)
         project_group, project_dev_member, project_agent_member = ensure_project_group(ctx, dev_user=dev_user, agent=agent)
+        seed_project_code(ctx, project_group=project_group)
 
         seed_messages(
             ctx,
@@ -448,15 +596,20 @@ def main() -> None:
             personal_sender=personal_admin_member,
             project_group=project_group,
             project_sender=project_dev_member,
-            project_agent_member=project_agent_member,
         )
+        bootstrap_group = get_bootstrap_group(ctx, agent_id=int(frontend_agent["id"]))
+        if bootstrap_group:
+            seed_bootstrap_messages(ctx, bootstrap_group=bootstrap_group, admin_user=admin_user, bootstrap_agent=frontend_agent)
 
         print("✅ Seed completed.")
         print(f"- admin login: admin@example.com / admin123456")
         print(f"- demo user: dev1@example.com / demo123456")
         print(f"- agent: {agent['display_name']} (id={agent['id']})")
+        print(f"- bootstrap agent: {frontend_agent['display_name']} (id={frontend_agent['id']})")
         print(f"- personal group: {personal_group['name']} (id={personal_group['id']})")
         print(f"- project group: {project_group['name']} (id={project_group['id']})")
+        if bootstrap_group:
+            print(f"- bootstrap group: {bootstrap_group['name']} (id={bootstrap_group['id']})")
         print(f"- skill pool dir: {Path(args.skill_pool_dir).expanduser().resolve().as_posix()}")
         print(f"- skill codes: {', '.join(pool_codes)}")
 

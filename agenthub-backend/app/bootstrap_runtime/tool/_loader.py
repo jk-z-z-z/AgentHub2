@@ -39,6 +39,5 @@ def load_bootstrap_toolkit(
     combined_skill_loaders = list(skill_loaders) + list(extra_skill_loaders or [])
     return Toolkit(
         skills_or_loaders=combined_skill_loaders,
-        tools=tools,
         tool_groups=_build_tool_groups(tools),
     )

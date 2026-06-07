@@ -2,10 +2,12 @@ from datetime import UTC, datetime, timedelta
 
 import jwt
 
+from app.core.config import settings
 
-SECRET_KEY = "agenthub-dev-secret"
-ALGORITHM = "HS256"
-ACCESS_TOKEN_EXPIRE_MINUTES = 60 * 24 * 7
+
+SECRET_KEY = settings.jwt_secret_key
+ALGORITHM = settings.jwt_algorithm
+ACCESS_TOKEN_EXPIRE_MINUTES = settings.jwt_access_token_expire_minutes
 
 
 def create_access_token(subject: str) -> str:

@@ -13,7 +13,7 @@
     </div>
 
     <div class="sideBody">
-      <div v-if="activeGroup?.type === 'project'" class="deployShell">
+      <div v-if="supportsProjectWorkspace" class="deployShell">
         <div class="panelCard">
           <div class="sectionTitle">当前预览</div>
           <div class="toolbar">
@@ -259,6 +259,12 @@ const emit = defineEmits<{
   (e: 'deploy', payload: DeploymentRequest): void
   (e: 'retry-deploy', deploymentId: number): void
 }>()
+
+const supportsProjectWorkspace = computed(() => {
+  const group = props.activeGroup
+  if (!group) return false
+  return String(group.type || '') === 'project' || Number(group.workspace_id || 0) > 0
+})
 
 function messageMeta(message: Message) {
   try {

@@ -154,7 +154,6 @@ def build_complete_bootstrap(
         "user_id": int(user_id),
         "input_text": str(content or ""),
     }
-    skill_loaders = load_bootstrap_skill_loaders()
     return BuiltBootstrap(
         group=group,
         sender=sender,
@@ -165,11 +164,10 @@ def build_complete_bootstrap(
         system_prompt=_build_bootstrap_system_prompt(agent_id=int(agent.id), user_id=int(user_id)),
         runtime_context=runtime_context,
         short_term_memory=_normalize_short_term_memory(short_term_memory),
-        skill_loaders=skill_loaders,
+        skill_loaders=load_bootstrap_skill_loaders(),
         toolkit=load_bootstrap_toolkit(
             int(agent.id),
             runtime_context=runtime_context,
-            extra_skill_loaders=skill_loaders,
         ),
         engine_type=str(getattr(agent, "engine_type", "internal_llm") or "internal_llm"),
     )

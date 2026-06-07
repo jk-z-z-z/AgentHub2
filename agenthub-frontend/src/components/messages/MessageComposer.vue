@@ -1,7 +1,7 @@
 <template>
   <el-card class="chatComposer" shadow="never">
     <div class="composerShell">
-      <div v-if="!draft" class="composerPlaceholder">
+      <div v-if="showPlaceholder" class="composerPlaceholder">
         同步更多项目背景和信息，提升协作效率
       </div>
 
@@ -75,10 +75,11 @@
 </template>
 
 <script setup lang="ts">
+import { computed } from 'vue'
 import { ArrowUp, Monitor } from '@element-plus/icons-vue'
 import type { Member } from '@/api/models.ts'
 
-defineProps<{
+const props = defineProps<{
   draft: string
   canMentionAgents: boolean
   canSend: boolean
@@ -87,6 +88,8 @@ defineProps<{
   filteredAgentMembers: Member[]
   mentionNames: Record<string, string>
 }>()
+
+const showPlaceholder = computed(() => !String(props.draft || '').trim())
 
 defineEmits<{
   (e: 'update:draft', value: string): void

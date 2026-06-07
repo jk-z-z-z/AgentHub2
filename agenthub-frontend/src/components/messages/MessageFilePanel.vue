@@ -9,7 +9,7 @@
     </div>
 
     <el-scrollbar class="sideBody">
-      <div v-if="activeGroup?.type === 'project'" class="fileShell">
+      <div v-if="supportsProjectWorkspace" class="fileShell">
         <div class="fileToolbar">
           <el-button
             class="refreshBtn"
@@ -72,6 +72,11 @@ defineEmits<{
 }>()
 
 const projectRoots = computed(() => buildProjectTree(props.roots))
+const supportsProjectWorkspace = computed(() => {
+  const group = props.activeGroup
+  if (!group) return false
+  return String(group.type || '') === 'project' || Number(group.workspace_id || 0) > 0
+})
 
 function buildProjectTree(rows: ProjectCodeEntry[]): FileTreeNode[] {
   const nodes = new Map<string, FileTreeNode>()

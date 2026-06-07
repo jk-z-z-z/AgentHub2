@@ -22,13 +22,13 @@
           <el-avatar class="avatar" :size="48">{{ avatarText(row.name) }}</el-avatar>
           <div class="convMain">
             <div class="convTop">
-              <div class="name">{{ row.name }}</div>
-              <span class="time">{{ lastTimeMap[row.id] || '' }}</span>
+              <div class="nameRow">
+                <div class="name" :title="row.name">{{ row.name }}</div>
+                <span class="typePill typePillInline">{{ groupTypeLabel(row.type) }}</span>
+              </div>
+              <span v-if="lastTimeMap[row.id]" class="time">{{ lastTimeMap[row.id] }}</span>
             </div>
-            <div class="preview">{{ lastPreviewMap[row.id] || '暂无消息' }}</div>
-            <div class="metaRow">
-              <span class="typePill">{{ row.type === 'project' ? '项目组' : '单聊' }}</span>
-            </div>
+            <div class="preview" :title="lastPreviewMap[row.id] || '暂无消息'">{{ lastPreviewMap[row.id] || '暂无消息' }}</div>
           </div>
         </button>
       </div>
@@ -60,6 +60,12 @@ function avatarText(name: string) {
 
 function handleRowClick(row: Group) {
   emit('select', row.id)
+}
+
+function groupTypeLabel(type: string) {
+  if (type === 'project') return '项目组'
+  if (type === 'bootstrap') return '初始化会话'
+  return '单聊'
 }
 
 </script>
@@ -109,17 +115,17 @@ function handleRowClick(row: Group) {
 }
 .convListInner {
   display: grid;
-  gap: 8px;
-  padding: 10px;
+  gap: 10px;
+  padding: 12px;
 }
 .convItem {
   width: 100%;
   display: grid;
-  grid-template-columns: 44px minmax(0, 1fr);
-  gap: 12px;
-  align-items: start;
-  padding: 12px 14px;
-  min-height: 80px;
+  grid-template-columns: 48px minmax(0, 1fr);
+  gap: 14px;
+  align-items: center;
+  padding: 14px 18px;
+  min-height: 0;
   border: 1px solid transparent;
   border-radius: 18px;
   background: var(--ah-conv-item-bg, transparent);
@@ -143,30 +149,50 @@ function handleRowClick(row: Group) {
   background: var(--ah-avatar-gradient);
   color: var(--ah-icon-dark, var(--ah-text-primary));
   font-weight: 800;
+  align-self: start;
 }
 .convMain {
   min-width: 0;
   display: grid;
-  gap: 4px;
+  gap: 6px;
+  align-content: start;
+  padding-block: 2px;
 }
 .convTop {
   display: flex;
-  align-items: baseline;
-  justify-content: space-between;
+  align-items: flex-start;
   gap: 10px;
+  min-width: 0;
+}
+.nameRow {
+  min-width: 0;
+  flex: 1 1 auto;
+  display: flex;
+  align-items: center;
+  gap: 8px;
 }
 .name {
   font-weight: 800;
-  font-size: 15px;
+  font-size: 14px;
+  line-height: 1.3;
   min-width: 0;
+  flex: 0 1 auto;
   overflow: hidden;
-  text-overflow: ellipsis;
-  white-space: nowrap;
+  display: -webkit-box;
+  -webkit-line-clamp: 1;
+  -webkit-box-orient: vertical;
+  word-break: break-word;
 }
 .time {
   font-size: 12px;
   color: var(--ah-text-muted);
+  line-height: 1;
   flex: 0 0 auto;
+  min-width: 0;
+  text-align: right;
+  padding-top: 1px;
+  margin-left: auto;
+  white-space: nowrap;
 }
 .preview {
   font-size: 13px;
@@ -176,23 +202,22 @@ function handleRowClick(row: Group) {
   -webkit-line-clamp: 1;
   -webkit-box-orient: vertical;
   line-height: 1.4;
-  padding-right: 54px;
-}
-.metaRow {
-  display: flex;
-  justify-content: flex-end;
-  margin-top: 2px;
+  min-height: 1.4em;
+  word-break: break-word;
 }
 .typePill {
   display: inline-flex;
   align-items: center;
-  height: 20px;
-  padding: 0 8px;
+  height: 24px;
+  padding: 0 10px;
   border-radius: 999px;
   background: var(--ah-surface-strong);
   color: var(--ah-text-secondary);
   font-size: 11px;
   font-weight: 700;
   border: 1px solid var(--ah-border-soft);
+}
+.typePillInline {
+  flex: 0 0 auto;
 }
 </style>

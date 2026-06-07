@@ -26,13 +26,13 @@
           </div>
         </div>
         <div class="chatActions">
-          <el-tooltip v-if="activeGroup?.type === 'project'" content="查看代码" placement="bottom">
+          <el-tooltip v-if="supportsProjectWorkspace(activeGroup)" content="查看代码" placement="bottom">
             <el-button class="iconBtn iconBtnLarge" text :icon="FolderOpened" @click="openProjectCode" aria-label="查看代码" />
           </el-tooltip>
-          <el-tooltip v-if="activeGroup?.type === 'project'" content="部署" placement="bottom">
+          <el-tooltip v-if="supportsProjectWorkspace(activeGroup)" content="部署" placement="bottom">
             <el-button class="iconBtn iconBtnLarge" text :icon="UploadFilled" @click="openDeployPanel" aria-label="部署" />
           </el-tooltip>
-          <el-tooltip v-if="activeGroup?.type === 'project'" content="任务规划" placement="bottom">
+          <el-tooltip v-if="supportsProjectWorkspace(activeGroup)" content="任务规划" placement="bottom">
             <el-button class="iconBtn iconBtnLarge" text :icon="Operation" @click="openTaskPlanner" aria-label="任务规划" />
           </el-tooltip>
           <el-tooltip content="聊天管理" placement="bottom">
@@ -299,6 +299,8 @@ const messages = ref<Message[]>([])
 const ws = ref<WebSocket | null>(null)
 let loadSeq = 0
 let wsSeq = 0
+let wsReconnectTimer: number | null = null
+let wsReconnectAttempts = 0
 
 const lastPreviewMap = ref<Record<string, string>>({})
 const lastTimeMap = ref<Record<string, string>>({})
@@ -323,8 +325,13 @@ const filteredGroups = computed(() => {
   })
 })
 
+function supportsProjectWorkspace(group: Group | null | undefined) {
+  if (!group) return false
+  return String(group.type || '') === 'project' || Number(group.workspace_id || 0) > 0
+}
+
 const canSend = computed(() => Boolean(activeGroup.value) && Boolean(draft.value.trim()))
-const canMentionAgents = computed(() => activeGroup.value?.type === 'project')
+const canMentionAgents = computed(() => supportsProjectWorkspace(activeGroup.value))
 const MANAGER_NAME = '管家'
 const agentMembers = computed(() =>
   members.value
@@ -364,7 +371,7 @@ const taskOpen = ref(false)
 const projectFilesOpen = ref(false)
 const deployOpen = ref(false)
 const codeDiffOpen = ref(false)
-const LEFT_PANE_WIDTH = 280
+const LEFT_PANE_WIDTH = 340
 const SIDE_PANE_COMPACT_MIN_WIDTH = 260
 const SIDE_PANE_MIN_WIDTH = 400
 const SIDE_PANE_DEFAULT_WIDTH = 540
@@ -547,6 +554,10 @@ function upsertMessage(nextMessage: Message) {
 
 function connectWs(groupId: string) {
   const seq = ++wsSeq
+  if (wsReconnectTimer != null) {
+    window.clearTimeout(wsReconnectTimer)
+    wsReconnectTimer = null
+  }
   if (ws.value) {
     try {
       ws.value.close()
@@ -564,6 +575,7 @@ function connectWs(groupId: string) {
   }, 15000)
   socket.onopen = () => {
     if (seq !== wsSeq || ws.value !== socket) return
+    wsReconnectAttempts = 0
     // Keep the connection alive by sending a tiny ping periodically.
     // Server's ws endpoint currently blocks on receive_text().
     try {
@@ -578,10 +590,17 @@ function connectWs(groupId: string) {
     try {
       window.clearInterval(pingTimer)
     } catch {}
-    // Best-effort auto-reconnect
-    setTimeout(() => {
+    ws.value = null
+    wsReconnectAttempts += 1
+    if (wsReconnectAttempts >= 5) {
+      ElMessage.warning('聊天实时连接已断开，请刷新页面或重新登录后重试')
+      return
+    }
+    const delay = Math.min(800 * 2 ** (wsReconnectAttempts - 1), 5000)
+    wsReconnectTimer = window.setTimeout(() => {
+      wsReconnectTimer = null
       if (String(activeGroupId.value) === String(groupId)) connectWs(groupId)
-    }, 800)
+    }, delay)
   }
   socket.onmessage = (evt) => {
     if (seq !== wsSeq || ws.value !== socket) return
@@ -789,7 +808,7 @@ function openManage() {
   deployOpen.value = false
   codeDiffOpen.value = false
   manageOpen.value = true
-  if (activeGroup.value?.type === 'project') {
+  if (supportsProjectWorkspace(activeGroup.value)) {
     void loadMemoryConfig()
     void loadMemoryStatus()
     void loadAssistantConfig()
@@ -798,7 +817,7 @@ function openManage() {
 }
 
 function openTaskPlanner() {
-  if (!activeGroup.value || activeGroup.value.type !== 'project') return
+  if (!supportsProjectWorkspace(activeGroup.value)) return
   manageOpen.value = false
   projectFilesOpen.value = false
   deployOpen.value = false
@@ -808,7 +827,7 @@ function openTaskPlanner() {
 }
 
 async function openDeployPanel() {
-  if (!activeGroup.value || activeGroup.value.type !== 'project') return
+  if (!supportsProjectWorkspace(activeGroup.value)) return
   taskOpen.value = false
   manageOpen.value = false
   projectFilesOpen.value = false
@@ -826,7 +845,7 @@ function closeCodeDiffPanel() {
 }
 
 async function openCodeDiffPanel(messageId: string) {
-  if (!activeGroup.value || activeGroup.value.type !== 'project') return
+  if (!supportsProjectWorkspace(activeGroup.value)) return
   taskOpen.value = false
   manageOpen.value = false
   projectFilesOpen.value = false
@@ -1071,7 +1090,7 @@ async function runMemoryCompressNow() {
 }
 
 async function openProjectCode() {
-  if (!activeGroup.value || activeGroup.value.type !== 'project') return
+  if (!supportsProjectWorkspace(activeGroup.value)) return
   taskOpen.value = false
   manageOpen.value = false
   deployOpen.value = false
@@ -1125,7 +1144,7 @@ function setPreviewJob(groupId: string, job: PreviewJob | null) {
 async function loadCurrentPreview() {
   const group = activeGroup.value
   const workspaceId = Number(group?.workspace_id || 0)
-  if (!group || group.type !== 'project' || !workspaceId) return
+  if (!group || !workspaceId) return
   try {
     const res = await apiGetWorkspacePreview(workspaceId)
     setPreviewJob(activeGroupId.value, res.data)
@@ -1194,7 +1213,7 @@ async function retryDeployment(deploymentId: number) {
 async function closePreview() {
   const group = activeGroup.value
   const workspaceId = Number(group?.workspace_id || 0)
-  if (!group || group.type !== 'project' || !workspaceId || !activeGroupId.value) return
+  if (!group || !workspaceId || !activeGroupId.value) return
   previewPending.value = true
   manageErr.value = ''
   try {
@@ -1412,7 +1431,7 @@ async function createGroup() {
 }
 
 .shell.withSidePane {
-  grid-template-columns: 280px minmax(0, 1fr) var(--side-pane-width);
+  grid-template-columns: 340px minmax(0, 1fr) var(--side-pane-width);
 }
 
 .shell > * {

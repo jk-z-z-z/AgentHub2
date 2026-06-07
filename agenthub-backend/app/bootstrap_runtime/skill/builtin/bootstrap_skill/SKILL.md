@@ -1,3 +1,8 @@
+---
+name: Bootstrap Workspace Guide
+description: Guide the bootstrap conversation for initializing an agent workspace and updating its core files.
+---
+
 # Bootstrap Skill
 
 你负责初始化一个新智能体的工作区。

@@ -9,7 +9,7 @@
     </div>
 
     <el-scrollbar class="sideBody">
-      <div v-if="activeGroup?.type === 'project'" class="taskShell">
+      <div v-if="supportsProjectWorkspace" class="taskShell">
         <section class="taskSidebar">
           <div class="panelCard">
             <div class="taskToolbar">
@@ -261,6 +261,12 @@ const props = defineProps<{
   nodesLoading: boolean
   manageErr: string
 }>()
+
+const supportsProjectWorkspace = computed(() => {
+  const group = props.activeGroup
+  if (!group) return false
+  return String(group.type || '') === 'project' || Number(group.workspace_id || 0) > 0
+})
 
 defineEmits<{
   (e: 'close'): void
