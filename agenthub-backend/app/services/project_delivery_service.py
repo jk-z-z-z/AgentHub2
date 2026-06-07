@@ -68,12 +68,39 @@ def _ensure_delivery_agent(db: Session, *, user_id: int) -> AgentInstance:
     )
 
 
-def _build_delivery_system_prompt(*, wants_deploy: bool, requested_port: int | None) -> str:
+def _wants_plan_file(text: str) -> bool:
+    normalized = str(text or "").strip().lower()
+    if not normalized:
+        return False
+    return any(keyword in normalized for keyword in ["计划", "plan", "方案"])
+
+
+def _suggest_plan_file_path(text: str) -> str:
+    raw = str(text or "")
+    if "docs/" in raw.lower():
+        return "docs/implementation-plan.md"
+    return "plan.md"
+
+
+def _build_delivery_system_prompt(
+    *,
+    input_text: str,
+    wants_deploy: bool,
+    requested_port: int | None,
+) -> str:
     port_line = (
         f"- 用户指定了端口 `{requested_port}`，所有预览或部署必须使用这个端口；如果端口冲突，直接失败说明。\n"
         if requested_port is not None
         else ""
     )
+    plan_line = ""
+    if _wants_plan_file(input_text):
+        plan_line = (
+            f"- 用户要求计划文件时，必须使用 `project_code_write` 把计划真实写入项目共享代码，例如 `{_suggest_plan_file_path(input_text)}`；"
+            "不能只在回复里描述计划，也不能只用命令验证一个还没写出的文件。\n"
+            "- `/workspace/run/` 是沙箱快照目录，不是交付目录；不要把这里的临时文件当成项目产物，也不要把这里的路径当作最终交付路径。\n"
+            "- 如果用户同时要求“计划 + 实现 + 预览/部署”，计划文件只是附加产物，不能代替真实代码修改。\n"
+        )
     final_action = "使用 `project_deploy_run` 给出可访问部署地址" if wants_deploy else "使用 `project_preview_run` 给出可访问预览地址"
     return (
         "你是项目交付 agent，目标是把用户要的功能真实写进当前项目共享代码，并只基于真实工具结果交付。\n\n"
@@ -83,6 +110,7 @@ def _build_delivery_system_prompt(*, wants_deploy: bool, requested_port: int | N
         "- 复杂功能不能退化成占位页，也不能把未落盘的内容说成已完成。\n"
         "- 如果做不到，就明确失败，不要伪造成功。\n"
         "- 如果修改了真实应用代码，优先用 `project_command_run` 做最小验证；不要启动常驻 dev server。\n"
+        f"{plan_line}"
         f"{port_line}"
         f"- 本次请求结束前必须 {final_action}。\n"
         "- 最终回复只要简短说明你做了什么，不要输出大段教程。\n"
@@ -328,7 +356,11 @@ async def execute_project_feature_delivery(
             agent_id=int(agent.id),
             short_term_memory=short_term_memory,
             extra_context=runtime_context,
-            system_prompt=_build_delivery_system_prompt(wants_deploy=wants_deploy, requested_port=requested_port),
+            system_prompt=_build_delivery_system_prompt(
+                input_text=text,
+                wants_deploy=wants_deploy,
+                requested_port=requested_port,
+            ),
             trace_message_id=trace_message_id,
             tool_executor=tracked_tool_executor,
         )
