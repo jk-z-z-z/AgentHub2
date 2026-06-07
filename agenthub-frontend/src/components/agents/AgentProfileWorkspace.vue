@@ -83,14 +83,59 @@ defineEmits<{
 
 <style scoped>
 .shell { height: 100%; display:flex; flex-direction:column; gap:14px; }
+.shell :deep(.el-button) { box-shadow: none; }
+.shell :deep(.el-button:not(.el-button--primary):not(.el-button--danger)) {
+  --el-button-bg-color: var(--ah-surface-soft);
+  --el-button-border-color: transparent;
+  --el-button-text-color: var(--ah-text-primary);
+  --el-button-hover-bg-color: var(--ah-conv-item-hover-bg, var(--ah-hover-strong));
+  --el-button-hover-border-color: transparent;
+  --el-button-hover-text-color: var(--ah-text-primary);
+  --el-button-active-bg-color: var(--ah-conv-item-active-bg, var(--ah-list-active-bg));
+  --el-button-active-border-color: transparent;
+  --el-button-active-text-color: var(--ah-text-primary);
+}
+.shell :deep(.el-button--primary) {
+  --el-button-bg-color: color-mix(in srgb, var(--ah-text-strong) 42%, transparent);
+  --el-button-border-color: transparent;
+  --el-button-text-color: var(--ah-text-on-primary);
+  --el-button-hover-bg-color: color-mix(in srgb, var(--ah-text-strong) 46%, transparent);
+  --el-button-hover-border-color: transparent;
+  --el-button-hover-text-color: var(--ah-text-on-primary);
+  --el-button-active-bg-color: color-mix(in srgb, var(--ah-text-strong) 50%, transparent);
+  --el-button-active-border-color: transparent;
+  --el-button-active-text-color: var(--ah-text-on-primary);
+  --el-button-disabled-bg-color: var(--ah-surface-soft);
+  --el-button-disabled-border-color: transparent;
+  --el-button-disabled-text-color: var(--ah-text-muted);
+}
 .panelInner { flex:1; min-height:0; display:grid; grid-template-columns:340px 1fr; gap:14px; }
 .files { border:1px solid var(--ah-border); border-radius:16px; overflow:auto; padding:10px; min-height:0; }
 .filesTitle { font-weight:900; margin-bottom:8px; }
 .fileList { display:grid; gap:6px; }
-.fileItem { padding:10px 10px; border-radius:12px; cursor:pointer; display:flex; justify-content:space-between; align-items:center; }
-.fileItem:hover { background:var(--ah-primary-ghost); }
-.fileItem.active { background:var(--ah-primary-soft); }
+.fileItem {
+  padding:10px 10px;
+  border-radius:12px;
+  cursor:pointer;
+  display:flex;
+  justify-content:space-between;
+  align-items:center;
+  transition:
+    background-color 0.18s ease,
+    color 0.18s ease,
+    box-shadow 0.18s ease;
+}
+.fileItem:hover { background:var(--ah-conv-item-hover-bg, var(--ah-hover-strong)); }
+.fileItem.active {
+  background:var(--ah-conv-item-active-bg, var(--ah-list-active-bg));
+  box-shadow: inset 0 0 0 1px var(--ah-conv-item-active-border, var(--ah-list-active-border));
+}
+.fileItem.active .fName { color: var(--ah-text-primary); }
 .fName { font-weight:900; }
+.shell :deep(.el-switch) {
+  --el-switch-on-color: color-mix(in srgb, var(--ah-text-strong) 42%, transparent);
+  --el-switch-off-color: var(--ah-border-strong);
+}
 .toggleBox { margin-top:12px; border-top:1px solid var(--ah-border-soft); padding-top:10px; }
 .toggleRow { display:flex; justify-content:space-between; align-items:center; padding:6px 2px; }
 .tName { font-weight:800; font-size:12px; opacity:.85; }

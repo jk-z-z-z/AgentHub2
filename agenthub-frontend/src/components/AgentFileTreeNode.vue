@@ -83,12 +83,26 @@ function onClick() {
   padding: 8px 10px;
   border-radius: 12px;
   cursor: pointer;
+  transition:
+    background-color 0.18s ease,
+    color 0.18s ease,
+    box-shadow 0.18s ease;
 }
 .nodeRow:hover {
-  background: var(--ah-primary-ghost);
+  background: var(--ah-conv-item-hover-bg, var(--ah-hover-strong));
 }
 .nodeRow.active {
-  background: var(--ah-primary-soft);
+  background: var(--ah-conv-item-active-bg, var(--ah-list-active-bg));
+  box-shadow: inset 0 0 0 1px var(--ah-conv-item-active-border, var(--ah-list-active-border));
+}
+.nodeRow.active .nName {
+  color: var(--ah-text-primary);
+}
+.nodeRow.active .nIcon,
+.nodeRow.active .nMeta,
+.nodeRow.active .chev {
+  color: var(--ah-text-secondary);
+  opacity: 1;
 }
 .chev {
   width: 18px;

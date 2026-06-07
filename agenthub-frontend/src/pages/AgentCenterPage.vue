@@ -709,14 +709,72 @@ onMounted(async () => {
 .navMenu {
   border-right: 0;
   background: transparent;
+  --el-menu-bg-color: transparent;
+  --el-menu-text-color: var(--ah-text-secondary);
+  --el-menu-hover-bg-color: var(--ah-conv-item-hover-bg, var(--ah-hover-strong));
+  --el-menu-active-color: var(--ah-text-primary);
 }
 .navMenu :deep(.el-menu-item) {
   border-radius: 12px;
   margin-bottom: 6px;
   font-weight: 700;
+  color: var(--ah-text-secondary);
+  transition:
+    background-color 0.18s ease,
+    color 0.18s ease,
+    box-shadow 0.18s ease;
+}
+.navMenu :deep(.el-menu-item:hover) {
+  background: var(--ah-primary-ghost);
+  color: var(--ah-text-primary);
 }
 .navMenu :deep(.el-menu-item.is-active) {
-  background: var(--ah-primary-soft);
+  background: var(--ah-conv-item-active-bg, var(--ah-list-active-bg));
+  color: var(--ah-text-primary);
+  box-shadow: inset 0 0 0 1px var(--ah-conv-item-active-border, var(--ah-list-active-border));
+}
+
+.content :deep(.el-button:not(.viewBtn)) {
+  box-shadow: none;
+}
+
+.content :deep(.el-button:not(.el-button--primary):not(.el-button--danger):not(.viewBtn)) {
+  --el-button-bg-color: var(--ah-surface-soft);
+  --el-button-border-color: transparent;
+  --el-button-text-color: var(--ah-text-primary);
+  --el-button-hover-bg-color: var(--ah-conv-item-hover-bg, var(--ah-hover-strong));
+  --el-button-hover-border-color: transparent;
+  --el-button-hover-text-color: var(--ah-text-primary);
+  --el-button-active-bg-color: var(--ah-conv-item-active-bg, var(--ah-list-active-bg));
+  --el-button-active-border-color: transparent;
+  --el-button-active-text-color: var(--ah-text-primary);
+}
+
+.content :deep(.el-button--primary) {
+  --el-button-bg-color: color-mix(in srgb, var(--ah-text-strong) 42%, transparent);
+  --el-button-border-color: transparent;
+  --el-button-text-color: var(--ah-text-on-primary);
+  --el-button-hover-bg-color: color-mix(in srgb, var(--ah-text-strong) 46%, transparent);
+  --el-button-hover-border-color: transparent;
+  --el-button-hover-text-color: var(--ah-text-on-primary);
+  --el-button-active-bg-color: color-mix(in srgb, var(--ah-text-strong) 50%, transparent);
+  --el-button-active-border-color: transparent;
+  --el-button-active-text-color: var(--ah-text-on-primary);
+  --el-button-disabled-bg-color: var(--ah-surface-soft);
+  --el-button-disabled-border-color: transparent;
+  --el-button-disabled-text-color: var(--ah-text-muted);
+}
+
+.content :deep(.el-button--danger.is-plain) {
+  --el-button-bg-color: transparent;
+  --el-button-border-color: color-mix(in srgb, var(--ah-danger) 38%, var(--ah-border));
+  --el-button-text-color: var(--ah-danger);
+  --el-button-hover-bg-color: color-mix(in srgb, var(--ah-danger) 10%, transparent);
+  --el-button-hover-border-color: var(--ah-danger);
+  --el-button-hover-text-color: var(--ah-danger-strong);
+  --el-button-active-bg-color: color-mix(in srgb, var(--ah-danger) 14%, transparent);
+  --el-button-active-border-color: var(--ah-danger-strong);
+  --el-button-active-text-color: var(--ah-danger-strong);
 }
 
 .content {
@@ -783,18 +841,29 @@ onMounted(async () => {
 .viewBtn {
   width: 36px;
   height: 36px;
-  border-radius: 10px;
-  border: 1px solid var(--ah-border-strong);
+  border-radius: 14px;
+  border: 1px solid transparent;
   background: var(--ah-surface-soft);
+  color: var(--ah-text-secondary);
   cursor: pointer;
   font-weight: 900;
   display: inline-flex;
   align-items: center;
   justify-content: center;
   font-size: 16px;
+  transition:
+    background-color 0.18s ease,
+    border-color 0.18s ease,
+    color 0.18s ease;
+}
+.viewBtn:hover {
+  background: var(--ah-conv-item-hover-bg, var(--ah-hover-strong));
+  color: var(--ah-text-primary);
 }
 .viewBtn.active {
-  background: var(--ah-active);
+  background: var(--ah-conv-item-active-bg, var(--ah-list-active-bg));
+  border-color: var(--ah-conv-item-active-border, var(--ah-list-active-border));
+  color: var(--ah-text-primary);
 }
 
 .skillsGrid {
@@ -811,12 +880,23 @@ onMounted(async () => {
   background: var(--ah-surface);
   padding: 0;
   overflow: hidden;
+  transition:
+    border-color 0.18s ease,
+    background-color 0.18s ease,
+    transform 0.18s ease,
+    box-shadow 0.18s ease;
 }
 .skillCard :deep(.el-card__body) {
   padding: 14px;
 }
 .skillCard.clickable {
   cursor: pointer;
+}
+.skillCard.clickable:hover {
+  border-color: var(--ah-conv-item-active-border, var(--ah-list-active-border));
+  background: var(--ah-surface-strong);
+  box-shadow: var(--ah-shadow-sm);
+  transform: translateY(-1px);
 }
 .cardTop {
   display: flex;
@@ -830,7 +910,11 @@ onMounted(async () => {
   display: grid;
   place-items: center;
   background: var(--ah-primary-soft);
+  color: var(--ah-primary-strong);
   font-size: 18px;
+}
+.skillCard .status {
+  color: var(--ah-text-secondary);
 }
 .status {
   display: inline-flex;
@@ -862,8 +946,9 @@ onMounted(async () => {
   font-size: 12px;
   padding: 2px 8px;
   border-radius: 999px;
-  background: var(--ah-warning-bg);
-  color: var(--ah-warning);
+  background: var(--ah-surface-strong);
+  color: var(--ah-text-secondary);
+  border: 1px solid var(--ah-border-soft);
   font-weight: 900;
 }
 .cardMeta {
@@ -893,8 +978,9 @@ onMounted(async () => {
   margin-top: 10px;
   padding: 10px 12px;
   border-radius: 12px;
-  background: var(--ah-primary-ghost);
-  color: var(--ah-primary-strong);
+  background: var(--ah-conv-item-hover-bg, var(--ah-primary-ghost));
+  border: 1px solid var(--ah-border-soft);
+  color: var(--ah-text-secondary);
   font-size: 12px;
   line-height: 1.6;
 }

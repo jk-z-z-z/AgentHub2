@@ -467,6 +467,45 @@ onMounted(async () => {
   height: 100%;
   min-height: 0;
 }
+.shell :deep(.el-button) {
+  box-shadow: none;
+}
+.shell :deep(.el-button:not(.el-button--primary):not(.el-button--danger)) {
+  --el-button-bg-color: var(--ah-surface-soft);
+  --el-button-border-color: transparent;
+  --el-button-text-color: var(--ah-text-primary);
+  --el-button-hover-bg-color: var(--ah-conv-item-hover-bg, var(--ah-hover-strong));
+  --el-button-hover-border-color: transparent;
+  --el-button-hover-text-color: var(--ah-text-primary);
+  --el-button-active-bg-color: var(--ah-conv-item-active-bg, var(--ah-list-active-bg));
+  --el-button-active-border-color: transparent;
+  --el-button-active-text-color: var(--ah-text-primary);
+}
+.shell :deep(.el-button--primary) {
+  --el-button-bg-color: color-mix(in srgb, var(--ah-text-strong) 42%, transparent);
+  --el-button-border-color: transparent;
+  --el-button-text-color: var(--ah-text-on-primary);
+  --el-button-hover-bg-color: color-mix(in srgb, var(--ah-text-strong) 46%, transparent);
+  --el-button-hover-border-color: transparent;
+  --el-button-hover-text-color: var(--ah-text-on-primary);
+  --el-button-active-bg-color: color-mix(in srgb, var(--ah-text-strong) 50%, transparent);
+  --el-button-active-border-color: transparent;
+  --el-button-active-text-color: var(--ah-text-on-primary);
+  --el-button-disabled-bg-color: var(--ah-surface-soft);
+  --el-button-disabled-border-color: transparent;
+  --el-button-disabled-text-color: var(--ah-text-muted);
+}
+.shell :deep(.el-button--danger.is-plain) {
+  --el-button-bg-color: transparent;
+  --el-button-border-color: color-mix(in srgb, var(--ah-danger) 38%, var(--ah-border));
+  --el-button-text-color: var(--ah-danger);
+  --el-button-hover-bg-color: color-mix(in srgb, var(--ah-danger) 10%, transparent);
+  --el-button-hover-border-color: var(--ah-danger);
+  --el-button-hover-text-color: var(--ah-danger-strong);
+  --el-button-active-bg-color: color-mix(in srgb, var(--ah-danger) 14%, transparent);
+  --el-button-active-border-color: var(--ah-danger-strong);
+  --el-button-active-text-color: var(--ah-danger-strong);
+}
 .panelInner {
   flex: 1;
   display: grid;
@@ -557,6 +596,16 @@ onMounted(async () => {
   margin-top: 10px;
   display: flex;
   justify-content: flex-end;
+}
+.shell :deep(.el-switch) {
+  --el-switch-on-color: color-mix(in srgb, var(--ah-text-strong) 42%, transparent);
+  --el-switch-off-color: var(--ah-border-strong);
+}
+.shell :deep(.el-checkbox) {
+  --el-checkbox-checked-bg-color: color-mix(in srgb, var(--ah-text-strong) 42%, transparent);
+  --el-checkbox-checked-input-border-color: color-mix(in srgb, var(--ah-text-strong) 42%, transparent);
+  --el-checkbox-input-border-color-hover: color-mix(in srgb, var(--ah-text-strong) 42%, transparent);
+  --el-checkbox-checked-text-color: var(--ah-text-primary);
 }
 .err {
   margin-top: 10px;
