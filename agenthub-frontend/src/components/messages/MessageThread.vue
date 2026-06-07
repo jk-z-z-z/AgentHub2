@@ -1,5 +1,5 @@
 <template>
-  <div class="chatBody">
+  <div ref="scrollContainerRef" class="chatBody" @scroll="updatePinnedState">
     <div v-if="loading" class="empty">加载中…</div>
     <div v-else-if="!activeGroup" class="empty">从左侧选择会话</div>
     <template v-else>
@@ -35,12 +35,13 @@
           </div>
         </div>
       </div>
+      <div ref="bottomAnchorRef" class="bottomAnchor" aria-hidden="true" />
     </template>
   </div>
 </template>
 
 <script setup lang="ts">
-import { computed } from 'vue'
+import { computed, nextTick, onMounted, ref, watch } from 'vue'
 import type { Group, Member, Message } from '../../api/groups'
 
 const props = defineProps<{
@@ -49,6 +50,11 @@ const props = defineProps<{
   messages: Message[]
   members: Member[]
 }>()
+
+const scrollContainerRef = ref<HTMLElement | null>(null)
+const bottomAnchorRef = ref<HTMLElement | null>(null)
+const pinnedToBottom = ref(true)
+const pendingInitialScroll = ref(true)
 
 const memberNameMap = computed(() => {
   const out: Record<string, string> = {}
@@ -116,6 +122,57 @@ function sideClass(message: Message) {
   if (sender?.kind === 'user') return 'right'
   return 'left'
 }
+
+function isNearBottom() {
+  const el = scrollContainerRef.value
+  if (!el) return true
+  return el.scrollHeight - el.scrollTop - el.clientHeight <= 96
+}
+
+function updatePinnedState() {
+  pinnedToBottom.value = isNearBottom()
+}
+
+async function scrollToBottom() {
+  await nextTick()
+  await new Promise<void>((resolve) => window.requestAnimationFrame(() => resolve()))
+  const el = scrollContainerRef.value
+  const anchor = bottomAnchorRef.value
+  if (!el) return
+  anchor?.scrollIntoView({ block: 'end' })
+  el.scrollTop = el.scrollHeight
+  pinnedToBottom.value = true
+  pendingInitialScroll.value = false
+}
+
+const lastMessageKey = computed(() => {
+  const last = props.messages.at(-1)
+  if (!last) return ''
+  return `${last.id}:${last.updated_at}:${last.content.length}`
+})
+
+watch(
+  () => props.activeGroup?.id || '',
+  () => {
+    pinnedToBottom.value = true
+    pendingInitialScroll.value = true
+  },
+  { flush: 'post' },
+)
+
+watch(
+  () => [props.activeGroup?.id || '', props.loading, props.messages.length, lastMessageKey.value] as const,
+  ([groupId, loading]) => {
+    if (!groupId || loading) return
+    if (!pendingInitialScroll.value && !pinnedToBottom.value) return
+    void scrollToBottom()
+  },
+  { flush: 'post' },
+)
+
+onMounted(() => {
+  void scrollToBottom()
+})
 </script>
 
 <style scoped>
@@ -211,5 +268,10 @@ function sideClass(message: Message) {
 }
 .msgActionLink:hover {
   background: rgba(37, 99, 235, 0.16);
+}
+.bottomAnchor {
+  width: 100%;
+  height: 1px;
+  flex: 0 0 auto;
 }
 </style>

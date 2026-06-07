@@ -77,6 +77,7 @@ defineEmits<{
 .chatComposer {
   margin: 0 18px 18px;
   min-height: 180px;
+  flex: 0 0 auto;
   display: flex;
   flex-direction: column;
   gap: 10px;

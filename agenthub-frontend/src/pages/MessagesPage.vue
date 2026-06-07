@@ -361,6 +361,7 @@ const taskOpen = ref(false)
 const projectFilesOpen = ref(false)
 const deployOpen = ref(false)
 const LEFT_PANE_WIDTH = 280
+const SIDE_PANE_COMPACT_MIN_WIDTH = 260
 const SIDE_PANE_MIN_WIDTH = 400
 const SIDE_PANE_DEFAULT_WIDTH = 540
 const SIDE_PANE_MAX_WIDTH = 760
@@ -704,7 +705,10 @@ function getSidePaneBounds() {
   const shellWidth = shellRef.value?.clientWidth || window.innerWidth
   const layoutMax =
     shellWidth - LEFT_PANE_WIDTH - SIDE_PANE_MIN_CHAT_WIDTH - SHELL_COLUMN_GAP
-  const max = Math.max(SIDE_PANE_MIN_WIDTH, Math.min(SIDE_PANE_MAX_WIDTH, layoutMax))
+  const max = Math.min(
+    SIDE_PANE_MAX_WIDTH,
+    Math.max(SIDE_PANE_COMPACT_MIN_WIDTH, layoutMax),
+  )
   return {
     min: Math.min(SIDE_PANE_MIN_WIDTH, max),
     max,
@@ -1349,10 +1353,17 @@ async function createGroup() {
   grid-template-columns: 340px minmax(0, 1fr);
   gap: 12px;
   align-items: stretch;
+  min-width: 0;
+  min-height: 0;
 }
 
 .shell.withSidePane {
   grid-template-columns: 280px minmax(0, 1fr) var(--side-pane-width);
+}
+
+.shell > * {
+  min-width: 0;
+  min-height: 0;
 }
 
 .chatPane {
@@ -1362,14 +1373,24 @@ async function createGroup() {
   border-radius: 18px;
   overflow: hidden;
   min-width: 0;
+  min-height: 0;
   display: flex;
   flex-direction: column;
 }
 
 .sidePane {
   min-width: 0;
+  min-height: 0;
   height: 100%;
   position: relative;
+  overflow: hidden;
+  display: flex;
+}
+
+.sidePane > * {
+  flex: 1;
+  min-width: 0;
+  min-height: 0;
 }
 .sidePaneResize {
   position: absolute;
@@ -1435,15 +1456,22 @@ async function createGroup() {
   justify-content: space-between;
   padding: 0 18px;
   border-bottom: 1px solid rgba(31, 35, 41, 0.06);
+  gap: 12px;
+  flex: 0 0 auto;
 }
 .chatTitle {
   font-size: 16px;
   font-weight: 900;
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
 }
 .chatActions {
   display: flex;
   gap: 8px;
   align-items: center;
+  flex: 0 0 auto;
 }
 .iconBtn {
   border: 0;
@@ -1503,9 +1531,4 @@ async function createGroup() {
   font-size: 16px;
 }
 
-@media (max-width: 1200px) {
-  .shell.withSidePane {
-    grid-template-columns: 240px minmax(0, 1fr) minmax(320px, 42vw);
-  }
-}
 </style>
