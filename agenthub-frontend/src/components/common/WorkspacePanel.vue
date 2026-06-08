@@ -31,7 +31,7 @@ defineProps<{
 .workspacePanel {
   height: 100%;
   min-height: 0;
-  background: var(--ah-surface);
+  background: var(--ah-panel-bg);
   border-radius: 22px;
   overflow: hidden;
   display: flex;

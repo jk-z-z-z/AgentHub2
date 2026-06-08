@@ -50,6 +50,7 @@
       />
 
       <MessageComposer
+        ref="composerRef"
         :draft="draft"
         :can-mention-agents="canMentionAgents"
         :can-send="canSend"
@@ -57,7 +58,7 @@
         :mention-suggest-open="mentionSuggestOpen"
         :filtered-agent-members="filteredAgentMembers"
         :mention-names="mentionNames"
-        @update:draft="draft = $event"
+        @update:draft="updateDraft"
         @keydown="onDraftKeydown"
         @open-mention="openMention"
         @send="send"
@@ -103,23 +104,11 @@
         @retry-deploy="retryDeployment"
       />
 
-      <MessageCodeDiffPanel
-        v-else-if="codeDiffOpen"
-        :active-group="activeGroup"
-        :loading="codeDiffLoading"
-        :diff="activeCodeDiff"
-        :error="codeDiffError"
-        @close="closeCodeDiffPanel"
-      />
-
       <MessageManagePanel
         v-else-if="manageOpen"
         :active-group="activeGroup"
         :members="members"
-        :users="users"
-        :agents="agents"
         :manage-err="manageErr"
-        :adding="adding"
         :memory-cfg-loading="memoryCfgLoading"
         :memory-cfg-saving="memoryCfgSaving"
         :memory-compressing="memoryCompressing"
@@ -128,14 +117,11 @@
         :assistant-cfg-loading="assistantCfgLoading"
         :assistant-cfg-saving="assistantCfgSaving"
         :assistant-cfg="assistantCfg"
-        v-model:add-kind="addKind"
-        v-model:add-user-id="addUserId"
-        v-model:add-agent-id="addAgentId"
         v-model:assistant-enabled="assistantCfgEnabled"
         @close="manageOpen = false"
         @delete-group="deleteActiveGroup"
         @remove-member="removeMember"
-        @add-member="addMember"
+        @open-add-member="openAddMember"
         @save-memory-config="saveMemoryConfig"
         @run-memory-compress="runMemoryCompressNow"
         @refresh-memory-status="loadMemoryStatus"
@@ -167,43 +153,6 @@
     </aside>
   </div>
 
-  <el-dialog v-model="mentionOpen" title="选择要@的智能体" width="420px">
-    <el-table
-      :data="agentMembers"
-      class="mentionList"
-      height="320"
-      empty-text="该会话没有智能体成员"
-      :row-class-name="mentionRowClassName"
-      @row-click="handleMentionRowClick"
-    >
-      <el-table-column label="" width="58">
-        <template #default>
-          <div class="mAvatar">
-            <el-icon>
-              <Monitor />
-            </el-icon>
-          </div>
-        </template>
-      </el-table-column>
-      <el-table-column label="智能体" min-width="180">
-        <template #default="{ row }">
-          <div class="mName">{{ row.display_name }}</div>
-        </template>
-      </el-table-column>
-      <el-table-column label="" width="48" align="right">
-        <template #default="{ row }">
-          <el-icon v-if="selectedMentions.has(row.id)">
-            <Select />
-          </el-icon>
-        </template>
-      </el-table-column>
-    </el-table>
-    <template #footer>
-      <el-button @click="mentionOpen = false">关闭</el-button>
-      <el-button type="primary" @click="mentionOpen = false">确定</el-button>
-    </template>
-  </el-dialog>
-
   <GroupCreateDialog
     v-model:open="createOpen"
     v-model:create-type="createType"
@@ -219,6 +168,31 @@
     @create="createGroup"
   />
 
+  <GroupCreateDialog
+    v-model:open="addMemberOpen"
+    v-model:create-type="addMemberType"
+    v-model:create-name="addMemberName"
+    mode="add-member"
+    :users="addableUsers"
+    :agents="addableAgents"
+    :picked-user-ids="pickedUserIds"
+    :picked-agent-ids="pickedAgentIds"
+    :create-err="addMemberErr"
+    :creating="adding"
+    @toggle-user="togglePickUser"
+    @toggle-agent="togglePickAgent"
+    @create="addMembers"
+  />
+
+  <MessageCodeDiffPanel
+    v-model:open="codeDiffOpen"
+    :active-group="activeGroup"
+    :loading="codeDiffLoading"
+    :diff="activeCodeDiff"
+    :error="codeDiffError"
+    @close="closeCodeDiffPanel"
+  />
+
   <TaskRunCreateDialog
     v-model:open="taskCreateOpen"
     v-model:title="taskCreateTitle"
@@ -230,9 +204,9 @@
 </template>
 
 <script setup lang="ts">
-import { computed, onBeforeUnmount, onMounted, ref, watch } from 'vue'
+import { computed, nextTick, onBeforeUnmount, onMounted, ref, watch } from 'vue'
 import { useRoute } from 'vue-router'
-import { Monitor, Operation, FolderOpened, Select, Setting, UploadFilled } from '@element-plus/icons-vue'
+import { Operation, FolderOpened, Setting, UploadFilled } from '@element-plus/icons-vue'
 import {
   type Group,
   type GroupTaskGraph,
@@ -290,6 +264,7 @@ import { ElMessage, ElMessageBox } from 'element-plus'
 
 const route = useRoute()
 const shellRef = ref<HTMLElement | null>(null)
+const composerRef = ref<{ focusEditor?: () => Promise<void> | void } | null>(null)
 const draft = ref('')
 const groups = ref<Group[]>([])
 const loadingGroups = ref(false)
@@ -352,7 +327,6 @@ const filteredAgentMembers = computed(() => {
   return agentMembers.value.filter((m) => (m.display_name || '').toLowerCase().includes(q))
 })
 
-const mentionOpen = ref(false)
 const selectedMentions = ref<Set<string>>(new Set())
 
 const createOpen = ref(false)
@@ -360,11 +334,31 @@ const createType = ref<'project' | 'personal'>('project')
 const createName = ref('')
 const creating = ref(false)
 const createErr = ref('')
+const addMemberOpen = ref(false)
+const addMemberType = ref<'project' | 'personal'>('project')
+const addMemberName = ref('')
+const addMemberErr = ref('')
 const users = ref<User[]>([])
 const agents = ref<Agent[]>([])
 const pickedUserIds = ref<Set<string>>(new Set())
 const pickedAgentIds = ref<Set<string>>(new Set())
 const currentUserId = ref('')
+const addableUsers = computed(() => {
+  const memberUserRefs = new Set(
+    members.value
+      .map((member) => String(member.user_ref || ''))
+      .filter((id) => Boolean(id)),
+  )
+  return users.value.filter((user) => !memberUserRefs.has(String(user.id)))
+})
+const addableAgents = computed(() => {
+  const memberAgentIds = new Set(
+    members.value
+      .map((member) => String(member.agent_instance_id || ''))
+      .filter((id) => Boolean(id)),
+  )
+  return agents.value.filter((agent) => !memberAgentIds.has(String(agent.id)))
+})
 
 const manageOpen = ref(false)
 const taskOpen = ref(false)
@@ -382,9 +376,6 @@ const SIDE_PANE_WIDTH_STORAGE_KEY = 'agenthub.messages.sidePaneWidth'
 const sidePaneWidth = ref(SIDE_PANE_DEFAULT_WIDTH)
 const sidePaneDragging = ref(false)
 const manageErr = ref('')
-const addKind = ref<'user' | 'agent'>('user')
-const addUserId = ref<string>('')
-const addAgentId = ref<string>('')
 const adding = ref(false)
 const memoryCfgLoading = ref(false)
 const memoryCfgSaving = ref(false)
@@ -442,7 +433,7 @@ const taskNodeStats = computed(() => {
   }
   return counts
 })
-const hasSidePane = computed(() => manageOpen.value || taskOpen.value || projectFilesOpen.value || deployOpen.value || codeDiffOpen.value)
+const hasSidePane = computed(() => manageOpen.value || taskOpen.value || projectFilesOpen.value || deployOpen.value)
 const activeDeploymentJob = computed(() => {
   if (!activeGroupId.value) return null
   return deploymentJobs.value[activeGroupId.value] || null
@@ -518,6 +509,11 @@ async function loadGroups() {
 async function selectGroup(id: string) {
   const seq = ++loadSeq
   activeGroupId.value = id
+  manageOpen.value = false
+  taskOpen.value = false
+  projectFilesOpen.value = false
+  deployOpen.value = false
+  addMemberOpen.value = false
   closeCodeDiffPanel()
   const [mRes, msgRes] = await Promise.all([apiListMembers(id), apiListMessages(id, undefined, 50)])
   if (seq !== loadSeq || String(activeGroupId.value) !== String(id)) return
@@ -693,22 +689,34 @@ function removeMention(memberId: string) {
 }
 
 function openMention() {
-  mentionOpen.value = true
+  if (!canMentionAgents.value) return
+  const hasActiveMention = /(?:^|\s)@([^\s@]*)$/.test(draft.value)
+  const nextValue = hasActiveMention
+    ? draft.value
+    : `${draft.value}${draft.value && !/\s$/.test(draft.value) ? ' ' : ''}@`
+  updateDraft(nextValue)
+  void nextTick(() => composerRef.value?.focusEditor?.())
 }
 
-function toggleMention(memberId: string) {
-  const next = new Set(selectedMentions.value)
-  if (next.has(memberId)) next.delete(memberId)
-  else next.add(memberId)
-  selectedMentions.value = next
+function syncMentionSuggest(value: string) {
+  if (!canMentionAgents.value) {
+    mentionSuggestOpen.value = false
+    mentionQuery.value = ''
+    return
+  }
+  const match = value.match(/(?:^|\s)@([^\s@]*)$/)
+  if (!match) {
+    mentionSuggestOpen.value = false
+    mentionQuery.value = ''
+    return
+  }
+  mentionSuggestOpen.value = true
+  mentionQuery.value = (match[1] || '').trim()
 }
 
-function handleMentionRowClick(row: Member) {
-  toggleMention(row.id)
-}
-
-function mentionRowClassName({ row }: { row: Member }) {
-  return selectedMentions.value.has(row.id) ? 'active' : ''
+function updateDraft(value: string) {
+  draft.value = value
+  syncMentionSuggest(value)
 }
 
 function onDraftKeydown(event: KeyboardEvent) {
@@ -735,6 +743,7 @@ function pickMention(memberId: string) {
   }
   mentionSuggestOpen.value = false
   mentionQuery.value = ''
+  void nextTick(() => composerRef.value?.focusEditor?.())
 }
 
 function getSidePaneBounds() {
@@ -801,12 +810,11 @@ function handleWindowResize() {
 
 function openManage() {
   manageErr.value = ''
-  addUserId.value = ''
-  addAgentId.value = ''
   taskOpen.value = false
   projectFilesOpen.value = false
   deployOpen.value = false
   codeDiffOpen.value = false
+  addMemberOpen.value = false
   manageOpen.value = true
   if (supportsProjectWorkspace(activeGroup.value)) {
     void loadMemoryConfig()
@@ -1229,47 +1237,58 @@ async function closePreview() {
   }
 }
 
-async function addMember() {
+function openAddMember() {
+  if (!supportsProjectWorkspace(activeGroup.value)) return
+  addMemberErr.value = ''
+  pickedUserIds.value = new Set()
+  pickedAgentIds.value = new Set()
+  addMemberType.value = 'project'
+  addMemberName.value = ''
+  addMemberOpen.value = true
+}
+
+async function addMembers() {
   if (!activeGroup.value) return
   if (activeGroup.value.type !== 'project') return
-  manageErr.value = ''
+  const userIds = Array.from(pickedUserIds.value)
+  const agentIds = Array.from(pickedAgentIds.value)
+  if (userIds.length === 0 && agentIds.length === 0) {
+    addMemberErr.value = '请选择至少 1 个成员'
+    return
+  }
+
+  addMemberErr.value = ''
   adding.value = true
   try {
-    if (addKind.value === 'user') {
-      const id = addUserId.value
-      if (!id) {
-        manageErr.value = '请选择用户'
-        return
-      }
-      const u = users.value.find((x) => String(x.id) === String(id))
-      const label = u?.display_name || u?.username || u?.email || id
-      await apiAddUserMember({
-        group_id: activeGroup.value.id,
-        user_ref: String(id),
-        display_name: label,
-        title: null,
-      })
-    } else {
-      const id = addAgentId.value
-      if (!id) {
-        manageErr.value = '请选择智能体'
-        return
-      }
-      const a = agents.value.find((x) => String(x.id) === String(id))
-      const label = a?.display_name || `Agent#${id}`
-      await apiAddAgentMember({
-        group_id: activeGroup.value.id,
-        agent_instance_id: String(id),
-        display_name: label,
-        title: null,
-      })
-    }
+    await Promise.all([
+      ...userIds.map(async (id) => {
+        const u = users.value.find((x) => String(x.id) === String(id))
+        const label = u?.display_name || u?.username || u?.email || id
+        await apiAddUserMember({
+          group_id: activeGroup.value!.id,
+          user_ref: String(id),
+          display_name: label,
+          title: null,
+        })
+      }),
+      ...agentIds.map(async (id) => {
+        const a = agents.value.find((x) => String(x.id) === String(id))
+        const label = a?.display_name || `Agent#${id}`
+        await apiAddAgentMember({
+          group_id: activeGroup.value!.id,
+          agent_instance_id: String(id),
+          display_name: label,
+          title: null,
+        })
+      }),
+    ])
     const mRes = await apiListMembers(activeGroup.value.id)
     members.value = mRes.data
-    addUserId.value = ''
-    addAgentId.value = ''
+    addMemberOpen.value = false
+    pickedUserIds.value = new Set()
+    pickedAgentIds.value = new Set()
   } catch (e) {
-    manageErr.value = e instanceof Error ? e.message : String(e)
+    addMemberErr.value = e instanceof Error ? e.message : String(e)
   } finally {
     adding.value = false
   }
@@ -1440,9 +1459,9 @@ async function createGroup() {
 }
 
 .chatPane {
-  background: rgba(255, 255, 255, 0.84);
+  background: var(--ah-panel-bg);
   backdrop-filter: blur(10px);
-  border: 1px solid rgba(31, 35, 41, 0.08);
+  border: 1px solid var(--ah-panel-border, var(--ah-border));
   border-radius: 18px;
   overflow: hidden;
   min-width: 0;
@@ -1490,8 +1509,8 @@ async function createGroup() {
 .sidePaneResize:hover::before,
 .sidePaneResize.dragging::before,
 .shell.isResizingSidePane .sidePaneResize::before {
-  background: rgba(79, 140, 255, 0.72);
-  box-shadow: 0 0 0 4px rgba(79, 140, 255, 0.16);
+  background: var(--ah-primary);
+  box-shadow: 0 0 0 4px color-mix(in srgb, var(--ah-primary) 24%, transparent);
 }
 .searchInput :deep() {
   height: 38px;
@@ -1523,7 +1542,7 @@ async function createGroup() {
 }
 
 .chatHeader {
-  height: 58px;
+  height: 56px;
   display: flex;
   align-items: center;
   justify-content: space-between;
@@ -1588,14 +1607,14 @@ async function createGroup() {
   border-radius: 12px;
   display: grid;
   place-items: center;
-  background: rgba(79, 140, 255, 0.14);
+  background: var(--ah-primary-soft);
   font-size: 16px;
 }
 .mName {
   font-weight: 800;
 }
 .mCheck {
-  color: #2f6bff;
+  color: var(--ah-primary-strong);
   display: flex;
   justify-content: center;
   font-size: 16px;

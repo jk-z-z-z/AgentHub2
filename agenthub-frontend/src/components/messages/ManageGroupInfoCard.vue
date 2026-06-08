@@ -11,13 +11,6 @@
           <span class="label">类型</span>
           <span class="value">{{ activeGroup.type }}</span>
         </div>
-        <div class="infoRow">
-          <span class="label">ID</span>
-          <span class="value mono">{{ activeGroup.id }}</span>
-        </div>
-      </div>
-      <div class="actions">
-        <el-button type="danger" plain @click="$emit('delete-group')">删除会话</el-button>
       </div>
     </template>
     <el-empty v-else description="未选择会话" />
@@ -29,10 +22,6 @@ import type { Group } from '@/api/models.ts'
 
 defineProps<{
   activeGroup: Group | null
-}>()
-
-defineEmits<{
-  (e: 'delete-group'): void
 }>()
 </script>
 
@@ -77,10 +66,5 @@ defineEmits<{
 }
 .mono {
   font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, Liberation Mono, monospace;
-}
-.actions {
-  display: flex;
-  justify-content: flex-end;
-  margin-top: 12px;
 }
 </style>

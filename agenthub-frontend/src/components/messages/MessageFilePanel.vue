@@ -3,30 +3,22 @@
     <div class="sideHeader">
       <div>
         <div class="sideTitle">文件目录</div>
-        <div class="sideSubtitle">{{ activeGroup?.name || '未选择会话' }}</div>
       </div>
-      <el-button class="sideCloseBtn" :icon="Close" circle text @click="$emit('close')" aria-label="关闭文件目录" />
+      <div class="sideHeaderActions">
+        <el-button
+          class="refreshBtn"
+          size="small"
+          :icon="RefreshRight"
+          @click="$emit('refresh')"
+          :loading="loading"
+          aria-label="刷新文件目录"
+        />
+        <el-button class="sideCloseBtn" :icon="Close" circle text @click="$emit('close')" aria-label="关闭文件目录" />
+      </div>
     </div>
 
     <el-scrollbar class="sideBody">
       <div v-if="supportsProjectWorkspace" class="fileShell">
-        <div class="fileToolbar">
-          <el-button
-            class="refreshBtn"
-            size="small"
-            :icon="RefreshRight"
-            @click="$emit('refresh')"
-            :loading="loading"
-            aria-label="刷新文件目录"
-          />
-        </div>
-        <el-alert
-          class="fileHint"
-          type="info"
-          :closable="false"
-          show-icon
-          title="这里直接展示当前项目的文件目录树，不跳转到新页面。"
-        />
         <el-card class="fileTreeWrap" shadow="never">
           <div v-if="loading" class="taskEmpty">加载文件目录中…</div>
           <div v-else-if="projectRoots.length === 0" class="taskEmpty">当前项目还没有可展示的文件</div>
@@ -141,15 +133,15 @@ function buildProjectTree(rows: ProjectCodeEntry[]): FileTreeNode[] {
   height: 100%;
   display: flex;
   flex-direction: column;
-  background: var(--ah-surface);
+  background: var(--ah-panel-bg);
   backdrop-filter: blur(10px);
-  border: 1px solid var(--ah-border);
+  border: 1px solid var(--ah-panel-border, var(--ah-border));
   border-radius: 18px;
   overflow: hidden;
   min-width: 0;
 }
 .sideHeader {
-  height: 58px;
+  height: 56px;
   padding: 0 16px;
   border-bottom: 1px solid var(--ah-border-soft);
   display: flex;
@@ -167,6 +159,11 @@ function buildProjectTree(rows: ProjectCodeEntry[]): FileTreeNode[] {
   font-size: 12px;
   color: var(--ah-text-tertiary);
 }
+.sideHeaderActions {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
 .sideCloseBtn {
   width: 32px;
   height: 32px;
@@ -183,14 +180,6 @@ function buildProjectTree(rows: ProjectCodeEntry[]): FileTreeNode[] {
   flex-direction: column;
   min-height: 0;
   height: 100%;
-}
-.fileToolbar {
-  display: flex;
-  justify-content: flex-end;
-  margin-bottom: 10px;
-}
-.fileHint {
-  margin-bottom: 12px;
 }
 .fileTreeWrap {
   border: 1px solid var(--ah-border-soft);

@@ -5,21 +5,9 @@
         同步更多项目背景和信息，提升协作效率
       </div>
 
-      <div v-if="canMentionAgents && selectedMentions.size > 0" class="mentionChips">
-        <el-tag
-          v-for="id in Array.from(selectedMentions)"
-          :key="id"
-          class="chip"
-          effect="light"
-          closable
-          @close="$emit('remove-mention', id)"
-        >
-          @{{ mentionNames[id] || id }}
-        </el-tag>
-      </div>
-
       <div class="editorArea">
         <el-input
+          ref="inputRef"
           :model-value="draft"
           class="input"
           type="textarea"
@@ -30,18 +18,17 @@
         />
 
         <div v-if="canMentionAgents && mentionSuggestOpen" class="mentionSuggest">
-          <div class="msTitle">@ 提示</div>
+          <div class="msTitle">选择要 @ 的智能体</div>
           <div class="msList">
             <div
               v-for="m in filteredAgentMembers"
               :key="m.id"
               class="msItem"
+              :class="{ active: selectedMentions.has(m.id) }"
               @click="$emit('pick-mention', m.id)"
             >
               <el-avatar class="msAvatar" :size="28">
-                <el-icon>
-                  <Monitor />
-                </el-icon>
+                {{ avatarText(m.display_name || String(m.id)) }}
               </el-avatar>
               <div class="msName">{{ m.display_name }}</div>
             </div>
@@ -75,8 +62,8 @@
 </template>
 
 <script setup lang="ts">
-import { computed } from 'vue'
-import { ArrowUp, Monitor } from '@element-plus/icons-vue'
+import { computed, nextTick, ref } from 'vue'
+import { ArrowUp } from '@element-plus/icons-vue'
 import type { Member } from '@/api/models.ts'
 
 const props = defineProps<{
@@ -89,7 +76,26 @@ const props = defineProps<{
   mentionNames: Record<string, string>
 }>()
 
-const showPlaceholder = computed(() => !String(props.draft || '').trim())
+const inputRef = ref<{ textarea?: HTMLTextAreaElement | null; focus?: () => void } | null>(null)
+
+const showPlaceholder = computed(() => {
+  const hasDraft = String(props.draft || '').trim().length > 0
+  return !hasDraft && !props.mentionSuggestOpen
+})
+
+function avatarText(name: string) {
+  return String(name || '@').trim().slice(0, 1).toUpperCase() || '@'
+}
+
+async function focusEditor() {
+  await nextTick()
+  inputRef.value?.focus?.()
+  inputRef.value?.textarea?.focus?.()
+}
+
+defineExpose({
+  focusEditor,
+})
 
 defineEmits<{
   (e: 'update:draft', value: string): void
@@ -105,14 +111,15 @@ defineEmits<{
 .chatComposer {
   margin: 0 24px 24px;
   padding: 0;
-  background: transparent;
+  background: var(--ah-panel-bg);
   border: 1px solid var(--ah-composer-border, var(--ah-border));
   border-radius: 32px;
   box-shadow: 0 8px 24px rgba(70, 58, 43, 0.08);
-  overflow: hidden;
+  overflow: visible;
 }
 .chatComposer :deep(.el-card__body) {
   padding: 0;
+  overflow: visible;
 }
 .composerShell {
   position: relative;
@@ -129,20 +136,10 @@ defineEmits<{
   line-height: 1.45;
   color: var(--ah-text-tertiary);
 }
-.mentionChips {
-  display: flex;
-  gap: 8px;
-  flex-wrap: wrap;
-  margin-bottom: 8px;
-  padding-right: 74px;
-}
-.chip {
-  font-size: 12px;
-  font-weight: 800;
-}
 .editorArea {
   position: relative;
   min-height: 92px;
+  padding-right: 74px;
 }
 .input {
   width: 100%;
@@ -185,50 +182,69 @@ defineEmits<{
 }
 .mentionSuggest {
   position: absolute;
-  left: 0;
-  right: 0;
-  bottom: calc(100% + 10px);
+  left: -10px;
+  bottom: calc(100% + 18px);
   z-index: 10;
+  width: min(340px, calc(100vw - 72px));
   border: 1px solid var(--ah-border);
-  border-radius: 16px;
-  background: var(--ah-tooltip-bg);
-  box-shadow: var(--ah-tooltip-shadow);
+  border-radius: 20px;
+  background: var(--ah-panel-bg);
+  box-shadow: 0 22px 48px rgba(70, 58, 43, 0.16);
   overflow: hidden;
 }
+.mentionSuggest::after {
+  content: '';
+  position: absolute;
+  left: 162px;
+  bottom: -9px;
+  width: 18px;
+  height: 18px;
+  background: var(--ah-panel-bg);
+  border-right: 1px solid var(--ah-border);
+  border-bottom: 1px solid var(--ah-border);
+  transform: rotate(45deg);
+}
 .msTitle {
-  padding: 10px 12px 0;
+  padding: 12px 14px 4px;
   font-size: 12px;
   font-weight: 800;
   color: var(--ah-text-tertiary);
 }
 .msList {
   padding: 8px;
-  max-height: 180px;
+  max-height: 260px;
   overflow: auto;
   display: grid;
-  gap: 6px;
+  gap: 4px;
 }
 .msItem {
   display: flex;
   align-items: center;
-  gap: 10px;
-  padding: 8px 10px;
-  border-radius: 12px;
+  gap: 12px;
+  padding: 10px 12px;
+  border-radius: 14px;
   cursor: pointer;
+  transition: background-color 0.16s ease;
 }
-.msItem:hover {
+.msItem:hover,
+.msItem.active {
   background: var(--ah-primary-ghost);
 }
 .msAvatar {
   border-radius: 999px;
-  background: var(--ah-surface-soft);
+  background: var(--ah-avatar-gradient);
+  color: var(--ah-text-primary);
+  font-size: 13px;
+  font-weight: 800;
+  flex-shrink: 0;
 }
 .msName {
-  font-size: 13px;
+  font-size: 14px;
   font-weight: 700;
+  color: var(--ah-text-primary);
 }
 .msEmpty {
-  padding: 10px 4px;
+  padding: 14px 8px;
   font-size: 12px;
   opacity: 0.6;
 }

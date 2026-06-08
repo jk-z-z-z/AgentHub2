@@ -3,7 +3,6 @@
     <div class="sideHeader">
       <div>
         <div class="sideTitle">任务规划</div>
-        <div class="sideSubtitle">{{ activeGroup?.name || '未选择会话' }}</div>
       </div>
       <el-button class="sideCloseBtn" :icon="Close" circle text @click="$emit('close')" aria-label="关闭任务规划" />
     </div>
@@ -84,7 +83,7 @@
                     <defs>
                       <linearGradient id="taskGraphEdgeGradient" x1="0%" x2="100%" y1="0%" y2="0%">
                         <stop offset="0%" stop-color="rgba(13, 42, 79, 0.16)" />
-                        <stop offset="100%" stop-color="rgba(79, 140, 255, 0.52)" />
+                        <stop offset="100%" stop-color="var(--ah-primary)" stop-opacity="0.52" />
                       </linearGradient>
                       <marker
                         id="taskGraphArrow"
@@ -95,7 +94,7 @@
                         orient="auto"
                         markerUnits="strokeWidth"
                       >
-                        <path d="M0,0 L0,6 L7,3 z" fill="rgba(79, 140, 255, 0.8)" />
+                        <path d="M0,0 L0,6 L7,3 z" fill="var(--ah-primary)" fill-opacity="0.8" />
                       </marker>
                     </defs>
                     <path
@@ -463,15 +462,15 @@ function isNodeMine(node: GroupTaskNode) {
   height: 100%;
   display: flex;
   flex-direction: column;
-  background: rgba(255, 255, 255, 0.84);
+  background: var(--ah-panel-bg);
   backdrop-filter: blur(10px);
-  border: 1px solid rgba(31, 35, 41, 0.08);
+  border: 1px solid var(--ah-panel-border, var(--ah-border));
   border-radius: 18px;
   overflow: hidden;
   min-width: 0;
 }
 .sideHeader {
-  height: 58px;
+  height: 56px;
   padding: 0 16px;
   border-bottom: 1px solid rgba(31, 35, 41, 0.06);
   display: flex;
@@ -535,7 +534,7 @@ function isNodeMine(node: GroupTaskNode) {
   margin-top: 10px;
   padding: 10px 12px;
   border-radius: 12px;
-  background: rgba(79, 140, 255, 0.08);
+  background: var(--ah-primary-soft);
   color: rgba(31, 35, 41, 0.68);
   font-size: 12px;
   line-height: 1.5;
@@ -554,11 +553,11 @@ function isNodeMine(node: GroupTaskNode) {
   text-align: left;
 }
 .taskRunItem:hover {
-  background: rgba(79, 140, 255, 0.06);
+  background: var(--ah-primary-ghost);
 }
 .taskRunItem.active {
-  background: rgba(79, 140, 255, 0.12);
-  border-color: rgba(79, 140, 255, 0.18);
+  background: var(--ah-primary-soft);
+  border-color: var(--ah-primary-soft-strong);
 }
 .taskRunTop {
   display: flex;
@@ -659,8 +658,8 @@ function isNodeMine(node: GroupTaskNode) {
 .taskGraphCard {
   margin-top: 12px;
   background:
-    radial-gradient(circle at top left, rgba(79, 140, 255, 0.12), transparent 34%),
-    linear-gradient(180deg, rgba(255, 255, 255, 0.96), rgba(246, 249, 255, 0.94));
+    radial-gradient(circle at top left, color-mix(in srgb, var(--ah-primary) 16%, transparent), transparent 34%),
+    linear-gradient(180deg, rgba(255, 255, 255, 0.96), rgba(250, 246, 239, 0.94));
 }
 .taskLegend {
   display: flex;
@@ -704,10 +703,10 @@ function isNodeMine(node: GroupTaskNode) {
   min-width: 100%;
   border-radius: 18px;
   background:
-    linear-gradient(90deg, rgba(79, 140, 255, 0.05) 1px, transparent 1px) 0 0 / 24px 24px,
-    linear-gradient(rgba(79, 140, 255, 0.05) 1px, transparent 1px) 0 0 / 24px 24px,
-    linear-gradient(180deg, rgba(240, 246, 255, 0.95), rgba(255, 255, 255, 0.9));
-  border: 1px solid rgba(79, 140, 255, 0.12);
+    linear-gradient(90deg, color-mix(in srgb, var(--ah-primary) 10%, transparent) 1px, transparent 1px) 0 0 / 24px 24px,
+    linear-gradient(color-mix(in srgb, var(--ah-primary) 10%, transparent) 1px, transparent 1px) 0 0 / 24px 24px,
+    linear-gradient(180deg, rgba(249, 244, 235, 0.95), rgba(255, 255, 255, 0.9));
+  border: 1px solid color-mix(in srgb, var(--ah-primary) 20%, transparent);
   box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.75);
 }
 .taskGraphEdgeLayer {

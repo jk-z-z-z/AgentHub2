@@ -691,9 +691,9 @@ onMounted(async () => {
   gap: 12px;
 }
 .centerNav {
-  background: var(--ah-surface);
+  background: var(--ah-panel-bg);
   backdrop-filter: blur(10px);
-  border: 1px solid var(--ah-border);
+  border: 1px solid var(--ah-panel-border, var(--ah-border));
   border-radius: 18px;
   padding: 14px;
   display: flex;

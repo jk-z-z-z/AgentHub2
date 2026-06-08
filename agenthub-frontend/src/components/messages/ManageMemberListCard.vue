@@ -1,12 +1,15 @@
 <template>
   <section class="section">
-    <div class="sectionTitle">成员管理 · {{ members.length }}</div>
+    <div class="sectionHeader">
+      <div class="sectionTitle">成员管理 · {{ members.length }}</div>
+      <el-button size="small" type="primary" @click="$emit('open-add-member')">添加成员</el-button>
+    </div>
     <div class="memberList">
       <div v-for="row in members" :key="row.id" class="memberCard">
         <div class="memberAvatar">{{ (row.display_name || '成').slice(0, 1) }}</div>
         <div class="memberMain">
           <div class="mName">{{ row.display_name }}</div>
-          <div class="mMeta">{{ row.kind }} · member#{{ row.id }}</div>
+          <div class="mMeta">{{ row.kind }}</div>
         </div>
         <el-button
           size="small"
@@ -20,7 +23,6 @@
       </div>
     </div>
     <div class="note">
-      说明：`personal` 会话固定 2 人，不支持成员变更；`project` 会话可增删成员。
     </div>
   </section>
 </template>
@@ -35,6 +37,7 @@ defineProps<{
 
 defineEmits<{
   (e: 'remove-member', member: Member): void
+  (e: 'open-add-member'): void
 }>()
 </script>
 
@@ -42,8 +45,14 @@ defineEmits<{
 .section {
   margin-bottom: 22px;
 }
-.sectionTitle {
+.sectionHeader {
   margin-bottom: 12px;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+}
+.sectionTitle {
   font-size: 13px;
   font-weight: 900;
   color: var(--ah-text-tertiary);

@@ -253,7 +253,7 @@ onMounted(() => {
   padding: 11px 13px;
   border-radius: 16px;
   background: var(--ah-chat-bubble-ai);
-  border: 1px solid rgba(31, 35, 41, 0.06);
+  border: 1px solid var(--ah-chat-bubble-border, rgba(31, 35, 41, 0.06));
   line-height: 1.5;
   color: var(--ah-text-primary);
   box-shadow: var(--ah-shadow-sm);
@@ -326,14 +326,14 @@ onMounted(() => {
   min-height: 30px;
   padding: 0 12px;
   border-radius: 999px;
-  background: rgba(37, 99, 235, 0.1);
-  color: #1d4ed8;
+  background: var(--ah-primary-soft);
+  color: var(--ah-primary-strong);
   font-size: 12px;
   font-weight: 700;
   text-decoration: none;
 }
 .msgActionLink:hover {
-  background: rgba(37, 99, 235, 0.16);
+  background: var(--ah-primary-soft-strong);
 }
 .bottomAnchor {
   width: 100%;

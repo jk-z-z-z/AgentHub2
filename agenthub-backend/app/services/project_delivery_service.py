@@ -334,7 +334,8 @@ async def execute_project_feature_delivery(
             if requested_port is not None:
                 if normalized_ports:
                     normalized_ports[0]["host_port"] = int(requested_port)
-                    normalized_ports[0]["container_port"] = int(normalized_ports[0].get("container_port") or 80)
+                    if normalized_ports[0].get("container_port") in (None, "", 0):
+                        normalized_ports[0]["container_port"] = 80
                     normalized_ports[0]["protocol"] = str(normalized_ports[0].get("protocol") or "tcp")
                 else:
                     normalized_ports = [{"host_port": int(requested_port), "container_port": 80, "protocol": "tcp"}]

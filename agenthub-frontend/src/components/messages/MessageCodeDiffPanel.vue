@@ -1,16 +1,15 @@
 <template>
-  <div class="sidePanel">
-    <div class="sideHeader">
-      <div>
-        <div class="sideTitle">代码 Diff</div>
-        <div class="sideSubtitle">{{ activeGroup?.name || '未选择会话' }}</div>
-      </div>
-      <button class="sideCloseBtn" type="button" aria-label="关闭代码 Diff 面板" @click="$emit('close')">
-        ×
-      </button>
-    </div>
-
-    <div class="sideBody">
+  <el-dialog
+    v-model="openModel"
+    class="codeDiffDialog"
+    title="代码 Diff"
+    width="980px"
+    destroy-on-close
+    :close-on-click-modal="false"
+    @close="$emit('close')"
+  >
+    <div class="dialogSubTitle">{{ activeGroup?.name || '未选择会话' }}</div>
+    <div class="dialogBody">
       <div v-if="loading" class="empty">加载中…</div>
       <div v-else-if="error" class="errBox">{{ error }}</div>
       <div v-else-if="!diff" class="empty">暂无 Diff 数据</div>
@@ -98,7 +97,7 @@
         </template>
       </div>
     </div>
-  </div>
+  </el-dialog>
 </template>
 
 <script setup lang="ts">
@@ -125,6 +124,8 @@ const props = defineProps<{
   diff: MessageCodeDiffResponse | null
   error: string
 }>()
+
+const openModel = defineModel<boolean>('open', { required: true })
 
 defineEmits<{
   (e: 'close'): void
@@ -254,42 +255,16 @@ watch(
 </script>
 
 <style scoped>
-.sidePanel {
-  height: 100%;
-  display: flex;
-  flex-direction: column;
-  background: rgba(255, 255, 255, 0.84);
-  backdrop-filter: blur(10px);
-  border: 1px solid rgba(31, 35, 41, 0.08);
-  border-radius: 18px;
-}
-.sideHeader {
-  display: flex;
-  justify-content: space-between;
-  align-items: center;
-  padding: 18px 18px 14px;
-  border-bottom: 1px solid rgba(31, 35, 41, 0.08);
-}
-.sideTitle {
-  font-size: 18px;
-  font-weight: 700;
-}
-.sideSubtitle {
-  margin-top: 4px;
+.dialogSubTitle {
+  margin-top: -8px;
+  margin-bottom: 14px;
   font-size: 12px;
-  color: rgba(31, 35, 41, 0.6);
+  color: var(--ah-text-tertiary);
 }
-.sideCloseBtn {
-  border: 0;
-  background: transparent;
-  font-size: 22px;
-  cursor: pointer;
-}
-.sideBody {
-  flex: 1;
-  min-height: 0;
+.dialogBody {
+  max-height: min(72vh, 760px);
   overflow: auto;
-  padding: 16px;
+  padding-right: 4px;
 }
 .diffShell {
   display: flex;
@@ -297,10 +272,10 @@ watch(
   gap: 14px;
 }
 .panelCard {
-  border: 1px solid rgba(31, 35, 41, 0.08);
+  border: 1px solid var(--ah-border-soft);
   border-radius: 14px;
   padding: 14px;
-  background: rgba(255, 255, 255, 0.9);
+  background: var(--ah-surface-strong);
 }
 .sectionTitle {
   font-size: 14px;
@@ -314,7 +289,7 @@ watch(
   margin-top: 8px;
 }
 .statusLabel {
-  color: rgba(31, 35, 41, 0.6);
+  color: var(--ah-text-secondary);
 }
 .statusValue,
 .mono {
@@ -327,8 +302,8 @@ watch(
 .fileItem {
   width: 100%;
   text-align: left;
-  border: 1px solid rgba(31, 35, 41, 0.08);
-  background: rgba(31, 35, 41, 0.02);
+  border: 1px solid var(--ah-border-soft);
+  background: var(--ah-surface-soft);
   border-radius: 12px;
   padding: 10px 12px;
   display: flex;
@@ -338,8 +313,8 @@ watch(
   margin-top: 8px;
 }
 .fileItem.active {
-  border-color: rgba(79, 140, 255, 0.36);
-  background: rgba(79, 140, 255, 0.08);
+  border-color: var(--ah-primary-soft-strong);
+  background: var(--ah-primary-ghost);
 }
 .fileItem.is-added {
   border-left: 3px solid rgba(34, 197, 94, 0.72);
@@ -358,14 +333,14 @@ watch(
 }
 .fileMeta {
   font-size: 12px;
-  color: rgba(31, 35, 41, 0.6);
+  color: var(--ah-text-secondary);
 }
 .diffViewerWrap {
   margin-top: 12px;
   overflow: auto;
-  border: 1px solid rgba(31, 35, 41, 0.08);
+  border: 1px solid var(--ah-border-soft);
   border-radius: 12px;
-  background: rgba(248, 250, 252, 0.92);
+  background: var(--ah-bg-soft);
 }
 .diffViewer {
   min-width: max-content;
@@ -379,8 +354,8 @@ watch(
 .lineNo {
   padding: 6px 8px;
   text-align: right;
-  color: rgba(31, 35, 41, 0.42);
-  border-right: 1px solid rgba(31, 35, 41, 0.06);
+  color: var(--ah-text-muted);
+  border-right: 1px solid var(--ah-border-soft);
   user-select: none;
 }
 .lineCode {
@@ -388,8 +363,8 @@ watch(
   white-space: pre;
 }
 .diffLine.is-context .lineCode {
-  background: rgba(255, 255, 255, 0.92);
-  color: rgba(15, 23, 42, 0.88);
+  background: var(--ah-surface-strong);
+  color: var(--ah-text-primary);
 }
 .diffLine.is-added .lineCode,
 .diffLine.is-added .lineNo {
@@ -443,6 +418,6 @@ watch(
   color: #b91c1c;
 }
 .empty {
-  color: rgba(31, 35, 41, 0.6);
+  color: var(--ah-text-secondary);
 }
 </style>

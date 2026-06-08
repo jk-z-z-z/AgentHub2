@@ -17,11 +17,11 @@ html[data-theme='light'] {
   --ah-text-secondary: rgba(111, 106, 100, 0.92);
   --ah-text-tertiary: rgba(157, 151, 143, 0.92);
   --ah-text-muted: rgba(183, 177, 170, 0.96);
-  --ah-primary: #4a7cf3;
-  --ah-primary-strong: #3f6fe0;
-  --ah-primary-soft: rgba(232, 240, 255, 0.9);
-  --ah-primary-soft-strong: rgba(214, 227, 255, 0.95);
-  --ah-primary-ghost: rgba(241, 245, 255, 0.92);
+  --ah-primary: #c98a2e;
+  --ah-primary-strong: #a86d1a;
+  --ah-primary-soft: rgba(244, 228, 199, 0.9);
+  --ah-primary-soft-strong: rgba(235, 210, 166, 0.95);
+  --ah-primary-ghost: rgba(249, 240, 224, 0.92);
   --ah-success: #33c26b;
   --ah-warning: #d28a24;
   --ah-warning-bg: rgba(247, 214, 142, 0.3);
@@ -50,8 +50,11 @@ html[data-theme='light'] {
   --ah-list-active-bg: rgba(243, 239, 232, 0.98);
   --ah-list-active-border: rgba(227, 218, 208, 0.98);
   --ah-chat-bubble-ai: rgba(241, 239, 237, 0.98);
-  --ah-chat-bubble-user: rgba(233, 236, 230, 0.98);
-  --ah-chat-bubble-user-border: rgba(220, 225, 214, 0.98);
+  --ah-chat-bubble-user: rgba(241, 239, 237, 0.98);
+  --ah-chat-bubble-border: rgba(31, 35, 41, 0.06);
+  --ah-chat-bubble-user-border: rgba(31, 35, 41, 0.06);
+  --ah-panel-bg: rgba(255, 253, 250, 0.98);
+  --ah-panel-border: rgba(236, 230, 222, 0.96);
   --ah-composer-bg: rgba(255, 253, 250, 0.98);
   --ah-composer-border: rgba(236, 230, 222, 0.96);
 }
@@ -74,11 +77,11 @@ html[data-theme='dark'] {
   --ah-text-secondary: rgba(226, 232, 240, 0.78);
   --ah-text-tertiary: rgba(226, 232, 240, 0.62);
   --ah-text-muted: rgba(226, 232, 240, 0.48);
-  --ah-primary: #7aa8ff;
-  --ah-primary-strong: #93c5fd;
-  --ah-primary-soft: rgba(122, 168, 255, 0.16);
-  --ah-primary-soft-strong: rgba(122, 168, 255, 0.24);
-  --ah-primary-ghost: rgba(122, 168, 255, 0.1);
+  --ah-primary: #d7a04b;
+  --ah-primary-strong: #e7b96f;
+  --ah-primary-soft: rgba(215, 160, 75, 0.18);
+  --ah-primary-soft-strong: rgba(215, 160, 75, 0.28);
+  --ah-primary-ghost: rgba(215, 160, 75, 0.12);
   --ah-success: #22c55e;
   --ah-warning: #f59e0b;
   --ah-warning-bg: rgba(245, 158, 11, 0.18);
@@ -103,12 +106,15 @@ html[data-theme='dark'] {
   --ah-conv-item-bg: transparent;
   --ah-conv-item-hover-bg: rgba(23, 33, 52, 0.72);
   --ah-conv-item-active-bg: rgba(32, 45, 70, 0.72);
-  --ah-conv-item-active-border: rgba(122, 168, 255, 0.24);
+  --ah-conv-item-active-border: rgba(215, 160, 75, 0.28);
   --ah-list-active-bg: rgba(32, 45, 70, 0.72);
-  --ah-list-active-border: rgba(122, 168, 255, 0.24);
+  --ah-list-active-border: rgba(215, 160, 75, 0.28);
   --ah-chat-bubble-ai: rgba(17, 24, 39, 0.96);
   --ah-chat-bubble-user: rgba(31, 41, 55, 0.96);
-  --ah-chat-bubble-user-border: rgba(122, 168, 255, 0.24);
+  --ah-chat-bubble-border: rgba(148, 163, 184, 0.16);
+  --ah-chat-bubble-user-border: rgba(215, 160, 75, 0.28);
+  --ah-panel-bg: rgba(17, 24, 39, 0.96);
+  --ah-panel-border: rgba(148, 163, 184, 0.16);
   --ah-composer-bg: rgba(17, 24, 39, 0.96);
   --ah-composer-border: rgba(148, 163, 184, 0.16);
 }

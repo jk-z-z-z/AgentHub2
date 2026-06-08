@@ -3,7 +3,6 @@
     <div class="sideHeader">
       <div>
         <div class="sideTitle">部署</div>
-        <div class="sideSubtitle">{{ activeGroup?.name || '未选择会话' }}</div>
       </div>
       <button class="sideCloseBtn" type="button" aria-label="关闭部署面板" @click="$emit('close')">
         <el-icon>
@@ -310,6 +309,14 @@ function portFromJob(job: DeploymentJob | null) {
   return Number.isFinite(hostPort) && hostPort > 0 ? hostPort : null
 }
 
+function containerPortFromJob(job: DeploymentJob | null) {
+  const ports = Array.isArray(job?.spec?.ports) ? job?.spec?.ports : []
+  const firstPort = ports[0]
+  if (!firstPort || typeof firstPort !== 'object') return null
+  const containerPort = Number((firstPort as { container_port?: unknown }).container_port)
+  return Number.isFinite(containerPort) && containerPort > 0 ? containerPort : null
+}
+
 function seedDraftFromContext() {
   const group = props.activeGroup
   if (!group) return
@@ -321,7 +328,7 @@ function seedDraftFromContext() {
     draft.dockerfilePath = props.deploymentJob.dockerfile_path || 'Dockerfile'
     draft.buildContextPath = props.deploymentJob.build_context_path || '.'
     draft.hostPort = hostPort
-    draft.containerPort = 80
+    draft.containerPort = containerPortFromJob(props.deploymentJob) || 80
     draft.installCommand = String(props.deploymentJob.spec?.install_command || '')
     draft.testCommand = String(props.deploymentJob.spec?.test_command || '')
     draft.buildCommand = String(props.deploymentJob.spec?.build_command || '')
@@ -520,15 +527,15 @@ watch(
   height: 100%;
   display: flex;
   flex-direction: column;
-  background: rgba(255, 255, 255, 0.84);
+  background: var(--ah-panel-bg);
   backdrop-filter: blur(10px);
-  border: 1px solid rgba(31, 35, 41, 0.08);
+  border: 1px solid var(--ah-panel-border, var(--ah-border));
   border-radius: 18px;
   overflow: hidden;
   min-width: 0;
 }
 .sideHeader {
-  height: 58px;
+  height: 56px;
   padding: 0 16px;
   border-bottom: 1px solid rgba(31, 35, 41, 0.06);
   display: flex;
@@ -587,7 +594,7 @@ watch(
 .hint {
   padding: 10px 12px;
   border-radius: 12px;
-  background: rgba(79, 140, 255, 0.08);
+  background: var(--ah-primary-soft);
   color: rgba(31, 35, 41, 0.68);
   font-size: 12px;
   line-height: 1.5;
@@ -639,10 +646,10 @@ watch(
   color: #c2410c;
 }
 .statusValue[data-status='running'] {
-  color: #1d4ed8;
+  color: var(--ah-primary-strong);
 }
 .previewLink {
-  color: #1d4ed8;
+  color: var(--ah-primary-strong);
   text-decoration: none;
   word-break: break-all;
 }

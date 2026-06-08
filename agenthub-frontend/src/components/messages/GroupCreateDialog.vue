@@ -1,6 +1,6 @@
 <template>
-  <el-dialog v-model="openModel" title="新建会话" width="520px">
-    <div class="createGrid">
+  <el-dialog v-model="openModel" :title="dialogTitle" width="520px">
+    <div v-if="isCreateMode" class="createGrid">
       <el-select v-model="createTypeModel" placeholder="会话类型" style="width: 160px">
         <el-option label="项目群聊 (project)" value="project" />
         <el-option label="单聊 (personal)" value="personal" />
@@ -8,9 +8,9 @@
       <el-input v-model="createNameModel" placeholder="会话名称 (group.name)" />
     </div>
 
-    <div style="margin-top: 12px; font-weight: 800">选择成员</div>
+    <div style="margin-top: 12px; font-weight: 800">{{ memberTitle }}</div>
     <div class="pickGrid">
-      <div class="pickCol" v-if="createTypeModel !== 'personal'">
+      <div class="pickCol" v-if="mode !== 'create' || createTypeModel !== 'personal'">
         <div class="pickTitle">用户</div>
         <el-table :data="users" class="pickList" height="280" empty-text="暂无用户" :row-class-name="userRowClassName" @row-click="handleUserRowClick">
           <el-table-column label="" width="58">
@@ -59,7 +59,7 @@
         </el-table>
       </div>
     </div>
-    <div v-if="createTypeModel === 'personal'" style="margin-top: 8px; opacity: 0.7; font-size: 12px">
+    <div v-if="isCreateMode && createTypeModel === 'personal'" style="margin-top: 8px; opacity: 0.7; font-size: 12px">
       单聊：只需选择 1 个智能体；创建者会自动作为另一成员加入；无需 @ 也会自动触发该智能体回复。
     </div>
 
@@ -67,12 +67,13 @@
 
     <template #footer>
       <el-button @click="openModel = false">取消</el-button>
-      <el-button type="primary" :loading="creating" @click="$emit('create')">创建</el-button>
+      <el-button type="primary" :loading="creating" @click="$emit('create')">{{ confirmLabel }}</el-button>
     </template>
   </el-dialog>
 </template>
 
 <script setup lang="ts">
+import { computed } from 'vue'
 import { Monitor, Select } from '@element-plus/icons-vue'
 import type { Agent, User } from '@/api/models.ts'
 
@@ -81,6 +82,7 @@ const createTypeModel = defineModel<'project' | 'personal'>('createType', { requ
 const createNameModel = defineModel<string>('createName', { required: true })
 
 const props = defineProps<{
+  mode?: 'create' | 'add-member'
   users: User[]
   agents: Agent[]
   pickedUserIds: Set<string>
@@ -94,6 +96,12 @@ const emit = defineEmits<{
   (e: 'toggle-agent', agent: Agent): void
   (e: 'create'): void
 }>()
+
+const mode = computed(() => props.mode || 'create')
+const isCreateMode = computed(() => mode.value === 'create')
+const dialogTitle = computed(() => (isCreateMode.value ? '新建会话' : '添加成员'))
+const memberTitle = computed(() => (isCreateMode.value ? '选择成员' : '选择要添加的成员'))
+const confirmLabel = computed(() => (isCreateMode.value ? '创建' : '添加'))
 
 function handleUserRowClick(row: User) {
   emit('toggle-user', row)

@@ -32,6 +32,59 @@ from app.services.workspace_runtime_service import (
 )
 
 
+def _infer_container_port_from_dockerfile(work_root: Path, dockerfile_path: str) -> int:
+    try:
+        dockerfile = safe_resolve_under_root(work_root.resolve(), dockerfile_path)
+        if not dockerfile.exists() or not dockerfile.is_file():
+            return 80
+        for raw_line in dockerfile.read_text(encoding="utf-8").splitlines():
+            line = raw_line.split("#", 1)[0].strip()
+            if not line or not line.upper().startswith("EXPOSE "):
+                continue
+            for token in line[7:].split():
+                port_text = token.split("/", 1)[0].strip()
+                if port_text.isdigit():
+                    port = int(port_text)
+                    if 1 <= port <= 65535:
+                        return port
+    except Exception:
+        return 80
+    return 80
+
+
+def _normalize_ports_for_workspace(
+    *,
+    workspace: Workspace,
+    dockerfile_path: str,
+    ports: list[dict[str, Any]] | None,
+) -> list[dict[str, Any]]:
+    work_root = Path(str(workspace.source_path or ".")).resolve()
+    inferred_container_port = _infer_container_port_from_dockerfile(work_root, dockerfile_path)
+    normalized: list[dict[str, Any]] = []
+    for item in ports or []:
+        if not isinstance(item, dict):
+            continue
+        try:
+            host_port = int(item.get("host_port"))
+        except Exception:
+            continue
+        raw_container_port = item.get("container_port")
+        try:
+            container_port = int(raw_container_port)
+        except Exception:
+            container_port = inferred_container_port
+        if container_port == 80 and inferred_container_port != 80:
+            container_port = inferred_container_port
+        normalized.append(
+            {
+                "host_port": host_port,
+                "container_port": container_port,
+                "protocol": str(item.get("protocol") or "tcp"),
+            }
+        )
+    return normalized
+
+
 class DeploymentRunner(ABC):
     @abstractmethod
     def run(
@@ -311,6 +364,11 @@ def create_deployment_job(
     container_command: str | None = None,
 ) -> DeploymentJob:
     workspace = assert_workspace_access(db, workspace_id=int(workspace_id), user_id=int(user_id))
+    normalized_ports = _normalize_ports_for_workspace(
+        workspace=workspace,
+        dockerfile_path=str(dockerfile_path or "Dockerfile"),
+        ports=ports,
+    )
     row = DeploymentJob(
         creator_user_id=int(workspace.creator_user_id),
         tenant_id=str(workspace.tenant_id),
@@ -328,7 +386,7 @@ def create_deployment_job(
                 "test_command": str(test_command or "").strip() or None,
                 "build_command": str(build_command or "").strip() or None,
                 "env": env or {},
-                "ports": ports or [],
+                "ports": normalized_ports,
                 "container_command": str(container_command or "").strip() or None,
             }
         ),

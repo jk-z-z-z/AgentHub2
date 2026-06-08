@@ -25,6 +25,82 @@ body {
   color: var(--ah-text-strong);
 }
 
+:root,
+html[data-theme='light'],
+html[data-theme='dark'] {
+  --el-color-primary: var(--ah-primary);
+  --el-color-primary-light-3: color-mix(in srgb, var(--ah-primary) 78%, white);
+  --el-color-primary-light-5: color-mix(in srgb, var(--ah-primary) 62%, white);
+  --el-color-primary-light-7: color-mix(in srgb, var(--ah-primary) 42%, white);
+  --el-color-primary-light-8: color-mix(in srgb, var(--ah-primary) 28%, white);
+  --el-color-primary-light-9: color-mix(in srgb, var(--ah-primary) 16%, white);
+  --el-color-primary-dark-2: color-mix(in srgb, var(--ah-primary) 78%, black);
+  --el-color-success: var(--ah-success);
+  --el-color-warning: var(--ah-warning);
+  --el-color-danger: var(--ah-danger);
+  --el-border-color: var(--ah-border);
+  --el-border-color-light: var(--ah-border-soft);
+  --el-border-color-lighter: var(--ah-border-soft);
+  --el-border-color-dark: var(--ah-border-strong);
+  --el-fill-color-light: var(--ah-surface-soft);
+  --el-fill-color-lighter: var(--ah-surface-soft);
+  --el-fill-color-blank: var(--ah-surface-strong);
+  --el-bg-color: var(--ah-surface);
+  --el-bg-color-page: var(--ah-bg);
+  --el-bg-color-overlay: var(--ah-surface-strong);
+  --el-text-color-primary: var(--ah-text-primary);
+  --el-text-color-regular: var(--ah-text);
+  --el-text-color-secondary: var(--ah-text-secondary);
+  --el-text-color-placeholder: var(--ah-text-tertiary);
+  --el-mask-color: rgba(18, 16, 14, 0.28);
+}
+
+.el-button {
+  box-shadow: none;
+}
+
+.el-button:not(.el-button--primary):not(.el-button--danger) {
+  --el-button-bg-color: var(--ah-surface-soft);
+  --el-button-border-color: transparent;
+  --el-button-text-color: var(--ah-text-primary);
+  --el-button-hover-bg-color: var(--ah-conv-item-hover-bg, var(--ah-hover-strong));
+  --el-button-hover-border-color: transparent;
+  --el-button-hover-text-color: var(--ah-text-primary);
+  --el-button-active-bg-color: var(--ah-conv-item-active-bg, var(--ah-list-active-bg));
+  --el-button-active-border-color: transparent;
+  --el-button-active-text-color: var(--ah-text-primary);
+  --el-button-disabled-bg-color: var(--ah-surface-soft);
+  --el-button-disabled-border-color: transparent;
+  --el-button-disabled-text-color: var(--ah-text-muted);
+}
+
+.el-button--primary {
+  --el-button-bg-color: color-mix(in srgb, var(--ah-text-strong) 42%, transparent);
+  --el-button-border-color: transparent;
+  --el-button-text-color: var(--ah-text-on-primary);
+  --el-button-hover-bg-color: color-mix(in srgb, var(--ah-text-strong) 46%, transparent);
+  --el-button-hover-border-color: transparent;
+  --el-button-hover-text-color: var(--ah-text-on-primary);
+  --el-button-active-bg-color: color-mix(in srgb, var(--ah-text-strong) 50%, transparent);
+  --el-button-active-border-color: transparent;
+  --el-button-active-text-color: var(--ah-text-on-primary);
+  --el-button-disabled-bg-color: var(--ah-surface-soft);
+  --el-button-disabled-border-color: transparent;
+  --el-button-disabled-text-color: var(--ah-text-muted);
+}
+
+.el-button--danger.is-plain {
+  --el-button-bg-color: transparent;
+  --el-button-border-color: color-mix(in srgb, var(--ah-danger) 38%, var(--ah-border));
+  --el-button-text-color: var(--ah-danger);
+  --el-button-hover-bg-color: color-mix(in srgb, var(--ah-danger) 10%, transparent);
+  --el-button-hover-border-color: var(--ah-danger);
+  --el-button-hover-text-color: var(--ah-danger-strong);
+  --el-button-active-bg-color: color-mix(in srgb, var(--ah-danger) 14%, transparent);
+  --el-button-active-border-color: var(--ah-danger-strong);
+  --el-button-active-text-color: var(--ah-danger-strong);
+}
+
 .el-card {
   background: var(--ah-surface);
   color: var(--ah-text);
@@ -69,6 +145,38 @@ body {
   --el-checkbox-checked-input-border-color: var(--ah-primary);
   --el-checkbox-checked-text-color: var(--ah-text-primary);
   --el-checkbox-input-border-color-hover: var(--ah-primary);
+}
+
+.el-radio {
+  --el-radio-input-border-color-hover: var(--ah-primary);
+  --el-radio-checked-bg-color: var(--ah-primary);
+  --el-radio-checked-input-border-color: var(--ah-primary);
+  --el-radio-checked-text-color: var(--ah-text-primary);
+}
+
+.el-pagination {
+  --el-pagination-button-bg-color: var(--ah-surface-soft);
+  --el-pagination-hover-color: var(--ah-text-primary);
+}
+
+.el-tag {
+  --el-tag-bg-color: var(--ah-primary-ghost);
+  --el-tag-border-color: color-mix(in srgb, var(--ah-primary) 20%, var(--ah-border));
+  --el-tag-text-color: var(--ah-text-primary);
+}
+
+.el-tabs {
+  --el-tabs-header-text-color: var(--ah-text-secondary);
+  --el-tabs-active-color: var(--ah-text-primary);
+  --el-tabs-hover-color: var(--ah-text-primary);
+  --el-tabs-nav-wrap-after-color: var(--ah-border-soft);
+}
+
+.el-menu {
+  --el-menu-bg-color: transparent;
+  --el-menu-text-color: var(--ah-text-secondary);
+  --el-menu-hover-bg-color: var(--ah-conv-item-hover-bg, var(--ah-hover-strong));
+  --el-menu-active-color: var(--ah-text-primary);
 }
 
 .el-table {
