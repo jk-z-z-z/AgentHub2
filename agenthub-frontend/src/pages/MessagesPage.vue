@@ -93,13 +93,13 @@
         v-else-if="deployOpen"
         :active-group="activeGroup"
         :messages="messages"
-        :project-files-entries="projectFilesEntries"
         :preview-job="activePreviewJob"
         :preview-pending="previewPending"
         :deployment-job="activeDeploymentJob"
         :deploy-pending="deployPending"
         @close="deployOpen = false"
         @close-preview="closePreview"
+        @open-preview="openPreview"
         @deploy="deployProject"
         @retry-deploy="retryDeployment"
       />
@@ -204,7 +204,7 @@
 </template>
 
 <script setup lang="ts">
-import { computed, nextTick, onBeforeUnmount, onMounted, ref, watch } from 'vue'
+import { computed, nextTick, onBeforeUnmount, onMounted, reactive, ref, watch } from 'vue'
 import { useRoute } from 'vue-router'
 import { Operation, FolderOpened, Setting, UploadFilled } from '@element-plus/icons-vue'
 import {
@@ -249,7 +249,7 @@ import { apiListAgents } from '../api/agents'
 import { apiGetCurrentUser, apiListUsers, type User } from '../api/users'
 import { apiListProjectCode, type ProjectCodeEntry } from '../api/project-code'
 import { apiCreateDeployment, apiGetDeployment, apiRetryDeployment, type DeploymentJob, type DeploymentRequest } from '../api/deployments'
-import { apiDeleteWorkspacePreview, apiGetWorkspacePreview, type PreviewJob } from '../api/previews'
+import { apiCreatePreview, apiDeleteWorkspacePreview, apiGetWorkspacePreview, type PreviewJob } from '../api/previews'
 import MessageConversationList from '../components/messages/MessageConversationList.vue'
 import MessageComposer from '../components/messages/MessageComposer.vue'
 import MessageDeploymentPanel from '../components/messages/MessageDeploymentPanel.vue'
@@ -410,6 +410,32 @@ const taskCreateOpen = ref(false)
 const taskCreateTitle = ref('')
 const taskCreateGoal = ref('')
 const taskCreateNodeText = ref('需求澄清与初始计划 | manager')
+type DeployDraft = {
+  imageRef: string
+  containerName: string
+  dockerfilePath: string
+  buildContextPath: string
+  hostPort: number
+  containerPort: number
+  installCommand: string
+  testCommand: string
+  buildCommand: string
+  containerCommand: string
+  envText: string
+}
+const deployDraft = reactive<DeployDraft>({
+  imageRef: '',
+  containerName: '',
+  dockerfilePath: 'Dockerfile',
+  buildContextPath: '.',
+  hostPort: 18080,
+  containerPort: 80,
+  installCommand: '',
+  testCommand: '',
+  buildCommand: '',
+  containerCommand: '',
+  envText: '',
+})
 const projectFilesLoading = ref(false)
 const projectFilesEntries = ref<ProjectCodeEntry[]>([])
 const projectOpenDirs = ref<Record<string, boolean>>({})
@@ -445,6 +471,68 @@ const activePreviewJob = computed(() => {
 const shellStyle = computed(() => ({
   '--side-pane-width': `${sidePaneWidth.value}px`,
 }))
+
+function slugify(text: string) {
+  return (
+    text
+      .trim()
+      .toLowerCase()
+      .replace(/[^a-z0-9]+/g, '-')
+      .replace(/^-+|-+$/g, '')
+      .slice(0, 48) || 'project'
+  )
+}
+
+function deployEnvTextToRecord() {
+  const env: Record<string, string> = {}
+  for (const rawLine of deployDraft.envText.split('\n')) {
+    const line = rawLine.trim()
+    if (!line) continue
+    const divider = line.indexOf('=')
+    if (divider <= 0) continue
+    const key = line.slice(0, divider).trim()
+    const value = line.slice(divider + 1).trim()
+    if (!key) continue
+    env[key] = value
+  }
+  return env
+}
+
+function resetDeployDraftFromContext() {
+  const group = activeGroup.value
+  if (!group) return
+  const job = activeDeploymentJob.value
+  const slug = slugify(group.name || 'project')
+  const hostPort = job?.spec?.ports && Array.isArray(job.spec.ports) && job.spec.ports[0] && typeof job.spec.ports[0] === 'object'
+    ? Number((job.spec.ports[0] as { host_port?: unknown }).host_port)
+    : buildDefaultDeployPort(group)
+  const containerPort = job?.spec?.ports && Array.isArray(job.spec.ports) && job.spec.ports[0] && typeof job.spec.ports[0] === 'object'
+    ? Number((job.spec.ports[0] as { container_port?: unknown }).container_port)
+    : 80
+  deployDraft.imageRef = job?.image_ref || `agenthub/${slug}:latest`
+  deployDraft.containerName = job?.container_name || `agenthub-${slug}`
+  deployDraft.dockerfilePath = job?.dockerfile_path || 'Dockerfile'
+  deployDraft.buildContextPath = job?.build_context_path || '.'
+  deployDraft.hostPort = Number.isFinite(hostPort) && hostPort > 0 ? hostPort : buildDefaultDeployPort(group)
+  deployDraft.containerPort = Number.isFinite(containerPort) && containerPort > 0 ? containerPort : 80
+  deployDraft.installCommand = String(job?.spec?.install_command || '').trim()
+  deployDraft.testCommand = String(job?.spec?.test_command || '').trim()
+  deployDraft.buildCommand = String(job?.spec?.build_command || '').trim()
+  deployDraft.containerCommand = String(job?.spec?.container_command || '').trim()
+  const env = job?.spec?.env
+  if (env && typeof env === 'object' && !Array.isArray(env)) {
+    deployDraft.envText = Object.entries(env as Record<string, unknown>)
+      .map(([key, value]) => `${key}=${String(value ?? '')}`)
+      .join('\n')
+  } else {
+    deployDraft.envText = ''
+  }
+}
+
+function buildDefaultDeployPort(group: Group | null) {
+  const workspaceId = Number(group?.workspace_id || 0)
+  return workspaceId > 0 ? Math.min(65535, 18000 + workspaceId) : 18080
+}
 
 watch(
   () => createType.value,
@@ -514,6 +602,8 @@ async function selectGroup(id: string) {
   projectFilesOpen.value = false
   deployOpen.value = false
   addMemberOpen.value = false
+  projectActiveFilePath.value = ''
+  projectOpenDirs.value = {}
   closeCodeDiffPanel()
   const [mRes, msgRes] = await Promise.all([apiListMembers(id), apiListMessages(id, undefined, 50)])
   if (seq !== loadSeq || String(activeGroupId.value) !== String(id)) return
@@ -523,6 +613,9 @@ async function selectGroup(id: string) {
   mentionSuggestOpen.value = false
   mentionQuery.value = ''
   updatePreview(id)
+  if (supportsProjectWorkspace(activeGroup.value)) {
+    resetDeployDraftFromContext()
+  }
   connectWs(id)
 }
 
@@ -1105,6 +1198,9 @@ async function openProjectCode() {
   codeDiffOpen.value = false
   projectFilesOpen.value = true
   await reloadProjectFiles()
+  if (projectActiveFilePath.value) {
+    await openProjectFile(projectActiveFilePath.value)
+  }
 }
 
 async function reloadProjectFiles() {
@@ -1119,6 +1215,9 @@ async function reloadProjectFiles() {
     ) {
       projectActiveFilePath.value = ''
     }
+    if (projectActiveFilePath.value) {
+      await openProjectFile(projectActiveFilePath.value)
+    }
   } catch (e) {
     projectFilesEntries.value = []
     manageErr.value = e instanceof Error ? e.message : String(e)
@@ -1132,6 +1231,8 @@ function toggleProjectDir(path: string) {
 }
 
 function openProjectFile(path: string) {
+  const group = activeGroup.value
+  if (!group || group.type !== 'project') return
   projectActiveFilePath.value = path
 }
 
@@ -1176,8 +1277,40 @@ async function loadCurrentDeployment() {
   }
 }
 
-async function deployProject(payload: DeploymentRequest) {
-  if (!activeGroupId.value) return
+function buildDeploymentRequest(): DeploymentRequest | null {
+  const group = activeGroup.value
+  if (!group) return null
+  const imageRef = deployDraft.imageRef.trim()
+  const containerName = deployDraft.containerName.trim()
+  if (!imageRef || !containerName) return null
+  return {
+    workspace_id: Number(group.workspace_id),
+    image_ref: imageRef,
+    container_name: containerName,
+    dockerfile_path: deployDraft.dockerfilePath.trim() || 'Dockerfile',
+    build_context_path: deployDraft.buildContextPath.trim() || '.',
+    install_command: deployDraft.installCommand.trim() || null,
+    test_command: deployDraft.testCommand.trim() || null,
+    build_command: deployDraft.buildCommand.trim() || null,
+    container_command: deployDraft.containerCommand.trim() || null,
+    env: deployEnvTextToRecord(),
+    ports: [
+      {
+        host_port: Number(deployDraft.hostPort),
+        container_port: Number(deployDraft.containerPort),
+        protocol: 'tcp',
+      },
+    ],
+  }
+}
+
+async function deployProject() {
+  const payload = buildDeploymentRequest()
+  if (!activeGroupId.value || !payload) {
+    manageErr.value = '请先在编辑器页补全镜像名和容器名'
+    ElMessage.error(manageErr.value)
+    return
+  }
   deployPending.value = true
   manageErr.value = ''
   try {
@@ -1228,6 +1361,44 @@ async function closePreview() {
     const res = await apiDeleteWorkspacePreview(workspaceId)
     setPreviewJob(activeGroupId.value, res.data)
     ElMessage.success('预览已关闭')
+  } catch (error) {
+    const msg = error instanceof Error ? error.message : String(error)
+    manageErr.value = msg
+    ElMessage.error(msg)
+  } finally {
+    previewPending.value = false
+  }
+}
+
+async function openPreview() {
+  const group = activeGroup.value
+  const workspaceId = Number(group?.workspace_id || 0)
+  if (!group || !workspaceId || !activeGroupId.value) return
+  previewPending.value = true
+  manageErr.value = ''
+  try {
+    const preview = activePreviewJob.value
+    const deployment = activeDeploymentJob.value
+    const previewSpec = preview?.spec || {}
+    const deploymentSpec = deployment?.spec || {}
+    const envSource = previewSpec.env || deploymentSpec.env
+    const env =
+      envSource && typeof envSource === 'object' && !Array.isArray(envSource)
+        ? Object.fromEntries(
+            Object.entries(envSource as Record<string, unknown>).map(([key, value]) => [key, String(value ?? '')]),
+          )
+        : {}
+    const res = await apiCreatePreview({
+      workspace_id: workspaceId,
+      source_path: preview?.source_path || '.',
+      sandbox_image: preview?.sandbox_image || deployment?.sandbox_image || null,
+      install_command: String(previewSpec.install_command || deploymentSpec.install_command || '').trim() || null,
+      build_command: String(previewSpec.build_command || deploymentSpec.build_command || '').trim() || null,
+      env,
+      host_port: preview?.host_port || null,
+    })
+    setPreviewJob(activeGroupId.value, res.data)
+    ElMessage.success('预览已重新打开')
   } catch (error) {
     const msg = error instanceof Error ? error.message : String(error)
     manageErr.value = msg

@@ -2,7 +2,8 @@
   <div class="sidePanel">
     <div class="sideHeader">
       <div>
-        <div class="sideTitle">文件目录</div>
+        <div class="sideTitle">文件树</div>
+        <div class="sideSubtitle">只查看项目目录结构</div>
       </div>
       <div class="sideHeaderActions">
         <el-button
@@ -13,7 +14,7 @@
           :loading="loading"
           aria-label="刷新文件目录"
         />
-        <el-button class="sideCloseBtn" :icon="Close" circle text @click="$emit('close')" aria-label="关闭文件目录" />
+        <el-button class="sideCloseBtn" :icon="Close" circle text @click="$emit('close')" aria-label="关闭文件树" />
       </div>
     </div>
 
@@ -188,11 +189,6 @@ function buildProjectTree(rows: ProjectCodeEntry[]): FileTreeNode[] {
   overflow: auto;
   min-height: 0;
   flex: 1;
-}
-.refreshBtn {
-  width: 32px;
-  height: 32px;
-  border-radius: 10px;
 }
 .fileTreeWrap :deep() {
   margin-bottom: 4px;

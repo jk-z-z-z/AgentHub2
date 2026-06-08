@@ -3,6 +3,7 @@
     <div class="sideHeader">
       <div>
         <div class="sideTitle">部署</div>
+        <div class="sideSubtitle">编辑器里设置参数，这里只负责一键执行</div>
       </div>
       <button class="sideCloseBtn" type="button" aria-label="关闭部署面板" @click="$emit('close')">
         <el-icon>
@@ -13,13 +14,21 @@
 
     <div class="sideBody">
       <div v-if="supportsProjectWorkspace" class="deployShell">
-        <div class="panelCard">
+        <div class="panelCard heroCard">
           <div class="sectionTitle">当前预览</div>
           <div class="toolbar">
             <el-button
-              v-if="previewJob?.url"
+              v-if="previewJob"
               size="small"
               type="primary"
+              :loading="previewPending"
+              @click="$emit('open-preview')"
+            >
+              {{ previewJob.url ? '刷新预览' : '重新打开预览' }}
+            </el-button>
+            <el-button
+              v-if="previewJob?.url"
+              size="small"
               plain
               tag="a"
               :href="previewJob.url"
@@ -43,7 +52,9 @@
           </div>
           <div class="statusRow">
             <span class="statusLabel">地址</span>
-            <a v-if="previewJob?.url" class="previewLink" :href="previewJob.url" target="_blank" rel="noreferrer">{{ previewJob.url }}</a>
+            <a v-if="previewJob?.url" class="previewLink" :href="previewJob.url" target="_blank" rel="noreferrer">
+              {{ previewJob.url }}
+            </a>
             <span v-else class="statusValue">暂无预览</span>
           </div>
           <div class="statusRow">
@@ -53,9 +64,16 @@
           <div v-if="previewJob?.error_message" class="errBox">{{ previewJob.error_message }}</div>
         </div>
 
-        <div class="panelCard">
+        <div class="panelCard deployCard">
+          <div class="deployHeader">
+            <div>
+              <div class="sectionTitle">一键部署</div>
+              <div class="hint">部署参数已放在编辑器页里，这里只要点击一次就可以。</div>
+            </div>
+            <el-tag size="small" type="info">简化模式</el-tag>
+          </div>
           <div class="toolbar">
-            <el-button size="small" type="primary" :loading="deployPending" @click="submitDeploy">
+            <el-button size="large" type="primary" :loading="deployPending" @click="$emit('deploy')">
               {{ deployPending ? '部署中…' : deploymentJob ? '重新部署' : '开始部署' }}
             </el-button>
             <el-button
@@ -67,82 +85,18 @@
               重试
             </el-button>
           </div>
-          <div class="hint">
-            和任务规划、文件目录保持同一层级，在群组对话里直接发起部署。
-          </div>
           <div class="statusRow">
             <span class="statusLabel">状态</span>
             <span class="statusValue" :data-status="deploymentTone">{{ deploymentLabel }}</span>
           </div>
           <div class="statusRow">
-            <span class="statusLabel">Dockerfile</span>
-            <span class="statusValue">{{ hasDockerfile ? '已检测到' : '未检测到' }}</span>
-          </div>
-          <div class="statusRow">
-            <span class="statusLabel">预览地址</span>
-            <a v-if="previewUrl" class="previewLink" :href="previewUrl" target="_blank" rel="noreferrer">{{ previewUrl }}</a>
+            <span class="statusLabel">部署地址</span>
+            <a v-if="deploymentUrl" class="previewLink" :href="deploymentUrl" target="_blank" rel="noreferrer">
+              {{ deploymentUrl }}
+            </a>
             <span v-else class="statusValue">部署后生成</span>
           </div>
-        </div>
-
-        <div class="panelCard">
-          <div class="sectionTitle">部署参数</div>
-          <div class="formGrid">
-            <label class="field">
-              <span>镜像名</span>
-              <el-input v-model="draft.imageRef" placeholder="agenthub/my-project:latest" />
-            </label>
-            <label class="field">
-              <span>容器名</span>
-              <el-input v-model="draft.containerName" placeholder="agenthub-my-project" />
-            </label>
-            <label class="field">
-              <span>Dockerfile</span>
-              <el-input v-model="draft.dockerfilePath" placeholder="Dockerfile" />
-            </label>
-            <label class="field">
-              <span>构建上下文</span>
-              <el-input v-model="draft.buildContextPath" placeholder="." />
-            </label>
-          </div>
-        </div>
-
-        <div class="panelCard">
-          <div class="sectionTitle">运行配置</div>
-          <div class="formGrid">
-            <label class="field">
-              <span>宿主端口</span>
-              <el-input-number v-model="draft.hostPort" :min="1" :max="65535" controls-position="right" />
-            </label>
-            <label class="field">
-              <span>容器端口</span>
-              <el-input-number v-model="draft.containerPort" :min="1" :max="65535" controls-position="right" />
-            </label>
-          </div>
-          <label class="field">
-            <span>启动命令</span>
-            <el-input v-model="draft.containerCommand" placeholder="可选，例如 npm run start" />
-          </label>
-          <label class="field">
-            <span>安装命令</span>
-            <el-input v-model="draft.installCommand" placeholder="例如 npm install" />
-          </label>
-          <label class="field">
-            <span>测试命令</span>
-            <el-input v-model="draft.testCommand" placeholder="例如 npm test" />
-          </label>
-          <label class="field">
-            <span>构建命令</span>
-            <el-input v-model="draft.buildCommand" placeholder="例如 npm run build" />
-          </label>
-        </div>
-
-        <div class="panelCard">
-          <div class="sectionTitle">环境变量</div>
-          <label class="field">
-            <span>每行一个 `KEY=VALUE`</span>
-            <el-input v-model="envText" type="textarea" :rows="5" placeholder="NODE_ENV=production" />
-          </label>
+          <div v-if="deploymentJob?.error_message" class="errBox">{{ deploymentJob.error_message }}</div>
         </div>
 
         <div v-if="deploymentJob" class="panelCard">
@@ -163,7 +117,6 @@
             <span class="statusLabel">容器 ID</span>
             <span class="mono">{{ shortContainerId }}</span>
           </div>
-          <div v-if="deploymentJob.error_message" class="errBox">{{ deploymentJob.error_message }}</div>
           <details v-if="deploymentJob.logs_text" class="logDetails">
             <summary>查看日志</summary>
             <pre class="logBlock">{{ deploymentJob.logs_text }}</pre>
@@ -223,39 +176,26 @@
 </template>
 
 <script setup lang="ts">
-import { computed, reactive, ref, watch } from 'vue'
+import { computed } from 'vue'
 import { Close } from '@element-plus/icons-vue'
-import type { Group, Message, ProjectCodeEntry } from '../../api/groups'
-import type { DeploymentJob, DeploymentRequest } from '../../api/deployments'
+import type { Group, Message } from '../../api/groups'
+import type { DeploymentJob } from '../../api/deployments'
 import type { PreviewJob } from '../../api/previews'
-
-type DeployDraft = {
-  imageRef: string
-  containerName: string
-  dockerfilePath: string
-  buildContextPath: string
-  hostPort: number
-  containerPort: number
-  installCommand: string
-  testCommand: string
-  buildCommand: string
-  containerCommand: string
-}
 
 const props = defineProps<{
   activeGroup: Group | null
   messages: Message[]
-  projectFilesEntries: ProjectCodeEntry[]
   previewJob: PreviewJob | null
   previewPending: boolean
   deploymentJob: DeploymentJob | null
   deployPending: boolean
 }>()
 
-const emit = defineEmits<{
+defineEmits<{
   (e: 'close'): void
   (e: 'close-preview'): void
-  (e: 'deploy', payload: DeploymentRequest): void
+  (e: 'open-preview'): void
+  (e: 'deploy'): void
   (e: 'retry-deploy', deploymentId: number): void
 }>()
 
@@ -272,99 +212,6 @@ function messageMeta(message: Message) {
     return {}
   }
 }
-
-const draft = reactive<DeployDraft>({
-  imageRef: '',
-  containerName: '',
-  dockerfilePath: 'Dockerfile',
-  buildContextPath: '.',
-  hostPort: 18080,
-  containerPort: 80,
-  installCommand: '',
-  testCommand: '',
-  buildCommand: '',
-  containerCommand: '',
-})
-const envText = ref('')
-
-function slugify(text: string) {
-  return text
-    .trim()
-    .toLowerCase()
-    .replace(/[^a-z0-9]+/g, '-')
-    .replace(/^-+|-+$/g, '')
-    .slice(0, 48) || 'project'
-}
-
-function buildDefaultPort(group: Group | null) {
-  const workspaceId = Number(group?.workspace_id || 0)
-  return workspaceId > 0 ? Math.min(65535, 18000 + workspaceId) : 18080
-}
-
-function portFromJob(job: DeploymentJob | null) {
-  const ports = Array.isArray(job?.spec?.ports) ? job?.spec?.ports : []
-  const firstPort = ports[0]
-  if (!firstPort || typeof firstPort !== 'object') return null
-  const hostPort = Number((firstPort as { host_port?: unknown }).host_port)
-  return Number.isFinite(hostPort) && hostPort > 0 ? hostPort : null
-}
-
-function containerPortFromJob(job: DeploymentJob | null) {
-  const ports = Array.isArray(job?.spec?.ports) ? job?.spec?.ports : []
-  const firstPort = ports[0]
-  if (!firstPort || typeof firstPort !== 'object') return null
-  const containerPort = Number((firstPort as { container_port?: unknown }).container_port)
-  return Number.isFinite(containerPort) && containerPort > 0 ? containerPort : null
-}
-
-function seedDraftFromContext() {
-  const group = props.activeGroup
-  if (!group) return
-
-  if (props.deploymentJob) {
-    const hostPort = portFromJob(props.deploymentJob) || buildDefaultPort(group)
-    draft.imageRef = props.deploymentJob.image_ref || ''
-    draft.containerName = props.deploymentJob.container_name || ''
-    draft.dockerfilePath = props.deploymentJob.dockerfile_path || 'Dockerfile'
-    draft.buildContextPath = props.deploymentJob.build_context_path || '.'
-    draft.hostPort = hostPort
-    draft.containerPort = containerPortFromJob(props.deploymentJob) || 80
-    draft.installCommand = String(props.deploymentJob.spec?.install_command || '')
-    draft.testCommand = String(props.deploymentJob.spec?.test_command || '')
-    draft.buildCommand = String(props.deploymentJob.spec?.build_command || '')
-    draft.containerCommand = String(props.deploymentJob.spec?.container_command || '')
-    const env = props.deploymentJob.spec?.env
-    if (env && typeof env === 'object' && !Array.isArray(env)) {
-      envText.value = Object.entries(env as Record<string, unknown>)
-        .map(([key, value]) => `${key}=${String(value ?? '')}`)
-        .join('\n')
-    } else {
-      envText.value = ''
-    }
-    return
-  }
-
-  const slug = slugify(group.name || 'project')
-  draft.imageRef = `agenthub/${slug}:latest`
-  draft.containerName = `agenthub-${slug}`
-  draft.dockerfilePath = 'Dockerfile'
-  draft.buildContextPath = '.'
-  draft.hostPort = buildDefaultPort(group)
-  draft.containerPort = 80
-  draft.installCommand = ''
-  draft.testCommand = ''
-  draft.buildCommand = ''
-  draft.containerCommand = ''
-  envText.value = ''
-}
-
-const hasDockerfile = computed(() =>
-  props.projectFilesEntries.some((entry) => {
-    if (entry.is_dir) return false
-    const normalized = String(entry.path || '').trim().toLowerCase()
-    return normalized === 'dockerfile' || normalized.endsWith('/dockerfile')
-  }),
-)
 
 const deploymentTone = computed(() => {
   const status = props.deploymentJob?.status
@@ -405,10 +252,12 @@ const previewUpdatedAt = computed(() => {
   return Number.isNaN(date.getTime()) ? value : date.toLocaleString()
 })
 
-const previewUrl = computed(() => {
-  const hostPort = portFromJob(props.deploymentJob) || draft.hostPort
-  if (!hostPort) return ''
-  return `http://127.0.0.1:${hostPort}`
+const deploymentUrl = computed(() => {
+  const ports = Array.isArray(props.deploymentJob?.spec?.ports) ? props.deploymentJob?.spec?.ports : []
+  const firstPort = ports[0]
+  if (!firstPort || typeof firstPort !== 'object') return ''
+  const hostPort = Number((firstPort as { host_port?: unknown }).host_port)
+  return Number.isFinite(hostPort) && hostPort > 0 ? `http://127.0.0.1:${hostPort}` : ''
 })
 
 const shortContainerId = computed(() => {
@@ -474,52 +323,6 @@ const latestDeliveryValidationLabel = computed(() => {
   }
   return Boolean(latestDeliveryValidation.value.ok) ? '验证通过' : '验证失败'
 })
-
-function parseEnvText() {
-  const env: Record<string, string> = {}
-  for (const rawLine of envText.value.split('\n')) {
-    const line = rawLine.trim()
-    if (!line) continue
-    const divider = line.indexOf('=')
-    if (divider <= 0) continue
-    const key = line.slice(0, divider).trim()
-    const value = line.slice(divider + 1).trim()
-    if (!key) continue
-    env[key] = value
-  }
-  return env
-}
-
-function submitDeploy() {
-  if (!props.activeGroup) return
-  emit('deploy', {
-    workspace_id: Number(props.activeGroup.workspace_id),
-    image_ref: draft.imageRef.trim(),
-    container_name: draft.containerName.trim(),
-    dockerfile_path: draft.dockerfilePath.trim() || 'Dockerfile',
-    build_context_path: draft.buildContextPath.trim() || '.',
-    install_command: draft.installCommand.trim() || null,
-    test_command: draft.testCommand.trim() || null,
-    build_command: draft.buildCommand.trim() || null,
-    container_command: draft.containerCommand.trim() || null,
-    env: parseEnvText(),
-    ports: [
-      {
-        host_port: Number(draft.hostPort),
-        container_port: Number(draft.containerPort),
-        protocol: 'tcp',
-      },
-    ],
-  })
-}
-
-watch(
-  () => [props.activeGroup?.id, props.deploymentJob?.id, props.deploymentJob?.updated_at],
-  () => {
-    seedDraftFromContext()
-  },
-  { immediate: true },
-)
 </script>
 
 <style scoped>
@@ -537,7 +340,7 @@ watch(
 .sideHeader {
   height: 56px;
   padding: 0 16px;
-  border-bottom: 1px solid rgba(31, 35, 41, 0.06);
+  border-bottom: 1px solid var(--ah-border-soft);
   display: flex;
   align-items: center;
   justify-content: space-between;
@@ -551,146 +354,127 @@ watch(
 .sideSubtitle {
   margin-top: 2px;
   font-size: 12px;
-  color: rgba(31, 35, 41, 0.58);
+  color: var(--ah-text-tertiary);
 }
 .sideCloseBtn {
-  border: 0;
   width: 32px;
   height: 32px;
   border-radius: 10px;
-  background: rgba(31, 35, 41, 0.06);
-  cursor: pointer;
-  display: inline-flex;
-  align-items: center;
-  justify-content: center;
-  color: rgba(31, 35, 41, 0.8);
-}
-.sideCloseBtn:hover {
-  background: rgba(31, 35, 41, 0.1);
+  color: var(--ah-text-secondary);
 }
 .sideBody {
   flex: 1;
   min-height: 0;
-  overflow: auto;
   padding: 12px;
 }
 .deployShell {
-  display: flex;
-  flex-direction: column;
+  display: grid;
   gap: 12px;
 }
 .panelCard {
-  padding: 14px;
+  border: 1px solid var(--ah-border-soft);
   border-radius: 16px;
-  border: 1px solid rgba(31, 35, 41, 0.06);
-  background: rgba(255, 255, 255, 0.78);
+  background: var(--ah-surface-soft);
+  padding: 14px;
+  display: grid;
+  gap: 12px;
+}
+.heroCard {
+  background:
+    radial-gradient(circle at top right, color-mix(in srgb, var(--ah-primary-ghost) 40%, transparent), transparent 48%),
+    var(--ah-surface-soft);
+}
+.deployCard {
+  background: linear-gradient(180deg, color-mix(in srgb, var(--ah-bg) 92%, white), var(--ah-surface-soft));
+}
+.sectionTitle {
+  font-size: 14px;
+  font-weight: 900;
 }
 .toolbar {
   display: flex;
-  gap: 8px;
   flex-wrap: wrap;
-  margin-bottom: 10px;
-}
-.hint {
-  padding: 10px 12px;
-  border-radius: 12px;
-  background: var(--ah-primary-soft);
-  color: rgba(31, 35, 41, 0.68);
-  font-size: 12px;
-  line-height: 1.5;
-  margin-bottom: 12px;
-}
-.sectionTitle {
-  font-size: 13px;
-  font-weight: 900;
-  margin-bottom: 12px;
-}
-.formGrid {
-  display: grid;
-  grid-template-columns: 1fr 1fr;
-  gap: 12px;
-}
-.field {
-  display: flex;
-  flex-direction: column;
   gap: 8px;
-}
-.field + .field {
-  margin-top: 12px;
-}
-.field span {
-  font-size: 12px;
-  color: rgba(31, 35, 41, 0.68);
-  font-weight: 700;
 }
 .statusRow {
-  display: grid;
-  grid-template-columns: 72px 1fr;
-  gap: 10px;
-  align-items: start;
-  font-size: 12px;
-  margin-top: 10px;
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  gap: 12px;
+  font-size: 13px;
 }
 .statusLabel {
-  color: rgba(31, 35, 41, 0.54);
-  font-weight: 700;
+  color: var(--ah-text-tertiary);
+  flex: 0 0 auto;
 }
 .statusValue {
-  color: rgba(31, 35, 41, 0.88);
-  word-break: break-all;
-}
-.statusValue[data-status='succeeded'] {
-  color: #207a32;
-}
-.statusValue[data-status='failed'] {
-  color: #c2410c;
-}
-.statusValue[data-status='running'] {
-  color: var(--ah-primary-strong);
+  color: var(--ah-text-primary);
+  text-align: right;
+  min-width: 0;
 }
 .previewLink {
   color: var(--ah-primary-strong);
   text-decoration: none;
-  word-break: break-all;
+  text-align: right;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
 }
 .previewLink:hover {
   text-decoration: underline;
 }
-.mono {
-  font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
-  font-size: 12px;
-  word-break: break-all;
-}
 .errBox {
-  margin-top: 12px;
-  padding: 10px 12px;
   border-radius: 12px;
-  background: #fff4f2;
-  color: #d92d20;
+  border: 1px solid rgba(220, 38, 38, 0.22);
+  background: rgba(220, 38, 38, 0.08);
+  color: var(--ah-danger);
+  font-size: 12px;
+  padding: 10px 12px;
+  line-height: 1.5;
+  white-space: pre-wrap;
+}
+.hint {
+  color: var(--ah-text-tertiary);
   font-size: 12px;
   line-height: 1.5;
 }
+.deployHeader {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 12px;
+}
 .logDetails {
-  margin-top: 12px;
+  border-top: 1px dashed var(--ah-border);
+  padding-top: 10px;
 }
 .logDetails summary {
   cursor: pointer;
-  font-size: 12px;
-  font-weight: 800;
-  color: rgba(31, 35, 41, 0.72);
+  color: var(--ah-text-secondary);
+  font-weight: 700;
 }
 .logBlock {
   margin: 10px 0 0;
   padding: 12px;
   border-radius: 12px;
-  background: #101826;
-  color: #d8e4f3;
-  font-size: 12px;
-  line-height: 1.5;
+  background: var(--ah-code-bg);
+  color: var(--ah-text-primary);
+  overflow: auto;
+  max-height: 240px;
   white-space: pre-wrap;
   word-break: break-word;
-  max-height: 240px;
-  overflow: auto;
+}
+.mono {
+  font-family:
+    ui-monospace,
+    SFMono-Regular,
+    SF Mono,
+    Consolas,
+    Liberation Mono,
+    Menlo,
+    monospace;
+  font-size: 12px;
+  color: var(--ah-text-secondary);
 }
 .sideEmpty {
   height: 100%;
@@ -699,11 +483,6 @@ watch(
   justify-content: center;
 }
 .empty {
-  color: rgba(31, 35, 41, 0.58);
-}
-@media (max-width: 720px) {
-  .formGrid {
-    grid-template-columns: 1fr;
-  }
+  color: var(--ah-text-tertiary);
 }
 </style>

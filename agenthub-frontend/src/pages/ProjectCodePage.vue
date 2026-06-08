@@ -10,6 +10,7 @@
     :open-dirs="openDirs"
     :active-content="activeContent"
     :is-active-dirty="isActiveDirty"
+    :saving="saving"
     @reload="reload"
     @select-project="selectProject"
     @open-file="openFile"
@@ -17,21 +18,43 @@
     @update:content="updateActiveContent"
     @reset="resetActiveContent"
     @copy="copyActiveContent"
+    @save-active="saveActiveFile"
+    @new-file="openNewFileDialog"
+    @new-dir="openNewDirDialog"
+    @delete-entry="confirmDeleteEntry"
   />
+
+  <el-dialog v-model="newEntryOpen" :title="newEntryType === 'file' ? '新建文件' : '新建目录'" width="560px" class="newFileDialog" destroy-on-close>
+    <el-form label-position="top" class="newFileForm">
+      <el-form-item :label="newEntryType === 'file' ? '文件名称' : '目录名称'">
+        <el-input v-model="newEntryName" :placeholder="newEntryType === 'file' ? '例如 index.vue' : '例如 components'" />
+      </el-form-item>
+    </el-form>
+    <template #footer>
+      <el-button @click="newEntryOpen = false" :disabled="saving">取消</el-button>
+      <el-button type="primary" :loading="saving" @click="createNewEntry">
+        {{ newEntryType === 'file' ? '创建并打开' : '创建目录' }}
+      </el-button>
+    </template>
+  </el-dialog>
 </template>
 
 <script setup lang="ts">
 import { computed, onMounted, ref, watch } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
 import {
+  apiCreateProjectCodeDir,
+  apiDeleteProjectCodeEntry,
   apiListProjectCode,
   apiReadProjectCodeFile,
+  apiWriteProjectCodeFile,
   type Group,
   type ProjectCodeEntry,
 } from '../api/project-code'
 import { apiListGroups } from '../api/groups'
 import ProjectCodeWorkspace from '../components/project-code/ProjectCodeWorkspace.vue'
 import { type FileTreeNode } from '../components/AgentFileTreeNode.vue'
+import { ElMessage, ElMessageBox } from 'element-plus'
 
 const route = useRoute()
 const router = useRouter()
@@ -45,6 +68,10 @@ const openDirs = ref<Record<string, boolean>>({})
 const serverContents = ref<Record<string, string>>({})
 const draftContents = ref<Record<string, string>>({})
 const projectMenuOpen = ref(false)
+const saving = ref(false)
+const newEntryOpen = ref(false)
+const newEntryType = ref<'file' | 'dir'>('file')
+const newEntryName = ref('')
 
 const projectGroups = computed(() => groups.value.filter((g) => g.type === 'project'))
 const activeGroup = computed(() => projectGroups.value.find((g) => g.id === activeGroupId.value) || null)
@@ -74,6 +101,25 @@ function saveDraftToStorage(groupId: string, path: string, content: string) {
 function removeDraftFromStorage(groupId: string, path: string) {
   if (typeof window === 'undefined') return
   window.localStorage.removeItem(draftStorageKey(groupId, path))
+}
+
+function parentDirFromPath(path: string) {
+  const normalized = path.replace(/\\/g, '/').replace(/\/+$/, '')
+  const slashIndex = normalized.lastIndexOf('/')
+  return slashIndex >= 0 ? normalized.slice(0, slashIndex) : ''
+}
+
+function currentBrowserDir() {
+  if (activePath.value) return parentDirFromPath(activePath.value)
+  const openDirsList = Object.entries(openDirs.value)
+    .filter(([, isOpen]) => isOpen)
+    .map(([path]) => path.replace(/\/+$/, ''))
+    .sort((a, b) => b.length - a.length)
+  return openDirsList[0] || ''
+}
+
+function normalizeRequestedPath(path: string) {
+  return path.replace(/\\/g, '/').replace(/^\/+/, '').replace(/\/+$/, '')
 }
 
 const activeContent = computed({
@@ -235,6 +281,146 @@ function resetActiveContent() {
 
 async function copyActiveContent() {
   await navigator.clipboard.writeText(activeContent.value || '')
+}
+
+function openNewFileDialog() {
+  newEntryType.value = 'file'
+  newEntryName.value = 'new-file.txt'
+  newEntryOpen.value = true
+}
+
+function openNewDirDialog() {
+  newEntryType.value = 'dir'
+  newEntryName.value = 'new-folder'
+  newEntryOpen.value = true
+}
+
+async function saveActiveFile() {
+  if (!activeGroupId.value || !activePath.value) return
+  saving.value = true
+  try {
+    const content = activeContent.value || ''
+    const requestedPath = normalizeRequestedPath(activePath.value)
+    const res = await apiWriteProjectCodeFile(activeGroupId.value, requestedPath, content)
+    const savedPath = res.data.path || requestedPath
+    const key = `${activeGroupId.value}::${savedPath}`
+    serverContents.value = { ...serverContents.value, [key]: res.data.content }
+    draftContents.value = { ...draftContents.value, [key]: res.data.content }
+    saveDraftToStorage(activeGroupId.value, savedPath, res.data.content)
+    activePath.value = savedPath
+    await reload()
+    ElMessage.success('文件已保存')
+  } catch (error) {
+    ElMessage.error(error instanceof Error ? error.message : String(error))
+  } finally {
+    saving.value = false
+  }
+}
+
+async function createNewEntry() {
+  if (!activeGroupId.value) return
+  const name = normalizeRequestedPath(newEntryName.value.trim())
+  if (!name) {
+    ElMessage.error(newEntryType.value === 'file' ? '请输入文件名称' : '请输入目录名称')
+    return
+  }
+  if (name.includes('/')) {
+    ElMessage.error('这里只需要填写名称，不要包含目录')
+    return
+  }
+  const baseDir = currentBrowserDir()
+  const path = normalizeRequestedPath(`${baseDir ? `${baseDir}/` : ''}${name}`)
+  if (entries.value.some((item) => normalizeRequestedPath(item.path) === path)) {
+    ElMessage.error(newEntryType.value === 'file' ? '文件已存在，请直接打开后编辑' : '目录已存在')
+    return
+  }
+  saving.value = true
+  try {
+    if (newEntryType.value === 'file') {
+      const res = await apiWriteProjectCodeFile(activeGroupId.value, path, '')
+      const savedPath = res.data.path || path
+      const key = `${activeGroupId.value}::${savedPath}`
+      serverContents.value = { ...serverContents.value, [key]: res.data.content }
+      draftContents.value = { ...draftContents.value, [key]: res.data.content }
+      saveDraftToStorage(activeGroupId.value, savedPath, res.data.content)
+      activePath.value = savedPath
+      if (baseDir) {
+        openDirs.value = { ...openDirs.value, [`${baseDir}/`]: true }
+      }
+    } else {
+      await apiCreateProjectCodeDir(activeGroupId.value, path)
+      if (baseDir) {
+        openDirs.value = { ...openDirs.value, [`${baseDir}/`]: true }
+      }
+    }
+    await reload()
+    newEntryOpen.value = false
+    ElMessage.success(newEntryType.value === 'file' ? '文件已创建' : '目录已创建')
+  } catch (error) {
+    ElMessage.error(error instanceof Error ? error.message : String(error))
+  } finally {
+    saving.value = false
+  }
+}
+
+function clearDeletedEntryState(path: string, isDir: boolean) {
+  const normalizedPath = normalizeRequestedPath(path)
+  const pathPrefix = isDir ? `${normalizedPath.replace(/\/+$/, '')}/` : normalizedPath
+  const cachePrefix = `${activeGroupId.value}::`
+  const matchesDeletedPath = (entryPath: string) => (isDir ? entryPath.startsWith(pathPrefix) : entryPath === pathPrefix)
+
+  draftContents.value = Object.fromEntries(
+    Object.entries(draftContents.value).filter(([key]) => {
+      if (!key.startsWith(cachePrefix)) return true
+      return !matchesDeletedPath(key.slice(cachePrefix.length))
+    }),
+  )
+  serverContents.value = Object.fromEntries(
+    Object.entries(serverContents.value).filter(([key]) => {
+      if (!key.startsWith(cachePrefix)) return true
+      return !matchesDeletedPath(key.slice(cachePrefix.length))
+    }),
+  )
+  openDirs.value = Object.fromEntries(
+    Object.entries(openDirs.value).filter(([dirPath]) => {
+      const normalizedDirPath = `${dirPath.replace(/\/+$/, '')}/`
+      return !matchesDeletedPath(normalizedDirPath)
+    }),
+  )
+  if (activePath.value && matchesDeletedPath(activePath.value)) {
+    activePath.value = ''
+  }
+}
+
+async function confirmDeleteEntry(target: { path: string; is_dir: boolean; label: string }) {
+  if (!activeGroupId.value) return
+  const normalizedPath = normalizeRequestedPath(target.path)
+  const title = target.is_dir ? '删除目录' : '删除文件'
+  const message = target.is_dir
+    ? `确定要删除目录「${target.label}」吗？\n该目录及其全部内容都会被永久删除。`
+    : `确定要删除文件「${target.label}」吗？\n该文件将被永久删除。`
+
+  try {
+    await ElMessageBox.confirm(message, title, {
+      type: 'warning',
+      confirmButtonText: '删除',
+      cancelButtonText: '取消',
+    })
+  } catch {
+    return
+  }
+
+  saving.value = true
+  try {
+    await apiDeleteProjectCodeEntry(activeGroupId.value, normalizedPath)
+    clearDeletedEntryState(normalizedPath, target.is_dir)
+    await reload()
+    ElMessage.success(target.is_dir ? '目录已删除' : '文件已删除')
+  } catch (error) {
+    ElMessage.error(error instanceof Error ? error.message : String(error))
+  } finally {
+    saving.value = false
+  }
 }
 
 onMounted(async () => {

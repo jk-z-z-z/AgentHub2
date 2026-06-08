@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+import shutil
 from pathlib import Path
 
 from fastapi import HTTPException, status
@@ -100,3 +101,38 @@ def write_project_code_file(group_id: int, rel_path: str, content: str) -> dict[
         "path": normalize_project_rel_path(rel_path),
         "content": str(content),
     }
+
+
+def create_project_code_directory(group_id: int, rel_path: str) -> dict[str, object]:
+    path = safe_project_code_path(group_id, rel_path)
+    if path.exists():
+        if path.is_dir():
+            raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail="Directory already exists")
+        raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail="A file already exists at this path")
+    path.mkdir(parents=True, exist_ok=False)
+    return {
+        "path": f"{normalize_project_rel_path(rel_path).rstrip('/')}/",
+        "is_dir": True,
+        "size": 0,
+    }
+
+
+def delete_project_code_entry(group_id: int, rel_path: str) -> dict[str, object]:
+    path = safe_project_code_path(group_id, rel_path)
+    if not path.exists():
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Path not found")
+    if path.is_dir():
+        shutil.rmtree(path)
+        return {
+            "path": f"{normalize_project_rel_path(rel_path).rstrip('/')}/",
+            "is_dir": True,
+            "size": 0,
+        }
+    if path.is_file():
+        path.unlink()
+        return {
+            "path": normalize_project_rel_path(rel_path),
+            "is_dir": False,
+            "size": 0,
+        }
+    raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail="Unsupported path type")

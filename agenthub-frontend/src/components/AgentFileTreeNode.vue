@@ -17,6 +17,16 @@
       </div>
       <div class="nName">{{ node.label }}</div>
       <div class="nMeta">{{ node.is_dir ? '' : formatSize(node.size) }}</div>
+      <div class="nActions" @click.stop>
+        <el-button
+          class="nodeActionBtn"
+          text
+          :icon="Delete"
+          :title="node.is_dir ? '删除目录' : '删除文件'"
+          :aria-label="node.is_dir ? '删除目录' : '删除文件'"
+          @click.stop="$emit('delete', { path: node.path, is_dir: node.is_dir, label: node.label })"
+        />
+      </div>
     </div>
 
     <div v-if="node.is_dir && isOpen" class="children">
@@ -28,6 +38,7 @@
         :open-dirs="openDirs"
         @open="$emit('open', $event)"
         @toggle="$emit('toggle', $event)"
+        @delete="$emit('delete', $event)"
       />
     </div>
   </div>
@@ -35,7 +46,7 @@
 
 <script setup lang="ts">
 import { computed } from 'vue'
-import { ArrowDown, ArrowRight, Document, FolderOpened } from '@element-plus/icons-vue'
+import { ArrowDown, ArrowRight, Delete, Document, FolderOpened } from '@element-plus/icons-vue'
 
 export type FileTreeNode = {
   path: string
@@ -54,6 +65,7 @@ const props = defineProps<{
 const emit = defineEmits<{
   (e: 'open', path: string): void
   (e: 'toggle', path: string): void
+  (e: 'delete', payload: { path: string; is_dir: boolean; label: string }): void
 }>()
 
 function formatSize(n: number) {
@@ -77,7 +89,7 @@ function onClick() {
 <style scoped>
 .nodeRow {
   display: grid;
-  grid-template-columns: 18px 18px 1fr auto;
+  grid-template-columns: 18px 18px 1fr auto auto;
   gap: 8px;
   align-items: center;
   padding: 8px 10px;
@@ -125,6 +137,26 @@ function onClick() {
 .nMeta {
   font-size: 12px;
   color: var(--ah-text-tertiary);
+}
+.nActions {
+  display: flex;
+  align-items: center;
+  opacity: 0;
+  transition: opacity 0.18s ease;
+}
+.nodeRow:hover .nActions,
+.nodeRow.active .nActions {
+  opacity: 1;
+}
+.nodeActionBtn {
+  width: 26px;
+  height: 26px;
+  min-width: 26px;
+  padding: 0;
+  color: var(--ah-text-tertiary);
+}
+.nodeActionBtn:hover {
+  color: var(--el-color-danger);
 }
 .children {
   margin-left: 12px;

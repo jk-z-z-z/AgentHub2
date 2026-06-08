@@ -13,6 +13,9 @@
         <el-select v-model="fontSize" class="fontSelect" size="small" aria-label="选择字体大小">
           <el-option v-for="size in fontSizes" :key="size" :label="`${size}px`" :value="size" />
         </el-select>
+        <el-button class="actionBtn" size="small" type="primary" :disabled="!dirty" :loading="saving" @click="$emit('save')">
+          保存
+        </el-button>
         <el-button class="actionBtn" size="small" :disabled="!dirty" @click="$emit('reset')">还原</el-button>
         <el-button class="actionBtn" size="small" @click="$emit('copy')">复制</el-button>
       </div>
@@ -37,10 +40,12 @@ const props = defineProps<{
   path: string
   content: string
   dirty: boolean
+  saving: boolean
 }>()
 
 const emit = defineEmits<{
   (e: 'update:content', value: string): void
+  (e: 'save'): void
   (e: 'reset'): void
   (e: 'copy'): void
 }>()
