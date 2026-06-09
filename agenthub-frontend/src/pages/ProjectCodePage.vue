@@ -8,6 +8,7 @@
     :tree-roots="treeRoots"
     :active-path="activePath"
     :open-dirs="openDirs"
+    :show-hidden-files="showHiddenFiles"
     :active-content="activeContent"
     :is-active-dirty="isActiveDirty"
     :saving="saving"
@@ -15,6 +16,7 @@
     @select-project="selectProject"
     @open-file="openFile"
     @toggle-dir="toggleDir"
+    @update:show-hidden-files="showHiddenFiles = $event"
     @update:content="updateActiveContent"
     @reset="resetActiveContent"
     @copy="copyActiveContent"
@@ -69,6 +71,7 @@ const serverContents = ref<Record<string, string>>({})
 const draftContents = ref<Record<string, string>>({})
 const projectMenuOpen = ref(false)
 const saving = ref(false)
+const showHiddenFiles = ref(false)
 const newEntryOpen = ref(false)
 const newEntryType = ref<'file' | 'dir'>('file')
 const newEntryName = ref('')
@@ -152,7 +155,7 @@ function splitPath(path: string) {
   return path.replace(/\\/g, '/').replace(/^\/+/, '').split('/').filter(Boolean)
 }
 
-function buildTree(rows: ProjectCodeEntry[]): FileTreeNode[] {
+function buildTree(rows: ProjectCodeEntry[], showHiddenFiles: boolean): FileTreeNode[] {
   const nodes = new Map<string, FileTreeNode>()
 
   const ensure = (path: string, isDir: boolean, size: number): FileTreeNode => {
@@ -179,7 +182,9 @@ function buildTree(rows: ProjectCodeEntry[]): FileTreeNode[] {
     const raw = row.path
     if (!raw) continue
     const isDir = row.is_dir || raw.endsWith('/')
-    const parts = splitPath(raw)
+    const partsAll = splitPath(raw)
+    if (!showHiddenFiles && partsAll.some((segment) => segment.startsWith('.'))) continue
+    const parts = partsAll
     let parent: FileTreeNode | null = null
     for (let index = 0; index < parts.length; index += 1) {
       const isLast = index === parts.length - 1
@@ -205,7 +210,7 @@ function buildTree(rows: ProjectCodeEntry[]): FileTreeNode[] {
   return roots
 }
 
-const treeRoots = computed(() => buildTree(filteredEntries.value))
+const treeRoots = computed(() => buildTree(filteredEntries.value, showHiddenFiles.value))
 
 async function loadGroups() {
   const res = await apiListGroups()

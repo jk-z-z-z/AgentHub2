@@ -4,6 +4,14 @@
       <WorkspacePanel :title="activeGroup?.name || '请选择项目'">
         <template #actions>
           <el-button class="heroRefresh" text :icon="RefreshRight" @click="$emit('reload')" :disabled="!activeGroupId" :loading="loading" />
+          <div class="hiddenToggle">
+            <span class="hiddenToggleLabel">隐藏文件</span>
+            <el-switch
+              :model-value="showHiddenFiles"
+              inline-prompt
+              @change="$emit('update:show-hidden-files', Boolean($event))"
+            />
+          </div>
           <el-dropdown trigger="click" :disabled="!activeGroupId">
             <el-button
               class="actionBtn iconActionBtn addSplitBtn"
@@ -99,6 +107,7 @@ defineProps<{
   treeRoots: FileTreeNode[]
   activePath: string
   openDirs: Record<string, boolean>
+  showHiddenFiles: boolean
   activeContent: string
   isActiveDirty: boolean
   saving: boolean
@@ -116,6 +125,7 @@ defineEmits<{
   (e: 'new-file'): void
   (e: 'new-dir'): void
   (e: 'delete-entry', payload: { path: string; is_dir: boolean; label: string }): void
+  (e: 'update:show-hidden-files', value: boolean): void
 }>()
 </script>
 
@@ -137,6 +147,17 @@ defineEmits<{
 .shell { flex:1; min-height:0; display:grid; grid-template-columns:340px minmax(0,1fr); gap:12px; }
 .actionBtn {
   min-width: 84px;
+}
+.hiddenToggle {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  margin-right: 4px;
+  color: var(--ah-text-secondary);
+}
+.hiddenToggleLabel {
+  font-size: 12px;
+  white-space: nowrap;
 }
 .iconActionBtn {
   min-width: 32px;

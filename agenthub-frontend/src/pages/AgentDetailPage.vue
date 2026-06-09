@@ -16,7 +16,17 @@
 
       <div class="panelInner">
         <aside class="files">
-          <div class="filesTitle">文件</div>
+          <div class="filesHeader">
+            <div class="filesTitle">文件</div>
+            <div class="hiddenToggle">
+              <span class="hiddenToggleLabel">隐藏文件</span>
+              <el-switch
+                :model-value="showHiddenFiles"
+                inline-prompt
+                @change="showHiddenFiles = Boolean($event)"
+              />
+            </div>
+          </div>
           <div v-if="loading" class="hint">加载中…</div>
           <el-input
             v-model="filter"
@@ -200,6 +210,7 @@ const skillConfig = ref<{ enable_agent_local_skills: boolean; pool_skill_codes: 
   pool_skill_codes: [],
 })
 const skillSaving = ref(false)
+const showHiddenFiles = ref(false)
 
 const newFileDir = ref<'skills/' | 'knowledge/' | 'mcps/'>('skills/')
 const newFilePath = ref('')
@@ -222,7 +233,7 @@ function splitPath(p: string) {
   return clean.split('/').filter(Boolean)
 }
 
-function buildTree(entries: FsEntry[]): FileTreeNode[] {
+function buildTree(entries: FsEntry[], showHiddenFiles: boolean): FileTreeNode[] {
   const nodes = new Map<string, FileTreeNode>()
   const ensure = (path: string, is_dir: boolean, size: number): FileTreeNode => {
     if (nodes.has(path)) return nodes.get(path)!
@@ -245,6 +256,8 @@ function buildTree(entries: FsEntry[]): FileTreeNode[] {
   for (const e of entries) {
     const raw = e.path
     if (!raw) continue
+    const partsAll = splitPath(raw)
+    if (!showHiddenFiles && partsAll.some((segment) => segment.startsWith('.'))) continue
     const isDir = e.is_dir || raw.endsWith('/')
     if (
       raw === 'SOUL.md' ||
@@ -258,7 +271,7 @@ function buildTree(entries: FsEntry[]): FileTreeNode[] {
       addChild(core, ensure(`core/${raw}`, false, e.size || 0))
       continue
     }
-    const parts = splitPath(raw)
+    const parts = partsAll
     const top = parts[0]
     if (top !== 'skills' && top !== 'knowledge' && top !== 'mcps') continue
     let parent = top === 'skills' ? skills : top === 'knowledge' ? knowledge : mcps
@@ -282,7 +295,7 @@ function buildTree(entries: FsEntry[]): FileTreeNode[] {
   return [core, skills, knowledge, mcps]
 }
 
-const treeRoots = computed(() => buildTree(filteredFiles.value))
+const treeRoots = computed(() => buildTree(filteredFiles.value, showHiddenFiles.value))
 
 async function loadAgentMeta() {
   const res = await apiListAgents()
@@ -523,6 +536,23 @@ onMounted(async () => {
 .filesTitle {
   font-weight: 900;
   margin-bottom: 8px;
+}
+.filesHeader {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  margin-bottom: 8px;
+}
+.hiddenToggle {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  color: var(--ah-text-secondary);
+}
+.hiddenToggleLabel {
+  font-size: 12px;
+  white-space: nowrap;
 }
 .tree {
   display: grid;

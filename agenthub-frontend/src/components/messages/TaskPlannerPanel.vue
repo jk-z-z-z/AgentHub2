@@ -9,70 +9,89 @@
 
     <el-scrollbar class="sideBody">
       <div v-if="supportsProjectWorkspace" class="taskShell">
-        <section class="taskSidebar">
-          <div class="panelCard">
-            <div class="taskToolbar">
-              <el-button size="small" type="primary" @click="$emit('create-run')">新建 Run</el-button>
-              <el-button size="small" @click="$emit('refresh-runs')" :loading="runsLoading">刷新</el-button>
-            </div>
-            <div class="taskHint">只保留常用操作：创建 Run、查看节点状态、认领、完成、复核。</div>
+        <div class="panelCard taskRailCard">
+          <div class="taskToolbar">
+            <el-button size="small" type="primary" @click="$emit('create-run')">新建 Run</el-button>
+            <el-button size="small" @click="$emit('refresh-runs')" :loading="runsLoading">刷新 Run</el-button>
           </div>
+        </div>
 
+        <div class="taskRailBlock">
+          <div class="taskRailHeader">
+            <div class="taskSectionTitle">Run 列表</div>
+            <div class="taskRailMeta">{{ runs.length }} 个</div>
+          </div>
           <div class="taskRunList">
             <button
               v-for="run in runs"
               :key="run.id"
               class="taskRunItem"
               :class="{ active: String(run.id) === String(activeRunId) }"
-              @click="$emit('select-run', String(run.id))"
-            >
-              <div class="taskRunTop">
-                <div class="taskRunTitle">{{ run.title }}</div>
-                <div class="taskRunStatus">{{ run.status }}</div>
-              </div>
+              @click="$emit('open-run', String(run.id))"
+              >
+                <div class="taskRunTop">
+                  <div class="taskRunTitle">{{ run.title }}</div>
+                  <div class="taskRunStatus">{{ run.status }}</div>
+                </div>
               <div class="taskRunGoal">{{ run.goal_text }}</div>
               <div class="taskRunMeta">{{ new Date(run.created_at).toLocaleDateString() }} · Run #{{ run.id }}</div>
             </button>
-            <div v-if="!runsLoading && runs.length === 0" class="taskEmpty">还没有 Run，先点“新建 Run”</div>
+            <div v-if="!runsLoading && runs.length === 0" class="taskEmpty">还没有 Run</div>
           </div>
-        </section>
+        </div>
+      </div>
 
-        <section class="taskMain">
-          <template v-if="activeRun">
-            <div class="panelCard taskHeaderCard">
-              <div class="taskHeader">
-                <div>
-                  <div class="taskTitle">{{ activeRun.title }}</div>
-                  <div class="taskSubtitle">
-                    {{ activeRun.status }} · {{ activeRun.created_at ? new Date(activeRun.created_at).toLocaleString() : '-' }}
-                  </div>
-                </div>
-                <div class="taskStats">
-                  <div class="taskStat"><span>总节点</span><strong>{{ nodeStats.total }}</strong></div>
-                  <div class="taskStat"><span>进行中</span><strong>{{ nodeStats.running }}</strong></div>
-                  <div class="taskStat"><span>已完成</span><strong>{{ nodeStats.completed }}</strong></div>
-                  <div class="taskStat"><span>已阻塞</span><strong>{{ nodeStats.blocked }}</strong></div>
-                </div>
+      <div v-else class="sideEmpty">
+        <div class="empty">仅项目群聊支持任务规划</div>
+      </div>
+
+      <div v-if="manageErr" class="panelError">{{ manageErr }}</div>
+    </el-scrollbar>
+
+    <el-dialog
+      class="taskDetailDialog"
+      :model-value="detailOpen"
+      :title="activeRun ? `Run 详情 · ${activeRun.title}` : 'Run 详情'"
+      width="min(1320px, 96vw)"
+      top="4vh"
+      align-center
+      append-to-body
+      :destroy-on-close="false"
+      @close="$emit('close-detail')"
+    >
+      <el-scrollbar class="taskDialogScroll">
+        <div v-if="activeRun" class="taskDialogBody">
+          <div class="panelCard taskOverviewCard">
+            <div class="taskOverviewTop">
+              <div>
+                <div class="taskTitle">{{ activeRun.title }}</div>
+                <div class="taskSubtitle">{{ activeRun.status }} · {{ activeRun.created_at ? new Date(activeRun.created_at).toLocaleString() : '-' }}</div>
+              </div>
+              <div class="taskOverviewActions">
+                <el-button size="small" :loading="nodesLoading" @click="$emit('refresh-run-details', String(activeRunId))">
+                  刷新节点
+                </el-button>
+                <el-button size="small" type="primary" plain @click="$emit('refresh-runs')">刷新 Run</el-button>
               </div>
             </div>
 
-            <div class="panelCard">
-              <div class="taskSectionTitle">任务目标</div>
-              <div class="taskGoalText">{{ activeRun.goal_text }}</div>
+            <div class="taskStats">
+              <div class="taskStat"><span>总节点</span><strong>{{ nodeStats.total }}</strong></div>
+              <div class="taskStat"><span>进行中</span><strong>{{ nodeStats.running }}</strong></div>
+              <div class="taskStat"><span>已完成</span><strong>{{ nodeStats.completed }}</strong></div>
+              <div class="taskStat"><span>已阻塞</span><strong>{{ nodeStats.blocked }}</strong></div>
             </div>
+          </div>
 
-            <div class="panelCard taskSectionCard taskGraphCard">
+          <div class="panelCard taskGoalCard">
+            <div class="taskSectionTitle">任务目标</div>
+            <div class="taskGoalText">{{ activeRun.goal_text }}</div>
+          </div>
+
+          <div class="taskContentGrid">
+            <div class="panelCard taskGraphCard">
               <div class="taskSectionHeader">
-                <div>
-                  <div class="taskSectionTitle">流程图</div>
-                  <div class="taskSectionCaption">{{ graphCaption }}</div>
-                </div>
-                <div class="taskLegend">
-                  <span class="taskLegendItem"><i class="legendDot statusPending"></i>待处理</span>
-                  <span class="taskLegendItem"><i class="legendDot statusRun"></i>进行中</span>
-                  <span class="taskLegendItem"><i class="legendDot statusDone"></i>已完成</span>
-                  <span class="taskLegendItem"><i class="legendDot statusBlocked"></i>已阻塞</span>
-                </div>
+                <div class="taskSectionTitle">流程图</div>
               </div>
 
               <div v-if="nodesLoading" class="taskLoading">加载流程图中…</div>
@@ -138,10 +157,12 @@
               </div>
             </div>
 
-            <div class="panelCard taskSectionCard">
+            <div class="panelCard taskNodePanel">
               <div class="taskSectionHeader">
                 <div class="taskSectionTitle">节点列表</div>
-                <el-button size="small" :loading="nodesLoading" @click="$emit('refresh-run-details', String(activeRunId))">刷新节点</el-button>
+                <el-button size="small" :loading="nodesLoading" @click="$emit('refresh-run-details', String(activeRunId))">
+                  刷新节点
+                </el-button>
               </div>
 
               <div v-if="nodesLoading" class="taskLoading">加载节点中…</div>
@@ -194,20 +215,12 @@
                 <div v-if="nodes.length === 0" class="taskEmpty">当前 Run 还没有节点</div>
               </div>
             </div>
-          </template>
-
-          <div v-else class="sideEmpty">
-            <div class="empty">暂无可查看的任务 Run，请先新建一个。</div>
           </div>
-        </section>
-      </div>
+        </div>
 
-      <div v-else class="sideEmpty">
-        <div class="empty">仅项目群聊支持任务规划</div>
-      </div>
-
-      <div v-if="manageErr" class="panelError">{{ manageErr }}</div>
-    </el-scrollbar>
+        <div v-else class="taskEmptyState panelCard">暂无可查看的任务 Run</div>
+      </el-scrollbar>
+    </el-dialog>
   </div>
 </template>
 
@@ -253,6 +266,7 @@ const props = defineProps<{
   runs: GroupTaskRun[]
   activeRunId: string
   activeRun: GroupTaskRun | null
+  detailOpen: boolean
   graph: GroupTaskGraph | null
   nodes: GroupTaskNode[]
   nodeStats: { total: number; running: number; completed: number; blocked: number }
@@ -271,7 +285,9 @@ defineEmits<{
   (e: 'close'): void
   (e: 'refresh-runs'): void
   (e: 'select-run', runId: string): void
+  (e: 'open-run', runId: string): void
   (e: 'create-run'): void
+  (e: 'close-detail'): void
   (e: 'refresh-run-details', runId: string): void
   (e: 'claim-node', node: GroupTaskNode): void
   (e: 'complete-node', node: GroupTaskNode): void
@@ -321,7 +337,7 @@ const graphLevels = computed(() => {
     visiting.add(nodeKey)
     const node = graphNodeMap.value.get(nodeKey)
     const depLevels = (node?.deps || [])
-      .map((dep) => graphNodeMap.value.has(String(dep)) ? resolveLevel(String(dep)) : 0)
+      .map((dep) => (graphNodeMap.value.has(String(dep)) ? resolveLevel(String(dep)) : 0))
       .filter((level) => Number.isFinite(level))
     const nextLevel = depLevels.length > 0 ? Math.max(...depLevels) + 1 : 0
     memo.set(nodeKey, nextLevel)
@@ -349,11 +365,6 @@ const graphLevels = computed(() => {
     }))
 })
 
-const graphCaption = computed(() => {
-  if (graphNodes.value.length === 0) return '根据节点依赖自动排布'
-  return `${graphLevels.value.length} 个阶段 · ${graphNodes.value.length} 个节点 · ${graphEdges.value.length} 条依赖`
-})
-
 const graphLayout = computed(() => {
   const columns: GraphLayoutColumn[] = graphLevels.value.map((column, index) => ({
     level: column.level,
@@ -373,10 +384,7 @@ const graphLayout = computed(() => {
     Math.max(0, maxRows - 1) * GRAPH_ROW_GAP
 
   const nodes: GraphLayoutNode[] = []
-  const rectMap = new Map<
-    string,
-    { left: number; right: number; centerY: number }
-  >()
+  const rectMap = new Map<string, { left: number; right: number; centerY: number }>()
 
   for (const column of columns) {
     const columnHeight =
@@ -401,10 +409,7 @@ const graphLayout = computed(() => {
       const to = rectMap.get(String(edge.to))
       if (!from || !to) return null
       const midX = from.right + (to.left - from.right) / 2
-      const path = [
-        `M ${from.right} ${from.centerY}`,
-        `C ${midX} ${from.centerY}, ${midX} ${to.centerY}, ${to.left} ${to.centerY}`,
-      ].join(' ')
+      const path = [`M ${from.right} ${from.centerY}`, `C ${midX} ${from.centerY}, ${midX} ${to.centerY}, ${to.left} ${to.centerY}`].join(' ')
       return {
         id: `edge-${index}-${edge.from}-${edge.to}`,
         path,
@@ -483,11 +488,6 @@ function isNodeMine(node: GroupTaskNode) {
   font-size: 16px;
   font-weight: 900;
 }
-.sideSubtitle {
-  margin-top: 2px;
-  font-size: 12px;
-  color: rgba(31, 35, 41, 0.58);
-}
 .sideCloseBtn {
   border: 0;
   width: 32px;
@@ -511,14 +511,13 @@ function isNodeMine(node: GroupTaskNode) {
 }
 .taskShell {
   display: grid;
-  grid-template-columns: 280px minmax(0, 1fr);
   gap: 12px;
   min-height: 0;
 }
-.taskSidebar,
-.taskMain {
+.taskRail {
+  display: grid;
+  gap: 12px;
   min-width: 0;
-  min-height: 0;
 }
 .panelCard {
   border: 1px solid rgba(31, 35, 41, 0.06);
@@ -526,21 +525,30 @@ function isNodeMine(node: GroupTaskNode) {
   background: rgba(255, 255, 255, 0.78);
   padding: 12px;
 }
+.taskRailCard {
+  background: rgba(255, 255, 255, 0.82);
+}
+.taskRailBlock {
+  display: grid;
+  gap: 8px;
+}
+.taskRailHeader {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 10px;
+  padding: 2px 2px 0;
+}
+.taskRailMeta {
+  font-size: 12px;
+  color: rgba(31, 35, 41, 0.54);
+}
 .taskToolbar {
   display: flex;
   gap: 8px;
-}
-.taskHint {
-  margin-top: 10px;
-  padding: 10px 12px;
-  border-radius: 12px;
-  background: var(--ah-primary-soft);
-  color: rgba(31, 35, 41, 0.68);
-  font-size: 12px;
-  line-height: 1.5;
+  flex-wrap: wrap;
 }
 .taskRunList {
-  margin-top: 12px;
   display: grid;
   gap: 8px;
 }
@@ -553,11 +561,11 @@ function isNodeMine(node: GroupTaskNode) {
   text-align: left;
 }
 .taskRunItem:hover {
-  background: var(--ah-primary-ghost);
+  background: rgba(31, 35, 41, 0.03);
 }
 .taskRunItem.active {
-  background: var(--ah-primary-soft);
-  border-color: var(--ah-primary-soft-strong);
+  background: rgba(31, 35, 41, 0.05);
+  border-color: rgba(31, 35, 41, 0.14);
 }
 .taskRunTop {
   display: flex;
@@ -584,13 +592,28 @@ function isNodeMine(node: GroupTaskNode) {
   font-size: 12px;
   opacity: 0.55;
 }
-.taskHeaderCard {
-  margin-bottom: 12px;
+.taskDialogScroll {
+  max-height: min(78vh, 780px);
 }
-.taskHeader {
-  display: flex;
-  flex-direction: column;
+.taskDialogBody {
+  display: grid;
   gap: 12px;
+  min-width: 0;
+}
+.taskOverviewCard {
+  background: rgba(255, 255, 255, 0.9);
+}
+.taskOverviewTop {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 12px;
+}
+.taskOverviewActions {
+  display: flex;
+  gap: 8px;
+  flex-wrap: wrap;
+  justify-content: flex-end;
 }
 .taskTitle {
   font-size: 18px;
@@ -605,10 +628,11 @@ function isNodeMine(node: GroupTaskNode) {
   display: grid;
   grid-template-columns: repeat(4, minmax(0, 1fr));
   gap: 8px;
+  margin-top: 12px;
 }
 .taskStat {
   border-radius: 12px;
-  background: rgba(31, 35, 41, 0.04);
+  background: rgba(31, 35, 41, 0.03);
   padding: 10px 8px;
   display: grid;
   gap: 4px;
@@ -616,21 +640,33 @@ function isNodeMine(node: GroupTaskNode) {
 }
 .taskStat span {
   font-size: 12px;
-  opacity: 0.6;
+  opacity: 0.55;
 }
 .taskStat strong {
   font-size: 18px;
 }
+.taskGoalCard {
+  background: rgba(255, 255, 255, 0.8);
+}
 .taskSectionTitle {
   font-weight: 900;
-  margin-bottom: 10px;
 }
 .taskGoalText {
+  margin-top: 10px;
   line-height: 1.7;
   white-space: pre-wrap;
 }
-.taskSectionCard {
-  margin-top: 12px;
+.taskContentGrid {
+  display: grid;
+  grid-template-columns: minmax(0, 1.35fr) minmax(0, 1fr);
+  gap: 12px;
+  align-items: start;
+}
+.taskGraphCard {
+  background: rgba(255, 255, 255, 0.9);
+}
+.taskNodePanel {
+  background: rgba(255, 255, 255, 0.9);
 }
 .taskSectionHeader {
   display: flex;
@@ -639,59 +675,12 @@ function isNodeMine(node: GroupTaskNode) {
   gap: 10px;
   margin-bottom: 12px;
 }
-.taskSectionCaption {
-  font-size: 12px;
-  color: rgba(31, 35, 41, 0.56);
-  line-height: 1.5;
-}
 .taskLoading,
 .taskEmpty,
 .empty {
   padding: 16px 4px;
   font-size: 13px;
   color: rgba(31, 35, 41, 0.58);
-}
-.taskNodeList {
-  display: grid;
-  gap: 10px;
-}
-.taskGraphCard {
-  margin-top: 12px;
-  background:
-    radial-gradient(circle at top left, color-mix(in srgb, var(--ah-primary) 16%, transparent), transparent 34%),
-    linear-gradient(180deg, rgba(255, 255, 255, 0.96), rgba(250, 246, 239, 0.94));
-}
-.taskLegend {
-  display: flex;
-  flex-wrap: wrap;
-  justify-content: flex-end;
-  gap: 8px 12px;
-  font-size: 12px;
-  color: rgba(31, 35, 41, 0.62);
-}
-.taskLegendItem {
-  display: inline-flex;
-  align-items: center;
-  gap: 6px;
-}
-.legendDot {
-  width: 8px;
-  height: 8px;
-  border-radius: 999px;
-  display: inline-block;
-  background: rgba(31, 35, 41, 0.2);
-}
-.legendDot.statusPending {
-  background: rgba(31, 35, 41, 0.32);
-}
-.legendDot.statusRun {
-  background: rgba(82, 183, 255, 0.9);
-}
-.legendDot.statusDone {
-  background: rgba(49, 175, 111, 0.9);
-}
-.legendDot.statusBlocked {
-  background: rgba(217, 45, 32, 0.9);
 }
 .taskGraphViewport {
   overflow-x: auto;
@@ -703,11 +692,10 @@ function isNodeMine(node: GroupTaskNode) {
   min-width: 100%;
   border-radius: 18px;
   background:
-    linear-gradient(90deg, color-mix(in srgb, var(--ah-primary) 10%, transparent) 1px, transparent 1px) 0 0 / 24px 24px,
-    linear-gradient(color-mix(in srgb, var(--ah-primary) 10%, transparent) 1px, transparent 1px) 0 0 / 24px 24px,
-    linear-gradient(180deg, rgba(249, 244, 235, 0.95), rgba(255, 255, 255, 0.9));
-  border: 1px solid color-mix(in srgb, var(--ah-primary) 20%, transparent);
-  box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.75);
+    linear-gradient(90deg, rgba(31, 35, 41, 0.03) 1px, transparent 1px) 0 0 / 24px 24px,
+    linear-gradient(rgba(31, 35, 41, 0.03) 1px, transparent 1px) 0 0 / 24px 24px,
+    rgba(255, 255, 255, 0.9);
+  border: 1px solid rgba(31, 35, 41, 0.08);
 }
 .taskGraphEdgeLayer {
   position: absolute;
@@ -719,8 +707,8 @@ function isNodeMine(node: GroupTaskNode) {
 }
 .taskGraphEdge {
   fill: none;
-  stroke: url(#taskGraphEdgeGradient);
-  stroke-width: 2.5;
+  stroke: rgba(31, 35, 41, 0.22);
+  stroke-width: 2;
   stroke-linecap: round;
 }
 .taskGraphColumnLabel {
@@ -729,9 +717,7 @@ function isNodeMine(node: GroupTaskNode) {
   transform: translateX(-2px);
   font-size: 11px;
   font-weight: 800;
-  letter-spacing: 0.06em;
-  color: rgba(13, 42, 79, 0.55);
-  text-transform: uppercase;
+  color: rgba(31, 35, 41, 0.48);
 }
 .taskGraphNode {
   position: absolute;
@@ -742,21 +728,20 @@ function isNodeMine(node: GroupTaskNode) {
   border-radius: 18px;
   background: rgba(255, 255, 255, 0.94);
   box-shadow:
-    0 18px 38px rgba(13, 42, 79, 0.08),
-    0 2px 8px rgba(13, 42, 79, 0.06);
+    0 10px 24px rgba(31, 35, 41, 0.06);
   backdrop-filter: blur(4px);
 }
 .taskGraphNode.statusRun {
-  background: linear-gradient(180deg, rgba(239, 249, 255, 0.98), rgba(226, 245, 255, 0.96));
-  border-color: rgba(82, 183, 255, 0.28);
+  background: rgba(250, 250, 250, 0.96);
+  border-color: rgba(31, 35, 41, 0.12);
 }
 .taskGraphNode.statusDone {
-  background: linear-gradient(180deg, rgba(240, 252, 246, 0.98), rgba(228, 247, 237, 0.96));
-  border-color: rgba(49, 175, 111, 0.28);
+  background: rgba(250, 250, 250, 0.96);
+  border-color: rgba(31, 35, 41, 0.12);
 }
 .taskGraphNode.statusBlocked {
-  background: linear-gradient(180deg, rgba(255, 243, 241, 0.98), rgba(252, 234, 231, 0.96));
-  border-color: rgba(217, 45, 32, 0.3);
+  background: rgba(250, 250, 250, 0.96);
+  border-color: rgba(31, 35, 41, 0.12);
 }
 .taskGraphNodeTop {
   display: flex;
@@ -767,23 +752,22 @@ function isNodeMine(node: GroupTaskNode) {
 .taskGraphNodeKey {
   font-size: 11px;
   font-weight: 800;
-  color: rgba(13, 42, 79, 0.58);
-  letter-spacing: 0.04em;
+  color: rgba(31, 35, 41, 0.52);
 }
 .taskGraphNodeBadge {
   white-space: nowrap;
   font-size: 11px;
   padding: 3px 8px;
   border-radius: 999px;
-  background: rgba(13, 42, 79, 0.08);
-  color: rgba(13, 42, 79, 0.72);
+  background: rgba(31, 35, 41, 0.06);
+  color: rgba(31, 35, 41, 0.72);
 }
 .taskGraphNodeTitle {
   margin-top: 10px;
   font-size: 15px;
   font-weight: 900;
   line-height: 1.35;
-  color: #10233a;
+  color: rgba(31, 35, 41, 0.92);
   display: -webkit-box;
   -webkit-line-clamp: 2;
   -webkit-box-orient: vertical;
@@ -814,6 +798,10 @@ function isNodeMine(node: GroupTaskNode) {
   font-size: 11px;
   color: rgba(31, 35, 41, 0.6);
 }
+.taskNodeList {
+  display: grid;
+  gap: 10px;
+}
 .taskNodeCard {
   border: 1px solid rgba(31, 35, 41, 0.06);
   border-radius: 14px;
@@ -821,16 +809,16 @@ function isNodeMine(node: GroupTaskNode) {
   background: rgba(255, 255, 255, 0.8);
 }
 .taskNodeCard.statusRun {
-  background: rgba(82, 183, 255, 0.08);
-  border-color: rgba(82, 183, 255, 0.24);
+  background: rgba(31, 35, 41, 0.03);
+  border-color: rgba(31, 35, 41, 0.12);
 }
 .taskNodeCard.statusDone {
-  background: rgba(49, 175, 111, 0.08);
-  border-color: rgba(49, 175, 111, 0.24);
+  background: rgba(31, 35, 41, 0.03);
+  border-color: rgba(31, 35, 41, 0.12);
 }
 .taskNodeCard.statusBlocked {
-  background: rgba(217, 45, 32, 0.08);
-  border-color: rgba(217, 45, 32, 0.24);
+  background: rgba(31, 35, 41, 0.03);
+  border-color: rgba(31, 35, 41, 0.12);
 }
 .taskNodeTop {
   display: flex;
@@ -872,29 +860,43 @@ function isNodeMine(node: GroupTaskNode) {
   gap: 8px;
   margin-top: 12px;
 }
-.taskEmptyMain,
-.sideEmpty {
-  height: 100%;
-  display: flex;
-  align-items: center;
-  justify-content: center;
+.taskEmptyState {
+  text-align: left;
+  color: rgba(31, 35, 41, 0.58);
 }
 .panelError {
   margin-top: 12px;
   color: #d92d20;
   font-size: 12px;
 }
-@media (max-width: 1200px) {
+.sideEmpty {
+  height: 100%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+@media (max-width: 1280px) {
   .taskShell {
+    grid-template-columns: 1fr;
+  }
+  .taskRail {
+    position: static;
+  }
+  .taskContentGrid {
     grid-template-columns: 1fr;
   }
 }
 @media (max-width: 900px) {
-  .taskSectionHeader {
+  .taskSectionHeader,
+  .taskOverviewTop {
     flex-direction: column;
   }
-  .taskLegend {
+  .taskLegend,
+  .taskOverviewActions {
     justify-content: flex-start;
+  }
+  .taskStats {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
   }
 }
 </style>

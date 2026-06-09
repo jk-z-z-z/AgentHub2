@@ -83,16 +83,17 @@
         :roots="projectFilesEntries"
         :active-path="projectActiveFilePath"
         :open-dirs="projectOpenDirs"
+        :show-hidden-files="showHiddenFiles"
         @close="projectFilesOpen = false"
         @refresh="reloadProjectFiles"
         @open-file="openProjectFile"
         @toggle-dir="toggleProjectDir"
+        @update:show-hidden-files="showHiddenFiles = $event"
       />
 
       <MessageDeploymentPanel
         v-else-if="deployOpen"
         :active-group="activeGroup"
-        :messages="messages"
         :preview-job="activePreviewJob"
         :preview-pending="previewPending"
         :deployment-job="activeDeploymentJob"
@@ -141,14 +142,16 @@
         :runs-loading="taskRunsLoading"
         :nodes-loading="taskNodesLoading"
         :manage-err="manageErr"
-        @close="taskOpen = false"
+        :detail-open="taskDetailOpen"
+        @close="closeTaskPlanner"
         @refresh-runs="loadTaskRuns"
-        @select-run="selectTaskRun"
+        @open-run="openTaskRunDetail"
         @create-run="taskCreateOpen = true"
         @refresh-run-details="loadTaskRunDetails"
         @claim-node="claimNode"
         @complete-node="completeNode"
         @review-node="reviewNode"
+        @close-detail="closeTaskRunDetail"
       />
     </aside>
   </div>
@@ -400,6 +403,7 @@ const assistantCfgEnabled = computed({
 const taskRunsLoading = ref(false)
 const taskRuns = ref<GroupTaskRun[]>([])
 const activeRunId = ref('')
+const taskDetailOpen = ref(false)
 const activeTaskRun = computed(
   () => taskRuns.value.find((run) => String(run.id) === String(activeRunId.value)) || null,
 )
@@ -440,6 +444,7 @@ const projectFilesLoading = ref(false)
 const projectFilesEntries = ref<ProjectCodeEntry[]>([])
 const projectOpenDirs = ref<Record<string, boolean>>({})
 const projectActiveFilePath = ref('')
+const showHiddenFiles = ref(false)
 const previewJobs = ref<Record<string, PreviewJob | null>>({})
 const previewPending = ref(false)
 const deploymentJobs = ref<Record<string, DeploymentJob | null>>({})
@@ -598,7 +603,7 @@ async function selectGroup(id: string) {
   const seq = ++loadSeq
   activeGroupId.value = id
   manageOpen.value = false
-  taskOpen.value = false
+  closeTaskPlanner()
   projectFilesOpen.value = false
   deployOpen.value = false
   addMemberOpen.value = false
@@ -903,7 +908,7 @@ function handleWindowResize() {
 
 function openManage() {
   manageErr.value = ''
-  taskOpen.value = false
+  closeTaskPlanner()
   projectFilesOpen.value = false
   deployOpen.value = false
   codeDiffOpen.value = false
@@ -917,6 +922,15 @@ function openManage() {
   }
 }
 
+function closeTaskRunDetail() {
+  taskDetailOpen.value = false
+}
+
+function closeTaskPlanner() {
+  taskOpen.value = false
+  taskDetailOpen.value = false
+}
+
 function openTaskPlanner() {
   if (!supportsProjectWorkspace(activeGroup.value)) return
   manageOpen.value = false
@@ -924,12 +938,13 @@ function openTaskPlanner() {
   deployOpen.value = false
   codeDiffOpen.value = false
   taskOpen.value = true
+  taskDetailOpen.value = false
   void loadTaskRuns()
 }
 
 async function openDeployPanel() {
   if (!supportsProjectWorkspace(activeGroup.value)) return
-  taskOpen.value = false
+  closeTaskPlanner()
   manageOpen.value = false
   projectFilesOpen.value = false
   codeDiffOpen.value = false
@@ -947,7 +962,7 @@ function closeCodeDiffPanel() {
 
 async function openCodeDiffPanel(messageId: string) {
   if (!supportsProjectWorkspace(activeGroup.value)) return
-  taskOpen.value = false
+  closeTaskPlanner()
   manageOpen.value = false
   projectFilesOpen.value = false
   deployOpen.value = false
@@ -1048,9 +1063,17 @@ async function loadTaskRunDetails(runId: string) {
   }
 }
 
-async function selectTaskRun(runId: string) {
+async function openTaskRunDetail(runId: string) {
+  if (!runId) return
   activeRunId.value = String(runId)
+  taskNodes.value = []
+  taskGraph.value = null
+  taskDetailOpen.value = true
   await loadTaskRunDetails(activeRunId.value)
+}
+
+async function selectTaskRun(runId: string) {
+  await openTaskRunDetail(runId)
 }
 
 async function createTaskRunNow() {
@@ -1192,7 +1215,7 @@ async function runMemoryCompressNow() {
 
 async function openProjectCode() {
   if (!supportsProjectWorkspace(activeGroup.value)) return
-  taskOpen.value = false
+  closeTaskPlanner()
   manageOpen.value = false
   deployOpen.value = false
   codeDiffOpen.value = false

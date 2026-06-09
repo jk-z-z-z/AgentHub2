@@ -2,10 +2,17 @@
   <div class="sidePanel">
     <div class="sideHeader">
       <div>
-        <div class="sideTitle">文件树</div>
-        <div class="sideSubtitle">只查看项目目录结构</div>
+        <div class="sideTitle">文件</div>
       </div>
       <div class="sideHeaderActions">
+        <div class="hiddenToggle">
+          <span class="hiddenToggleLabel">隐藏文件</span>
+          <el-switch
+            :model-value="showHiddenFiles"
+            @change="$emit('update:show-hidden-files', Boolean($event))"
+            inline-prompt
+          />
+        </div>
         <el-button
           class="refreshBtn"
           size="small"
@@ -20,21 +27,19 @@
 
     <el-scrollbar class="sideBody">
       <div v-if="supportsProjectWorkspace" class="fileShell">
-        <el-card class="fileTreeWrap" shadow="never">
-          <div v-if="loading" class="taskEmpty">加载文件目录中…</div>
-          <div v-else-if="projectRoots.length === 0" class="taskEmpty">当前项目还没有可展示的文件</div>
-          <template v-else>
-            <AgentFileTreeNode
-              v-for="node in projectRoots"
-              :key="node.path"
-              :node="node"
-              :active-path="activePath"
-              :open-dirs="openDirs"
-              @open="$emit('open-file', $event)"
-              @toggle="$emit('toggle-dir', $event)"
-            />
-          </template>
-        </el-card>
+        <div v-if="loading" class="taskEmpty">加载文件目录中…</div>
+        <div v-else-if="projectRoots.length === 0" class="taskEmpty">当前项目还没有可展示的文件</div>
+        <div v-else class="treeWrap">
+          <AgentFileTreeNode
+            v-for="node in projectRoots"
+            :key="node.path"
+            :node="node"
+            :active-path="activePath"
+            :open-dirs="openDirs"
+            @open="$emit('open-file', $event)"
+            @toggle="$emit('toggle-dir', $event)"
+          />
+        </div>
       </div>
       <div v-else class="sideEmpty">
         <div class="empty">仅项目群聊支持文件目录</div>
@@ -55,6 +60,7 @@ const props = defineProps<{
   roots: ProjectCodeEntry[]
   activePath: string
   openDirs: Record<string, boolean>
+  showHiddenFiles: boolean
 }>()
 
 defineEmits<{
@@ -62,18 +68,21 @@ defineEmits<{
   (e: 'refresh'): void
   (e: 'open-file', path: string): void
   (e: 'toggle-dir', path: string): void
+  (e: 'update:show-hidden-files', value: boolean): void
 }>()
 
-const projectRoots = computed(() => buildProjectTree(props.roots))
+const projectRoots = computed(() => buildProjectTree(props.roots, props.showHiddenFiles))
 const supportsProjectWorkspace = computed(() => {
   const group = props.activeGroup
   if (!group) return false
   return String(group.type || '') === 'project' || Number(group.workspace_id || 0) > 0
 })
 
-function buildProjectTree(rows: ProjectCodeEntry[]): FileTreeNode[] {
+function buildProjectTree(rows: ProjectCodeEntry[], showHiddenFiles: boolean): FileTreeNode[] {
   const nodes = new Map<string, FileTreeNode>()
   const roots: FileTreeNode[] = []
+
+  const isHiddenSegment = (segment: string) => segment.startsWith('.')
 
   const appendChild = (parent: FileTreeNode | null, child: FileTreeNode) => {
     if (parent) {
@@ -88,6 +97,7 @@ function buildProjectTree(rows: ProjectCodeEntry[]): FileTreeNode[] {
     if (!raw) continue
     const segments = raw.replace(/\\/g, '/').replace(/^\/+/, '').split('/').filter(Boolean)
     if (segments.length === 0) continue
+    if (!showHiddenFiles && segments.some(isHiddenSegment)) continue
     const isDir = Boolean(row.is_dir) || raw.endsWith('/')
 
     let parent: FileTreeNode | null = null
@@ -165,6 +175,17 @@ function buildProjectTree(rows: ProjectCodeEntry[]): FileTreeNode[] {
   align-items: center;
   gap: 8px;
 }
+.hiddenToggle {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  padding-right: 4px;
+  color: var(--ah-text-secondary);
+}
+.hiddenToggleLabel {
+  font-size: 12px;
+  white-space: nowrap;
+}
 .sideCloseBtn {
   width: 32px;
   height: 32px;
@@ -182,16 +203,11 @@ function buildProjectTree(rows: ProjectCodeEntry[]): FileTreeNode[] {
   min-height: 0;
   height: 100%;
 }
-.fileTreeWrap {
-  border: 1px solid var(--ah-border-soft);
-  border-radius: 16px;
-  background: var(--ah-surface-soft);
+.treeWrap {
+  flex: 1;
   overflow: auto;
   min-height: 0;
-  flex: 1;
-}
-.fileTreeWrap :deep() {
-  margin-bottom: 4px;
+  padding-right: 4px;
 }
 .taskEmpty {
   padding: 16px 4px;

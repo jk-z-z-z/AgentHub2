@@ -7,7 +7,8 @@
       <div v-for="m in messages" :key="m.id" class="msgRow" :class="sideClass(m)">
         <div class="bubble">
           <div class="msgMeta">{{ senderName(m.sender_member_id) }}</div>
-          <MessageMarkdown class="msgText" :content="m.content" />
+          <div v-if="thinkingLabel(m)" class="msgThinking">{{ thinkingLabel(m) }}</div>
+          <MessageMarkdown v-else class="msgText" :content="m.content" />
           <div v-if="deliveryResult(m)" class="msgDelivery" :data-status="deliveryStatus(m)">
             <span class="msgDeliveryPill">查看交付结果</span>
             <span v-if="appliedFileCount(m) > 0" class="msgDeliveryPill">已写入 {{ appliedFileCount(m) }} 个文件</span>
@@ -82,6 +83,14 @@ const memberNameMap = computed(() => {
 
 function senderName(memberId: string) {
   return memberNameMap.value[String(memberId)] || String(memberId)
+}
+
+function thinkingLabel(message: Message) {
+  const sender = props.members.find((item) => String(item.id) === String(message.sender_member_id))
+  if (!sender || String(message.content || '').trim()) return ''
+  if (sender.kind === 'agent') return '我正在思考…'
+  if (sender.kind === 'system' && sender.display_name === '管家') return '管家正在思考…'
+  return ''
 }
 
 function messageMeta(message: Message) {
@@ -275,6 +284,12 @@ onMounted(() => {
   font-size: 14px;
   line-height: 1.6;
   overflow-wrap: anywhere;
+}
+.msgThinking {
+  font-size: 13px;
+  line-height: 1.6;
+  color: var(--ah-text-tertiary);
+  font-style: italic;
 }
 .msgActions {
   margin-top: 10px;
