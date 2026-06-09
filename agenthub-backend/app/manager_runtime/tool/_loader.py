@@ -66,7 +66,7 @@ def _build_manager_tool_groups(tools: list[ToolBase]) -> list[ToolGroup]:
     add_group(
         "node",
         "Node lifecycle tools.",
-        "Use these tools to claim, assign, request execution, requeue, and complete nodes. Execution is event-driven: node_execute writes an event, dispatcher runs the child agent, and manager review decides final state.",
+        "Use these tools to claim, assign, request execution, requeue, and complete nodes. Execution is event-driven: node_execute writes an event, dispatcher runs the child agent, and manager review decides final state. After node_execute succeeds, treat that node as queued/running in the background and continue planning or reply to the user; do not wait in the same turn for the child agent to finish.",
         ["manager.node_claim", "manager.node_assign_agent", "manager.node_execute", "manager.node_requeue", "manager.node_complete"],
     )
     return groups

@@ -24,6 +24,11 @@ class Settings(BaseSettings):
     ai_short_term_history_limit: int = 50
     memory_compress_trigger_tokens: int = 3500
     memory_compress_keep_recent_messages: int = 12
+    message_event_recovery_enabled: bool = True
+    message_event_recovery_interval_seconds: float = 2.0
+    message_event_recovery_batch_size: int = 32
+    manager_react_max_iters: int = 60
+    agent_react_max_iters: int = 40
     acp_codex_command: str = "npx -y @zed-industries/codex-acp"
     acp_claude_command: str = "python -m claude_code_acp"
     docker_sandbox_default_image: str = "node:20-bookworm"

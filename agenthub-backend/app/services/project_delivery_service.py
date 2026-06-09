@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+import re
 from dataclasses import dataclass, field
 from typing import Any
 
@@ -10,7 +11,6 @@ from app.agent_runtime.tool._executor import execute_builtin_tool
 from app.models.agent_instance import AgentInstance
 from app.models.group import Group
 from app.services.agent_instance_service import create_agent_instance
-from app.services.project_conversation_service import _extract_requested_port, _slugify, _wants_deploy
 
 
 DELIVERY_AGENT_DESCRIPTION = "__system_project_feature_delivery__"
@@ -69,6 +69,35 @@ def _ensure_delivery_agent(db: Session, *, user_id: int) -> AgentInstance:
         },
         creator_user_id=int(user_id),
     )
+
+
+def _normalize_text(text: str) -> str:
+    return str(text or "").strip().lower()
+
+
+def _slugify(text: str) -> str:
+    slug = re.sub(r"[^a-z0-9]+", "-", _normalize_text(text))
+    return slug.strip("-")[:48] or "project"
+
+
+def _wants_deploy(text: str) -> bool:
+    return any(keyword in text for keyword in ["部署", "上线", "发布", "deploy"])
+
+
+def _extract_requested_port(text: str) -> int | None:
+    raw = str(text or "")
+    match = re.search(r"(?:端口|部署到|预览到|运行到)\s*(\d{2,5})", raw, flags=re.IGNORECASE)
+    if not match and any(keyword in raw.lower() for keyword in ["部署", "预览", "运行"]):
+        match = re.search(r"到\s*(\d{2,5})", raw, flags=re.IGNORECASE)
+    if not match:
+        return None
+    try:
+        value = int(match.group(1))
+    except (TypeError, ValueError):
+        return None
+    if 1 <= value <= 65535:
+        return value
+    return None
 
 
 def _wants_plan_file(text: str) -> bool:

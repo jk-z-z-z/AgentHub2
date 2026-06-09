@@ -84,7 +84,12 @@ class ManagerRuntimeContextMixin:
         return _coerce_int(value) or self._runtime_int("sender_id")
 
     def _resolve_trigger_message_id(self, value: Any = None) -> int | None:
-        return _coerce_int(value) or self._runtime_int("user_message_id") or self._runtime_int("source_message_id")
+        return (
+            _coerce_int(value)
+            or self._runtime_int("user_message_id")
+            or self._runtime_int("source_message_id")
+            or self._runtime_int("reply_to_message_id")
+        )
 
     def _resolve_run_id(self, value: Any = None) -> int | None:
         run_id = _coerce_int(value) or self._runtime_int("run_id")

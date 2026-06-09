@@ -6,6 +6,9 @@ from pathlib import Path
 from fastapi.testclient import TestClient
 
 from app.main import app
+from app.db.session import SessionLocal
+from app.models.deployment_job import DeploymentJob
+from app.agent_runtime.tool._executor import execute_builtin_tool
 from app.services.execution_runtime_service import CommandExecutionResult, DockerSandboxExecutor
 from app.services.project_code_service import get_project_code_root
 from app.services.deployment_runtime_service import DockerDeploymentRunner
@@ -179,3 +182,96 @@ def test_deployment_endpoint_supports_retry(monkeypatch) -> None:
         retried = retry_response.json()["data"]
         assert retried["status"] == "succeeded"
         assert retried["deployed_container_id"] == "container-123"
+
+
+def test_project_deploy_run_defaults_and_reuses_run_port(monkeypatch) -> None:
+    def fake_run_command(self, **kwargs):  # type: ignore[no-untyped-def]
+        work_dir = Path(kwargs.get("work_dir") or (Path(kwargs["snapshot_path"]).parent / "deploy-run-defaults"))
+        work_dir.mkdir(parents=True, exist_ok=True)
+        return CommandExecutionResult(
+            exit_code=0,
+            stdout=f"ran {kwargs['command']}",
+            stderr="",
+            work_dir=work_dir.as_posix(),
+            docker_command=["docker", "run", "fake"],
+        )
+
+    def fake_deploy(self, **kwargs):  # type: ignore[no-untyped-def]
+        return {
+            "logs": [{"step": "docker_run", "exit_code": 0}],
+            "deployed_container_id": "container-defaults",
+            "rollback_image_ref": None,
+            "rollback_status": None,
+        }
+
+    monkeypatch.setattr(DockerSandboxExecutor, "run_command", fake_run_command)
+    monkeypatch.setattr(DockerDeploymentRunner, "run", fake_deploy)
+
+    with TestClient(app) as client:
+        headers = _auth_headers(client)
+        group_id, _workspace_id = _create_project_group(client, headers)
+        root = get_project_code_root(group_id)
+        (root / "Dockerfile").write_text("FROM nginx:alpine\n", encoding="utf-8")
+        db = SessionLocal()
+        try:
+            existing_count = (
+                db.query(DeploymentJob)
+                .filter(DeploymentJob.project_id == int(group_id))
+                .count()
+            )
+        finally:
+            db.close()
+
+        first = execute_builtin_tool(
+            agent_id=1,
+            tool_code="project_deploy_run",
+            args={"ports": [{"container_port": 80}]},
+            runtime_context={"group_type": "project", "group_id": group_id, "run_id": 101, "node_id": 11},
+        )
+        second = execute_builtin_tool(
+            agent_id=1,
+            tool_code="project_deploy_run",
+            args={"ports": [{"container_port": 80}]},
+            runtime_context={"group_type": "project", "group_id": group_id, "run_id": 101, "node_id": 11},
+        )
+        third = execute_builtin_tool(
+            agent_id=1,
+            tool_code="project_deploy_run",
+            args={"ports": [{"container_port": 80}]},
+            runtime_context={"group_type": "project", "group_id": group_id, "run_id": 102, "node_id": 12},
+        )
+
+        assert first["status"] == "succeeded"
+        assert second["status"] == "succeeded"
+        assert third["status"] == "succeeded"
+        assert first["image_ref"] == "agenthub/deploy-project-run-101:latest"
+        assert first["container_name"] == "agenthub-deploy-project-run-101"
+        assert first["url"] is not None
+
+        db = SessionLocal()
+        try:
+            rows = (
+                db.query(DeploymentJob)
+                .filter(DeploymentJob.project_id == int(group_id))
+                .order_by(DeploymentJob.id.asc())
+                .all()
+            )
+            rows = rows[existing_count:]
+            assert len(rows) == 3
+            first_spec = rows[0].spec_json
+            second_spec = rows[1].spec_json
+            third_spec = rows[2].spec_json
+            first_context = rows[0].context_json
+            third_context = rows[2].context_json
+        finally:
+            db.close()
+
+        first_ports = json.loads(first_spec)["ports"]
+        second_ports = json.loads(second_spec)["ports"]
+        third_ports = json.loads(third_spec)["ports"]
+        assert first_ports[0]["host_port"] == second_ports[0]["host_port"]
+        assert first_ports[0]["host_port"] != third_ports[0]["host_port"]
+        assert json.loads(first_context)["run_id"] == 101
+        assert json.loads(first_context)["node_id"] == 11
+        assert json.loads(third_context)["run_id"] == 102
+        assert json.loads(third_context)["node_id"] == 12

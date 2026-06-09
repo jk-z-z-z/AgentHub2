@@ -96,6 +96,18 @@ def extract_agent_mentions(meta_json: str) -> list[int]:
     return out
 
 
+def extract_reply_to_message_id(meta_json: str) -> int | None:
+    try:
+        payload = json.loads(meta_json or "{}")
+    except Exception:
+        return None
+    try:
+        value = payload.get("reply_to")
+        return int(value) if value not in (None, "") else None
+    except (TypeError, ValueError):
+        return None
+
+
 async def broadcast_reply_failed(*, group_id: int, message_id: int, sender_member_id: int, error: str) -> None:
     await ws_manager.broadcast(
         int(group_id),

@@ -11,6 +11,7 @@ from app.event_runtime.context import (
 )
 from app.event_runtime.facade import list_message_events
 from app.event_runtime.handlers import EVENT_HANDLER_REGISTRY
+from app.event_runtime.types import MessageEventStatus, is_dispatchable_message_event_type
 
 
 EventHandler = Callable[[EventDispatchRequest, Any | None], Awaitable[None]]
@@ -43,11 +44,16 @@ async def dispatch_message_event_chain(request: EventDispatchRequest, *, max_pas
     processed_event_ids: set[int] = set()
     for _ in range(max_passes):
         events = list_message_events(request.db, message_id=int(request.message_id))
-        pending_events = [
-            event
-            for event in events
-            if int(event.id) not in processed_event_ids and str(event.status) == "pending"
-        ]
+        pending_events = []
+        for event in events:
+            event_id = int(event.id)
+            if event_id in processed_event_ids or str(event.status) != MessageEventStatus.PENDING:
+                continue
+            if not is_dispatchable_message_event_type(str(event.event_type)):
+                done_trigger_event(request.db, event_id=event_id)
+                processed_event_ids.add(event_id)
+                continue
+            pending_events.append(event)
         if not pending_events:
             return
         progressed = False

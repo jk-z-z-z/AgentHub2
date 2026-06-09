@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 import json
+import threading
 
 from fastapi import HTTPException, status
 from fastapi.encoders import jsonable_encoder
@@ -12,6 +13,10 @@ from app.models.message import Message
 from app.db.session import SessionLocal
 from app.event_runtime.types import MessageEventType
 from app.ws_runtime import WsEventType, ws_manager
+
+
+_active_dispatch_message_ids: set[int] = set()
+_active_dispatch_guard = threading.Lock()
 
 
 def _assert_group_and_member(db: Session, *, group_id: int, sender_member_id: int) -> Member:
@@ -26,6 +31,55 @@ def _assert_group_and_member(db: Session, *, group_id: int, sender_member_id: in
             detail="Sender member does not belong to the group",
         )
     return member
+
+
+def _try_acquire_message_dispatch(message_id: int) -> bool:
+    with _active_dispatch_guard:
+        normalized_message_id = int(message_id)
+        if normalized_message_id in _active_dispatch_message_ids:
+            return False
+        _active_dispatch_message_ids.add(normalized_message_id)
+        return True
+
+
+def _release_message_dispatch(message_id: int) -> None:
+    with _active_dispatch_guard:
+        _active_dispatch_message_ids.discard(int(message_id))
+
+
+def _find_existing_pending_ai_message(
+    db: Session,
+    *,
+    group_id: int,
+    sender_member_id: int,
+    reply_to_message_id: int,
+    trigger: str,
+) -> Message | None:
+    rows = (
+        db.query(Message)
+        .filter(
+            Message.group_id == int(group_id),
+            Message.sender_member_id == int(sender_member_id),
+            Message.message_type == "ai",
+            Message.reply_to_message_id == int(reply_to_message_id),
+        )
+        .order_by(Message.id.desc())
+        .limit(8)
+        .all()
+    )
+    for row in rows:
+        try:
+            payload = json.loads(row.metadata_json or "{}")
+        except Exception:
+            payload = {}
+        if not isinstance(payload, dict):
+            continue
+        if str(payload.get("status") or "").lower() != "pending":
+            continue
+        if str(payload.get("trigger") or "") != str(trigger):
+            continue
+        return row
+    return None
 
 
 async def broadcast_message_created(message: Message) -> None:
@@ -129,6 +183,8 @@ async def dispatch_message_event_for_message(
     from app.event_runtime.context import EventDispatchRequest
     from app.event_runtime.dispatcher import dispatch_message_event_chain
 
+    if not _try_acquire_message_dispatch(int(message_id)):
+        return
     local_db = SessionLocal()
     try:
         from app.event_runtime.dispatcher import EventDispatchRequest, dispatch_message_event_chain
@@ -149,6 +205,42 @@ async def dispatch_message_event_for_message(
         return
     finally:
         local_db.close()
+        _release_message_dispatch(int(message_id))
+
+
+async def dispatch_specific_message_event_for_message(
+    *,
+    group_id: int,
+    sender_member_id: int,
+    message_id: int,
+    message_type: str,
+    content: str,
+    meta_json: str,
+    event_id: int,
+) -> None:
+    from app.event_runtime.dispatcher import EventDispatchRequest, dispatch_message_event
+
+    if not _try_acquire_message_dispatch(int(message_id)):
+        return
+    local_db = SessionLocal()
+    try:
+        await dispatch_message_event(
+            EventDispatchRequest(
+                db=local_db,
+                group_id=int(group_id),
+                sender_member_id=int(sender_member_id),
+                message_id=int(message_id),
+                message_type=str(message_type),
+                content=str(content),
+                meta_json=str(meta_json),
+                event_id=int(event_id),
+            )
+        )
+    except Exception:
+        return
+    finally:
+        local_db.close()
+        _release_message_dispatch(int(message_id))
 
 
 dispatch_message_created_event = dispatch_message_event_for_message
@@ -163,6 +255,15 @@ async def create_pending_ai_message(
     reply_to_message_id: int,
     trigger: str,
 ) -> Message:
+    existing = _find_existing_pending_ai_message(
+        db,
+        group_id=int(group_id),
+        sender_member_id=int(sender_member_id),
+        reply_to_message_id=int(reply_to_message_id),
+        trigger=str(trigger),
+    )
+    if existing is not None:
+        return existing
     item = Message(
         group_id=int(group_id),
         sender_member_id=int(sender_member_id),

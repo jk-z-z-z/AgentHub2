@@ -12,6 +12,7 @@ from app.event_runtime.context import (
     build_reply_context,
     build_short_term_memory,
     extract_agent_mentions,
+    extract_reply_to_message_id,
     get_or_create_manager_member,
     mark_failed_reply,
     project_manager_enabled,
@@ -22,16 +23,79 @@ from app.models.agent_instance import AgentInstance
 from app.models.group import Group
 from app.models.member import Member
 from app.models.message import Message
+from app.models.group_task_run import GroupTaskRun
 from app.event_runtime.reply import emit_ai_reply
-from app.services.project_conversation_service import handle_project_conversation, is_project_feature_delivery_request
-from app.services.project_delivery_service import execute_project_feature_delivery
-from app.services.message_code_diff_service import capture_code_diff_for_message
-
+from app.manager_runtime.assistant.state_store import load_pending_clarify, load_pending_plan
 EventHandler = Callable[[EventDispatchRequest, Any | None], Awaitable[None]]
 
 
 async def _handle_noop(_request: EventDispatchRequest, _event: Any | None = None) -> None:
     return
+
+
+def _message_run_id_candidates(
+    db: Any,
+    *,
+    current_message_id: int,
+    meta_json: str,
+) -> list[int]:
+    candidates: list[int] = []
+    seen: set[int] = set()
+
+    def add_candidate(value: int | None) -> None:
+        if value is None or int(value) in seen:
+            return
+        seen.add(int(value))
+        candidates.append(int(value))
+
+    add_candidate(int(current_message_id))
+    reply_to_message_id = extract_reply_to_message_id(meta_json)
+    add_candidate(reply_to_message_id)
+    if reply_to_message_id is not None:
+        reply_to_message = db.query(Message).filter(Message.id == int(reply_to_message_id)).first()
+        if reply_to_message is not None:
+            add_candidate(extract_reply_to_message_id(str(reply_to_message.metadata_json or "{}")))
+    return candidates
+
+
+def _resolve_manager_bound_run_id(
+    db: Any,
+    *,
+    group_id: int,
+    current_message_id: int,
+    meta_json: str,
+) -> int | None:
+    candidate_ids = _message_run_id_candidates(
+        db,
+        current_message_id=int(current_message_id),
+        meta_json=meta_json,
+    )
+    for candidate_id in candidate_ids:
+        for payload in (
+            load_pending_plan(group_id=int(group_id), trigger_message_id=int(candidate_id)),
+            load_pending_clarify(group_id=int(group_id), trigger_message_id=int(candidate_id)),
+        ):
+            if not isinstance(payload, dict):
+                continue
+            try:
+                run_id = int(payload.get("run_id"))
+            except (TypeError, ValueError):
+                run_id = None
+            if run_id is not None:
+                return run_id
+    for candidate_id in candidate_ids:
+        row = (
+            db.query(GroupTaskRun)
+            .filter(
+                GroupTaskRun.group_id == int(group_id),
+                GroupTaskRun.trigger_message_id == int(candidate_id),
+            )
+            .order_by(GroupTaskRun.id.desc())
+            .first()
+        )
+        if row is not None:
+            return int(row.id)
+    return None
 
 
 async def handle_message_created(request: EventDispatchRequest, event: Any | None = None) -> None:
@@ -150,86 +214,13 @@ async def handle_project_manager(request: EventDispatchRequest, event: Any | Non
         effective_user_id = int(sender.user_ref) if sender.user_ref else None
         if effective_user_id is not None:
             short_term_memory = build_short_term_memory(request.db, group_id=int(group.id), exclude_message_id=int(user_message.id))
-            if is_project_feature_delivery_request(str(request.content or "")):
-                delivery = await execute_project_feature_delivery(
-                    request.db,
-                    group=group,
-                    user_id=int(effective_user_id),
-                    input_text=str(request.content or ""),
-                    short_term_memory=short_term_memory,
-                    trace_message_id=int(ai_message.id),
-                )
-                diff_result = capture_code_diff_for_message(
-                    request.db,
-                    group_id=int(group.id),
-                    user_message_id=int(user_message.id),
-                    applied_files=[str(item.get("path") or "").strip() for item in delivery.applied_files if str(item.get("path") or "").strip()],
-                )
-                if diff_result.summary is not None:
-                    delivery.code_diff = {
-                        "message_id": int(user_message.id),
-                        "status": diff_result.status,
-                        "has_code_changes": bool(diff_result.summary.has_code_changes),
-                        "changed_file_count": len(diff_result.summary.changed_files),
-                        "insertions": int(diff_result.summary.insertions),
-                        "deletions": int(diff_result.summary.deletions),
-                    }
-                elif diff_result.status == "failed":
-                    delivery.code_diff = {
-                        "message_id": int(user_message.id),
-                        "status": "failed",
-                        "error": str(diff_result.error or "diff unavailable"),
-                    }
-                await emit_ai_reply(
-                    request.db,
-                    group_id=int(group.id),
-                    user_message_id=int(user_message.id),
-                    sender_member_id=int(manager_member.id),
-                    content=str(delivery.text or ""),
-                    trigger="manager_runtime",
-                    ai_message_id=int(ai_message.id),
-                    extra_metadata=delivery.metadata,
-                )
-                return
-            execution = handle_project_conversation(
+            bound_run_id = _resolve_manager_bound_run_id(
                 request.db,
-                group=group,
-                user_id=int(effective_user_id),
-                input_text=str(request.content or ""),
+                group_id=int(group.id),
+                current_message_id=int(user_message.id),
+                meta_json=str(request.meta_json or "{}"),
             )
-            if execution.handled:
-                diff_result = capture_code_diff_for_message(
-                    request.db,
-                    group_id=int(group.id),
-                    user_message_id=int(user_message.id),
-                    applied_files=list(execution.applied_files),
-                )
-                if diff_result.summary is not None:
-                    execution.metadata["code_diff"] = {
-                        "message_id": int(user_message.id),
-                        "status": diff_result.status,
-                        "has_code_changes": bool(diff_result.summary.has_code_changes),
-                        "changed_file_count": len(diff_result.summary.changed_files),
-                        "insertions": int(diff_result.summary.insertions),
-                        "deletions": int(diff_result.summary.deletions),
-                    }
-                elif diff_result.status == "failed":
-                    execution.metadata["code_diff"] = {
-                        "message_id": int(user_message.id),
-                        "status": "failed",
-                        "error": str(diff_result.error or "diff unavailable"),
-                    }
-                await emit_ai_reply(
-                    request.db,
-                    group_id=int(group.id),
-                    user_message_id=int(user_message.id),
-                    sender_member_id=int(manager_member.id),
-                    content=str(execution.content or ""),
-                    trigger="manager_runtime",
-                    ai_message_id=int(ai_message.id),
-                    extra_metadata=execution.metadata,
-                )
-                return
+            reply_to_message_id = extract_reply_to_message_id(str(request.meta_json or "{}"))
         result = await invoke_manager(
             request.db,
             group_id=int(group.id),
@@ -242,6 +233,9 @@ async def handle_project_manager(request: EventDispatchRequest, event: Any | Non
                 "user_id": int(sender.user_ref) if sender.user_ref else None,
                 "sender_id": int(sender.id),
                 "user_message_id": int(user_message.id),
+                "reply_to_message_id": int(reply_to_message_id) if "reply_to_message_id" in locals() and reply_to_message_id is not None else None,
+                "source_message_id": int(reply_to_message_id) if "reply_to_message_id" in locals() and reply_to_message_id is not None else None,
+                "run_id": int(bound_run_id) if "bound_run_id" in locals() and bound_run_id is not None else None,
             },
             trace_message_id=int(ai_message.id),
         )
