@@ -593,7 +593,7 @@ function isNodeMine(node: GroupTaskNode) {
   opacity: 0.55;
 }
 .taskDialogScroll {
-  max-height: min(78vh, 780px);
+  height: min(78vh, 780px);
 }
 .taskDialogBody {
   display: grid;
@@ -683,8 +683,7 @@ function isNodeMine(node: GroupTaskNode) {
   color: rgba(31, 35, 41, 0.58);
 }
 .taskGraphViewport {
-  overflow-x: auto;
-  overflow-y: hidden;
+  overflow: auto;
   padding-bottom: 4px;
 }
 .taskGraphCanvas {
