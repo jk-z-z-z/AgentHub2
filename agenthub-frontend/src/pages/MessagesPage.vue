@@ -47,6 +47,7 @@
         :messages="messages"
         :members="members"
         @open-code-diff="openCodeDiffPanel"
+        @open-message-events="openMessageEventsPanel"
       />
 
       <MessageComposer
@@ -196,6 +197,16 @@
     @close="closeCodeDiffPanel"
   />
 
+  <MessageEventPanel
+    v-model:open="messageEventOpen"
+    :active-group="activeGroup"
+    :message="activeMessageEventMessage"
+    :events="activeMessageEvents"
+    :loading="messageEventLoading"
+    :error="messageEventError"
+    @close="closeMessageEventsPanel"
+  />
+
   <TaskRunCreateDialog
     v-model:open="taskCreateOpen"
     v-model:title="taskCreateTitle"
@@ -222,6 +233,7 @@ import {
   apiGetMessageCodeDiff,
   apiGetGroupTaskGraph,
   apiListMessages,
+  apiListMessageEvents,
   apiGetGroupAssistantConfig,
   apiUpdateGroupAssistantConfig,
   apiCreateGroupTaskRunFromText,
@@ -232,6 +244,7 @@ import {
   apiReviewGroupTaskNode,
   type GroupAssistantConfig,
   type MessageCodeDiffResponse,
+  type MessageEvent,
   type GroupTaskRun,
 } from '../api/messages'
 import {
@@ -257,6 +270,7 @@ import MessageConversationList from '../components/messages/MessageConversationL
 import MessageComposer from '../components/messages/MessageComposer.vue'
 import MessageDeploymentPanel from '../components/messages/MessageDeploymentPanel.vue'
 import MessageCodeDiffPanel from '../components/messages/MessageCodeDiffPanel.vue'
+import MessageEventPanel from '../components/messages/MessageEventPanel.vue'
 import GroupCreateDialog from '../components/messages/GroupCreateDialog.vue'
 import MessageFilePanel from '../components/messages/MessageFilePanel.vue'
 import MessageManagePanel from '../components/messages/MessageManagePanel.vue'
@@ -414,6 +428,15 @@ const taskCreateOpen = ref(false)
 const taskCreateTitle = ref('')
 const taskCreateGoal = ref('')
 const taskCreateNodeText = ref('需求澄清与初始计划 | manager')
+const messageEventOpen = ref(false)
+const messageEventLoading = ref(false)
+const messageEventError = ref('')
+const activeMessageEventMessageId = ref('')
+const activeMessageEvents = ref<MessageEvent[]>([])
+const messageEventCache = ref<Record<string, MessageEvent[]>>({})
+const activeMessageEventMessage = computed(
+  () => messages.value.find((message) => String(message.id) === String(activeMessageEventMessageId.value)) || null,
+)
 type DeployDraft = {
   imageRef: string
   containerName: string
@@ -607,9 +630,10 @@ async function selectGroup(id: string) {
   projectFilesOpen.value = false
   deployOpen.value = false
   addMemberOpen.value = false
+  closeCodeDiffPanel()
+  closeMessageEventsPanel()
   projectActiveFilePath.value = ''
   projectOpenDirs.value = {}
-  closeCodeDiffPanel()
   const [mRes, msgRes] = await Promise.all([apiListMembers(id), apiListMessages(id, undefined, 50)])
   if (seq !== loadSeq || String(activeGroupId.value) !== String(id)) return
   members.value = mRes.data
@@ -912,6 +936,7 @@ function openManage() {
   projectFilesOpen.value = false
   deployOpen.value = false
   codeDiffOpen.value = false
+  closeMessageEventsPanel()
   addMemberOpen.value = false
   manageOpen.value = true
   if (supportsProjectWorkspace(activeGroup.value)) {
@@ -937,6 +962,7 @@ function openTaskPlanner() {
   projectFilesOpen.value = false
   deployOpen.value = false
   codeDiffOpen.value = false
+  closeMessageEventsPanel()
   taskOpen.value = true
   taskDetailOpen.value = false
   void loadTaskRuns()
@@ -948,6 +974,7 @@ async function openDeployPanel() {
   manageOpen.value = false
   projectFilesOpen.value = false
   codeDiffOpen.value = false
+  closeMessageEventsPanel()
   deployOpen.value = true
   await Promise.all([reloadProjectFiles(), loadCurrentPreview(), loadCurrentDeployment()])
 }
@@ -960,12 +987,21 @@ function closeCodeDiffPanel() {
   activeCodeDiffMessageId.value = ''
 }
 
+function closeMessageEventsPanel() {
+  messageEventOpen.value = false
+  messageEventLoading.value = false
+  messageEventError.value = ''
+  activeMessageEventMessageId.value = ''
+  activeMessageEvents.value = []
+}
+
 async function openCodeDiffPanel(messageId: string) {
   if (!supportsProjectWorkspace(activeGroup.value)) return
   closeTaskPlanner()
   manageOpen.value = false
   projectFilesOpen.value = false
   deployOpen.value = false
+  closeMessageEventsPanel()
   codeDiffOpen.value = true
   codeDiffLoading.value = true
   activeCodeDiff.value = null
@@ -981,6 +1017,39 @@ async function openCodeDiffPanel(messageId: string) {
   } finally {
     if (String(activeCodeDiffMessageId.value) === String(messageId)) {
       codeDiffLoading.value = false
+    }
+  }
+}
+
+async function openMessageEventsPanel(messageId: string) {
+  if (!messageId) return
+  closeCodeDiffPanel()
+  messageEventOpen.value = true
+  activeMessageEventMessageId.value = String(messageId)
+  const cached = messageEventCache.value[String(messageId)]
+  if (cached) {
+    activeMessageEvents.value = cached
+    messageEventLoading.value = false
+    messageEventError.value = ''
+    return
+  }
+  messageEventLoading.value = true
+  messageEventError.value = ''
+  activeMessageEvents.value = []
+  try {
+    const res = await apiListMessageEvents(messageId)
+    if (String(activeMessageEventMessageId.value) !== String(messageId)) return
+    activeMessageEvents.value = res.data
+    messageEventCache.value = {
+      ...messageEventCache.value,
+      [String(messageId)]: res.data,
+    }
+  } catch (error) {
+    if (String(activeMessageEventMessageId.value) !== String(messageId)) return
+    messageEventError.value = error instanceof Error ? error.message : String(error)
+  } finally {
+    if (String(activeMessageEventMessageId.value) === String(messageId)) {
+      messageEventLoading.value = false
     }
   }
 }
@@ -1219,6 +1288,7 @@ async function openProjectCode() {
   manageOpen.value = false
   deployOpen.value = false
   codeDiffOpen.value = false
+  closeMessageEventsPanel()
   projectFilesOpen.value = true
   await reloadProjectFiles()
   if (projectActiveFilePath.value) {

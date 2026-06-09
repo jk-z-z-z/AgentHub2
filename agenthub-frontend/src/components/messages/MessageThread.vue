@@ -6,7 +6,33 @@
       <div v-if="messages.length === 0" class="empty">暂无消息</div>
       <div v-for="m in messages" :key="m.id" class="msgRow" :class="sideClass(m)">
         <div class="bubble">
-          <div class="msgMeta">{{ senderName(m.sender_member_id) }}</div>
+          <div class="msgMetaRow" :class="metaRowClass(m)">
+            <button
+              v-if="sideClass(m) === 'right'"
+              type="button"
+              class="msgEventBtn"
+              :title="'查看事件'"
+              aria-label="查看事件"
+              @click="$emit('open-message-events', String(m.id))"
+            >
+              <el-icon>
+                <ArrowLeft />
+              </el-icon>
+            </button>
+            <span class="msgMeta">{{ senderName(m.sender_member_id) }}</span>
+            <button
+              v-if="sideClass(m) === 'left'"
+              type="button"
+              class="msgEventBtn"
+              :title="'查看事件'"
+              aria-label="查看事件"
+              @click="$emit('open-message-events', String(m.id))"
+            >
+              <el-icon>
+                <ArrowRight />
+              </el-icon>
+            </button>
+          </div>
           <div v-if="thinkingLabel(m)" class="msgThinking">{{ thinkingLabel(m) }}</div>
           <MessageMarkdown v-else class="msgText" :content="m.content" />
           <div v-if="deliveryResult(m)" class="msgDelivery" :data-status="deliveryStatus(m)">
@@ -53,6 +79,7 @@
 
 <script setup lang="ts">
 import { computed, nextTick, onMounted, ref, watch } from 'vue'
+import { ArrowLeft, ArrowRight } from '@element-plus/icons-vue'
 import type { Group, Member } from '../../api/groups'
 import type { Message } from '../../api/messages'
 import MessageMarkdown from './MessageMarkdown.vue'
@@ -66,6 +93,7 @@ const props = defineProps<{
 
 defineEmits<{
   (e: 'open-code-diff', messageId: string): void
+  (e: 'open-message-events', messageId: string): void
 }>()
 
 const scrollContainerRef = ref<HTMLElement | null>(null)
@@ -182,6 +210,10 @@ function sideClass(message: Message) {
   return 'left'
 }
 
+function metaRowClass(message: Message) {
+  return sideClass(message) === 'right' ? 'is-right' : 'is-left'
+}
+
 function isNearBottom() {
   const el = scrollContainerRef.value
   if (!el) return true
@@ -267,18 +299,58 @@ onMounted(() => {
   color: var(--ah-text-primary);
   box-shadow: var(--ah-shadow-sm);
 }
+.msgMetaRow {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  min-height: 22px;
+  margin-bottom: 6px;
+}
+.msgMetaRow.is-right {
+  justify-content: flex-end;
+}
+.msgMetaRow.is-left {
+  justify-content: flex-start;
+}
 .msgRow.right .bubble {
   background: var(--ah-chat-bubble-user);
   border-color: var(--ah-chat-bubble-user-border);
   color: var(--ah-text-primary);
 }
 .msgMeta {
+  display: inline-flex;
+  align-items: center;
   font-size: 12px;
   color: var(--ah-text-secondary);
-  margin-bottom: 4px;
+  line-height: 1;
+  white-space: nowrap;
 }
 .msgRow.right .msgMeta {
   color: var(--ah-text-secondary);
+}
+.msgEventBtn {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 22px;
+  height: 22px;
+  min-width: 22px;
+  padding: 0;
+  border: 0;
+  border-radius: 999px;
+  background: transparent;
+  color: var(--ah-text-tertiary);
+  cursor: pointer;
+  opacity: 0.75;
+  line-height: 1;
+  flex: 0 0 auto;
+}
+.msgEventBtn:hover {
+  background: rgba(31, 35, 41, 0.06);
+  opacity: 1;
+}
+.msgEventBtn :deep(svg) {
+  display: block;
 }
 .msgText {
   font-size: 14px;
@@ -290,12 +362,6 @@ onMounted(() => {
   line-height: 1.6;
   color: var(--ah-text-tertiary);
   font-style: italic;
-}
-.msgActions {
-  margin-top: 10px;
-  display: flex;
-  gap: 8px;
-  flex-wrap: wrap;
 }
 .msgDelivery {
   margin-top: 10px;
@@ -333,22 +399,6 @@ onMounted(() => {
 .msgDelivery[data-status='partial'] .msgDeliveryPill {
   background: rgba(217, 119, 6, 0.12);
   color: #b45309;
-}
-.msgActionLink {
-  display: inline-flex;
-  align-items: center;
-  justify-content: center;
-  min-height: 30px;
-  padding: 0 12px;
-  border-radius: 999px;
-  background: var(--ah-primary-soft);
-  color: var(--ah-primary-strong);
-  font-size: 12px;
-  font-weight: 700;
-  text-decoration: none;
-}
-.msgActionLink:hover {
-  background: var(--ah-primary-soft-strong);
 }
 .bottomAnchor {
   width: 100%;

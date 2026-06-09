@@ -6,6 +6,7 @@ export type Id = string | number
 export type Group = Schema['GroupOut']
 export type Member = Schema['MemberOut']
 export type Message = Schema['MessageOut']
+export type MessageEvent = Schema['MessageEventOut']
 export type Agent = Schema['AgentInstanceOut']
 export type AgentProfile = Schema['AgentProfileOut']
 export type User = Schema['UserOut']
