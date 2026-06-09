@@ -66,6 +66,31 @@ class MessageEventType:
         MEMORY_COMPRESSION_FINISHED = "memory.compression.finished"
 
 
+ACTIVE_DISPATCH_EVENT_TYPES: set[str] = {
+    MessageEventType.InputOutput.MESSAGE_CREATED,
+    MessageEventType.InputOutput.REPLY_FINISHED,
+    MessageEventType.Dag.DAG_CREATED,
+    MessageEventType.Dag.DAG_UPDATED,
+    MessageEventType.Dag.DAG_PATCHED,
+    MessageEventType.Dag.NODE_STATUS_CHANGED,
+    MessageEventType.Task.TASK_ASSIGNED,
+    MessageEventType.Task.TASK_CLAIMED,
+    MessageEventType.Task.TASK_COMPLETED,
+    MessageEventType.Task.TASK_FAILED,
+    MessageEventType.Task.TASK_REVIEWED,
+    MessageEventType.Task.NODE_EXEC_STARTED,
+    MessageEventType.Task.NODE_EXEC_FINISHED,
+}
+
+
+def is_dispatchable_message_event_type(event_type: str) -> bool:
+    return str(event_type or "") in ACTIVE_DISPATCH_EVENT_TYPES
+
+
+def default_message_event_status(event_type: str) -> str:
+    return MessageEventStatus.PENDING if is_dispatchable_message_event_type(event_type) else MessageEventStatus.DONE
+
+
 MESSAGE_EVENT_OPERATION_HINTS: dict[str, str] = {
     MessageEventType.InputOutput.MESSAGE_CREATED: "落库消息并触发 dispatcher 进行路由",
     MessageEventType.InputOutput.MESSAGE_UPDATED: "更新消息展示内容",

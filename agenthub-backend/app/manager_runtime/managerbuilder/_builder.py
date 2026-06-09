@@ -9,6 +9,7 @@ from sqlalchemy.orm import Session
 
 from app.manager_runtime.engine.base import ManagerEngineContext
 from app.models.group import Group
+from app.models.member import Member
 from app.manager_runtime.skill._loader import load_manager_skill_loaders, load_manager_skill_prompt_sections
 from app.manager_runtime.tool._loader import load_manager_toolkit
 from app.services.storage_paths import project_dir
@@ -36,6 +37,26 @@ def _load_docs_preview(root: Path, *, limit: int = 8) -> list[dict[str, str]]:
         items.append({"path": rel, "preview": _read_text(path)[:220]})
         if len(items) >= limit:
             break
+    return items
+
+
+def _agent_members_preview(db: Session, *, group_id: int, limit: int = 8) -> list[dict[str, object]]:
+    rows = (
+        db.query(Member)
+        .filter(Member.group_id == int(group_id), Member.kind == "agent")
+        .order_by(Member.id.asc())
+        .all()
+    )
+    items: list[dict[str, object]] = []
+    for row in rows[:limit]:
+        items.append(
+            {
+                "member_id": int(row.id),
+                "display_name": str(row.display_name or ""),
+                "title": str(row.title or ""),
+                "agent_instance_id": int(row.agent_instance_id) if row.agent_instance_id else None,
+            }
+        )
     return items
 
 
@@ -67,7 +88,6 @@ def build_manager_runtime_context(
 ) -> dict[str, Any]:
     group = db.query(Group).filter(Group.id == int(group_id)).first()
     root = project_dir(int(group_id)).resolve()
-    extra = dict(extra_context or {})
 
     return {
         "group_id": int(group_id),
@@ -78,6 +98,7 @@ def build_manager_runtime_context(
         "profile_preview": _read_text(root / "PROFILE.md")[:4000],
         "readme_preview": _read_text(root / "README.md")[:4000],
         "docs_preview": _load_docs_preview(root),
+        "agent_members_preview": _agent_members_preview(db, group_id=int(group_id)),
         "short_term_preview": _short_term_preview(short_term_memory),
         "skill_loaders": load_manager_skill_loaders(int(group_id)),
         "skill_prompt_sections": load_manager_skill_prompt_sections(int(group_id)),
@@ -96,11 +117,13 @@ def build_manager_system_prompt(
         "你只服务当前群聊项目，使用已挂载的 skills 和 tools 完成任务。",
         f"当前项目：{context['group_name']} ({context['group_type']})",
         f"项目目录：{context['project_root']}",
+        "当你调用 manager.node_execute 后，这只表示节点已经进入后台异步执行。不要在同一轮回复里等待子 agent 真正完成；应该继续安排其余节点，或直接向用户汇报“已开始执行”。",
     ]
     for label, key, limit in [
         ("项目长期记忆摘要", "memory_preview", 3000),
         ("项目说明摘要", "readme_preview", 2000),
         ("项目文档预览", "docs_preview", 3000),
+        ("可分配 agent 成员", "agent_members_preview", 1200),
         ("短期对话摘要", "short_term_preview", 1200),
     ]:
         value = context.get(key)
@@ -110,7 +133,14 @@ def build_manager_system_prompt(
             lines = []
             for item in value:
                 if isinstance(item, dict):
-                    lines.append(f"- {item.get('path')}: {item.get('preview')}")
+                    if "path" in item:
+                        lines.append(f"- {item.get('path')}: {item.get('preview')}")
+                    elif "member_id" in item:
+                        lines.append(
+                            f"- member_id={item.get('member_id')}, "
+                            f"display_name={item.get('display_name')}, "
+                            f"title={item.get('title')}"
+                        )
             text = "\n".join(lines)
         else:
             text = str(value)

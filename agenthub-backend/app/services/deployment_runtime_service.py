@@ -2,6 +2,7 @@ from __future__ import annotations
 
 import json
 import shutil
+import socket
 import subprocess
 from abc import ABC, abstractmethod
 from datetime import datetime, timezone
@@ -113,6 +114,119 @@ def _serialize_ports(ports: list[dict[str, Any]]) -> list[dict[str, Any]]:
         except Exception:
             continue
     return out
+
+
+def _context_int(context: dict[str, Any] | None, key: str) -> int | None:
+    if not isinstance(context, dict):
+        return None
+    value = context.get(key)
+    try:
+        return int(value) if value not in (None, "") else None
+    except (TypeError, ValueError):
+        return None
+
+
+def _port_is_available(host_port: int) -> bool:
+    with socket.socket(socket.AF_INET, socket.SOCK_STREAM) as sock:
+        sock.setsockopt(socket.SOL_SOCKET, socket.SO_REUSEADDR, 1)
+        try:
+            sock.bind(("127.0.0.1", int(host_port)))
+        except OSError:
+            return False
+    return True
+
+
+def _previous_run_host_port(
+    db: Session,
+    *,
+    workspace_id: int,
+    run_id: int,
+    container_name: str,
+) -> int | None:
+    rows = (
+        db.query(DeploymentJob)
+        .filter(
+            DeploymentJob.workspace_id == int(workspace_id),
+            DeploymentJob.status == "succeeded",
+        )
+        .order_by(DeploymentJob.id.desc())
+        .all()
+    )
+    for row in rows:
+        context_payload = _safe_load_dict(row.context_json)
+        if _context_int(context_payload, "run_id") != int(run_id):
+            continue
+        spec_payload = _safe_load_dict(row.spec_json)
+        ports = _serialize_ports(spec_payload.get("ports") or [])
+        if not ports:
+            continue
+        host_port = int(ports[0]["host_port"])
+        if _port_is_available(host_port) or str(row.container_name or "") == str(container_name or ""):
+            return host_port
+    return None
+
+
+def _allocate_run_host_port(
+    db: Session,
+    *,
+    workspace_id: int,
+    run_id: int,
+    container_name: str,
+) -> int:
+    previous_host_port = _previous_run_host_port(
+        db,
+        workspace_id=int(workspace_id),
+        run_id=int(run_id),
+        container_name=str(container_name or ""),
+    )
+    if previous_host_port is not None:
+        return int(previous_host_port)
+    candidate = max(1, 20000 + (int(run_id) % 20000))
+    while candidate <= 65535:
+        if _port_is_available(candidate):
+            return candidate
+        candidate += 1
+    raise RuntimeError("No available host port for deployment")
+
+
+def _normalize_deployment_ports(
+    db: Session,
+    *,
+    workspace_id: int,
+    container_name: str,
+    ports: list[dict[str, Any]] | None,
+    context: dict[str, Any] | None,
+) -> list[dict[str, Any]]:
+    run_id = _context_int(context, "run_id")
+    normalized: list[dict[str, Any]] = []
+    for index, item in enumerate(ports or []):
+        if not isinstance(item, dict):
+            continue
+        try:
+            container_port = int(item["container_port"])
+        except Exception:
+            continue
+        protocol = str(item.get("protocol") or "tcp")
+        host_port_raw = item.get("host_port")
+        try:
+            host_port = int(host_port_raw) if host_port_raw not in (None, "") else None
+        except (TypeError, ValueError):
+            host_port = None
+        if index == 0 and host_port is None and run_id is not None:
+            host_port = _allocate_run_host_port(
+                db,
+                workspace_id=int(workspace_id),
+                run_id=int(run_id),
+                container_name=str(container_name or ""),
+            )
+        payload = {
+            "container_port": int(container_port),
+            "protocol": protocol,
+        }
+        if host_port is not None:
+            payload["host_port"] = int(host_port)
+        normalized.append(payload)
+    return normalized
 
 
 class DockerDeploymentRunner(DeploymentRunner):
@@ -362,12 +476,28 @@ def create_deployment_job(
     env: dict[str, str] | None = None,
     ports: list[dict[str, Any]] | None = None,
     container_command: str | None = None,
+    runtime_context: dict[str, Any] | None = None,
 ) -> DeploymentJob:
     workspace = assert_workspace_access(db, workspace_id=int(workspace_id), user_id=int(user_id))
+    normalized_context = {
+        key: int(value)
+        for key, value in {
+            "run_id": _context_int(runtime_context, "run_id"),
+            "node_id": _context_int(runtime_context, "node_id"),
+        }.items()
+        if value is not None
+    }
+    normalized_ports = _normalize_deployment_ports(
+        db,
+        workspace_id=int(workspace.id),
+        container_name=str(container_name or ""),
+        ports=ports,
+        context=normalized_context,
+    )
     normalized_ports = _normalize_ports_for_workspace(
         workspace=workspace,
         dockerfile_path=str(dockerfile_path or "Dockerfile"),
-        ports=ports,
+        ports=normalized_ports,
     )
     row = DeploymentJob(
         creator_user_id=int(workspace.creator_user_id),
@@ -390,6 +520,7 @@ def create_deployment_job(
                 "container_command": str(container_command or "").strip() or None,
             }
         ),
+        context_json=_safe_dump(normalized_context),
     )
     db.add(row)
     db.commit()
@@ -419,9 +550,10 @@ def run_deployment_job(
     row.attempt_count = int(row.attempt_count or 0) + 1
     row.started_at = datetime.now(timezone.utc)
     sandbox_id = f"sandbox-deploy-{row.id}-a{row.attempt_count}"
-    row.context_json = _safe_dump(
-        build_execution_context(workspace=workspace, user_id=int(row.requested_by_user_id), sandbox_id=sandbox_id)
-    )
+    existing_context = _safe_load_dict(row.context_json)
+    merged_context = build_execution_context(workspace=workspace, user_id=int(row.requested_by_user_id), sandbox_id=sandbox_id)
+    merged_context.update(existing_context)
+    row.context_json = _safe_dump(merged_context)
     db.add(row)
     db.commit()
 
@@ -582,6 +714,7 @@ def create_and_run_deployment_job(
     env: dict[str, str] | None = None,
     ports: list[dict[str, Any]] | None = None,
     container_command: str | None = None,
+    runtime_context: dict[str, Any] | None = None,
     executor: Executor | None = None,
     runner: DeploymentRunner | None = None,
 ) -> dict[str, Any]:
@@ -602,6 +735,7 @@ def create_and_run_deployment_job(
             env=env,
             ports=ports,
             container_command=container_command,
+            runtime_context=runtime_context,
         )
         row = run_deployment_job(db, deployment_id=int(row.id), executor=executor, runner=runner)
         return _deployment_job_to_payload(row)

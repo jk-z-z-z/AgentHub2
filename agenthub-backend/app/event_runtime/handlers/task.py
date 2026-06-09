@@ -5,13 +5,13 @@ from typing import Any, Awaitable, Callable
 
 from app.agent_runtime import invoke_agent
 from app.common.project_prompt import build_project_system_prompt
-from app.event_runtime.context import EventDispatchRequest, build_short_term_memory
-from app.event_runtime.facade import create_message_event
+from app.event_runtime.context import EventDispatchRequest, build_short_term_memory, get_or_create_manager_member
+from app.event_runtime.facade import create_message_event, list_message_events
 from app.event_runtime.types import MessageEventStatus, MessageEventType
 from app.models.agent_instance import AgentInstance
 from app.models.group_task_node import GroupTaskNode
 from app.models.member import Member
-from app.services.group_task_service import assign_node_to_agent, claim_node, get_node, mark_node_failed, requeue_node
+from app.services.group_task_service import assign_node_to_agent, claim_node, get_node, mark_node_failed, requeue_node, review_node
 
 EventHandler = Callable[[EventDispatchRequest, Any | None], Awaitable[None]]
 
@@ -89,6 +89,71 @@ def _derive_review_status(*, source_event_type: str, node_status: str) -> str:
     return "completed"
 
 
+def _derive_manager_review_status(*, node: GroupTaskNode, payload: dict[str, Any]) -> str | None:
+    explicit_status = str(payload.get("manager_review_status") or payload.get("review_status") or "").strip().lower()
+    if explicit_status in {"approved", "rework"}:
+        return explicit_status
+    if explicit_status == "completed" and str(node.status or "").strip().lower() == "completed":
+        return "approved"
+    return None
+
+
+def _parse_node_result_text(raw_text: str) -> dict[str, Any]:
+    text = str(raw_text or "").strip()
+    if not text:
+        return {}
+    try:
+        payload = json.loads(text)
+    except Exception:
+        return {"summary": text}
+    return payload if isinstance(payload, dict) else {"summary": text}
+
+
+def _collect_execution_artifacts(db: Any, *, message_id: int) -> dict[str, Any]:
+    changed_files: list[str] = []
+    validation_tools: list[str] = []
+    preview_urls: list[str] = []
+    deploy_urls: list[str] = []
+    successful_tools: list[str] = []
+
+    for event in list_message_events(db, message_id=int(message_id)):
+        if str(event.event_type) != MessageEventType.Execution.TOOL_RESULT:
+            continue
+        payload = event.payload
+        if not isinstance(payload, dict):
+            continue
+        tool_code = str(payload.get("tool_code") or "").strip()
+        if not tool_code or payload.get("error") not in (None, ""):
+            continue
+        result = payload.get("result")
+        successful_tools.append(tool_code)
+        if tool_code == "project_code_write" and isinstance(result, dict):
+            path = str(result.get("path") or "").strip()
+            if path:
+                changed_files.append(path)
+        elif tool_code == "project_command_run":
+            validation_tools.append(tool_code)
+        elif tool_code == "project_preview_run" and isinstance(result, dict):
+            validation_tools.append(tool_code)
+            url = str(result.get("url") or "").strip()
+            if url:
+                preview_urls.append(url)
+        elif tool_code == "project_deploy_run" and isinstance(result, dict):
+            validation_tools.append(tool_code)
+            url = str(result.get("url") or "").strip()
+            if url:
+                deploy_urls.append(url)
+
+    return {
+        "changed_files": list(dict.fromkeys(changed_files)),
+        "validation_tools": list(dict.fromkeys(validation_tools)),
+        "preview_urls": list(dict.fromkeys(preview_urls)),
+        "deploy_urls": list(dict.fromkeys(deploy_urls)),
+        "successful_tools": list(dict.fromkeys(successful_tools)),
+        "has_substantive_artifact": bool(changed_files or validation_tools or preview_urls or deploy_urls),
+    }
+
+
 def _apply_review_status(
     db: Any,
     *,
@@ -160,12 +225,37 @@ async def execute_node_task(
         system_prompt=system_prompt,
         trace_message_id=int(trace_message_id) if trace_message_id is not None else None,
     )
+    parsed_result = _parse_node_result_text(str(result.text or ""))
+    artifact_summary = _collect_execution_artifacts(request.db, message_id=int(request.message_id))
+    summary = str(
+        parsed_result.get("summary")
+        or parsed_result.get("output_summary")
+        or parsed_result.get("message")
+        or result.text
+        or ""
+    ).strip()
+    if artifact_summary["has_substantive_artifact"]:
+        final_status = "completed"
+        final_summary = summary or "节点执行完成"
+        error_text = ""
+    else:
+        final_status = "pending"
+        final_summary = summary or "未检测到真实代码写入或验证产物，节点未完成。"
+        error_text = "未检测到真实代码写入或验证产物，不能将节点标记为完成。"
     return {
         "node_id": int(node.id),
         "run_id": int(node.run_id),
         "node_key": str(node.node_key),
-        "status": "completed",
-        "output_summary": str(result.text or "节点执行完成"),
+        "status": final_status,
+        "output_summary": final_summary,
+        "error": error_text,
+        "result_payload": {
+            "summary": final_summary,
+            "status": final_status,
+            "agent_output": str(result.text or ""),
+            "parsed_result": parsed_result,
+            "artifacts": artifact_summary,
+        },
     }
 
 
@@ -187,14 +277,20 @@ async def handle_node_exec_started(request: EventDispatchRequest, event: Any | N
             create_message_event(
                 request.db,
                 message_id=int(request.message_id),
-                event_type=MessageEventType.Task.TASK_COMPLETED,
+                event_type=(
+                    MessageEventType.Task.TASK_FAILED
+                    if str(result.get("status") or "").strip().lower() == "failed"
+                    else MessageEventType.Task.TASK_COMPLETED
+                ),
                 payload={
                     "node_id": int(node.id),
                     "run_id": int(node.run_id),
                     "node_key": str(node.node_key),
                     "member_id": int(member_id),
-                    "status": "completed",
+                    "status": str(result.get("status") or "completed"),
                     "output_summary": str(result.get("output_summary") or ""),
+                    "error": str(result.get("error") or ""),
+                    "result_payload": result.get("result_payload") if isinstance(result.get("result_payload"), dict) else {},
                     "source_event_type": MessageEventType.Task.NODE_EXEC_STARTED,
                 },
                 run_id=int(node.run_id),
@@ -261,9 +357,10 @@ async def handle_task_completed(request: EventDispatchRequest, event: Any | None
     if not node:
         return
     source_event_type = str(event.event_type) if event is not None else MessageEventType.Task.TASK_COMPLETED
+    observed_status = str(payload.get("status") or node.status)
     review_status = _derive_review_status(
         source_event_type=source_event_type,
-        node_status=str(node.status),
+        node_status=observed_status,
     )
     output_summary = str(payload.get("output_summary") or "")
     error_text = str(payload.get("error") or "")
@@ -345,9 +442,10 @@ async def handle_task_failed(request: EventDispatchRequest, event: Any | None = 
     if not node:
         return
     source_event_type = str(event.event_type) if event is not None else MessageEventType.Task.TASK_FAILED
+    observed_status = str(payload.get("status") or node.status)
     review_status = _derive_review_status(
         source_event_type=source_event_type,
-        node_status=str(node.status),
+        node_status=observed_status,
     )
     output_summary = str(payload.get("output_summary") or "")
     error_text = str(payload.get("error") or "")
@@ -419,7 +517,25 @@ async def handle_task_failed(request: EventDispatchRequest, event: Any | None = 
 
 
 async def handle_task_reviewed(_request: EventDispatchRequest, _event: Any | None = None) -> None:
-    return
+    payload = _payload_as_dict(_event)
+    node_id = payload.get("node_id")
+    if node_id is None:
+        return
+    node = get_node(_request.db, node_id=int(node_id))
+    if not node:
+        return
+    manager_review_status = _derive_manager_review_status(node=node, payload=payload)
+    if manager_review_status is None:
+        return
+    manager_member = get_or_create_manager_member(_request.db, group_id=int(node.group_id))
+    review_note = str(payload.get("review_text") or node.output_summary or node.error or "").strip()
+    review_node(
+        _request.db,
+        node_id=int(node.id),
+        reviewer_member_id=int(manager_member.id),
+        manager_review_status=manager_review_status,
+        note=review_note,
+    )
 
 
 TASK_EVENT_HANDLER_REGISTRY = {

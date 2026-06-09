@@ -1,11 +1,11 @@
 from __future__ import annotations
 
+import asyncio
 from typing import Any
 
 from agentscope.tool import ToolBase, ToolChunk
 from sqlalchemy.orm import Session
 
-from app.event_runtime.context import EventDispatchRequest
 from app.event_runtime.facade import create_message_event
 from app.event_runtime.context import get_or_create_manager_member
 from app.event_runtime.types import MessageEventStatus, MessageEventType
@@ -22,6 +22,42 @@ def _build_request_payload(*, group_id: int, run_id: int, node_id: int, member_i
         "node_id": int(node_id),
         "member_id": int(member_id),
     }
+
+
+def _schedule_event_dispatch(
+    *,
+    group_id: int,
+    sender_member_id: int,
+    message_id: int,
+    message_type: str,
+    content: str,
+    meta_json: str,
+) -> None:
+    from app.agent_runtime.message_store import dispatch_message_event_for_message
+
+    try:
+        asyncio.create_task(
+            dispatch_message_event_for_message(
+                group_id=int(group_id),
+                sender_member_id=int(sender_member_id),
+                message_id=int(message_id),
+                message_type=str(message_type),
+                content=str(content),
+                meta_json=str(meta_json),
+            )
+        )
+    except RuntimeError:
+        # Fallback for contexts without a running loop.
+        asyncio.run(
+            dispatch_message_event_for_message(
+                group_id=int(group_id),
+                sender_member_id=int(sender_member_id),
+                message_id=int(message_id),
+                message_type=str(message_type),
+                content=str(content),
+                meta_json=str(meta_json),
+            )
+        )
 
 
 def _resolve_node_and_member(db: Session, *, node_id: int, member_id: int) -> tuple[Any | None, Any | None]:
@@ -74,8 +110,6 @@ class NodeExecuteTool(ToolBase):
 
         trace_message_id = int(getattr(self._trace, "message_id", 0) or 0) or None
         if trace_message_id is not None:
-            from app.event_runtime.dispatcher import dispatch_message_event_chain
-
             event = create_message_event(
                 self._db,
                 message_id=int(trace_message_id),
@@ -89,28 +123,24 @@ class NodeExecuteTool(ToolBase):
                 run_id=int(node.run_id),
                 status=MessageEventStatus.PENDING,
             )
-            await dispatch_message_event_chain(
-                EventDispatchRequest(
-                    db=self._db,
-                    group_id=int(node.group_id),
-                    sender_member_id=int(member.id),
-                    message_id=int(trace_message_id),
-                    message_type="ai",
-                    content=str(node.title or ""),
-                    meta_json="{}",
-                    event_id=int(event.id),
-                )
+            _schedule_event_dispatch(
+                group_id=int(node.group_id),
+                sender_member_id=int(member.id),
+                message_id=int(trace_message_id),
+                message_type="ai",
+                content=str(node.title or ""),
+                meta_json="{}",
             )
-            completed = get_node(self._db, node_id=int(node.id))
             return build_tool_chunk(
                 {
                     "ok": True,
                     "result": {
-                        "node_id": int(completed.id) if completed else int(node.id),
-                        "run_id": int(completed.run_id) if completed else int(node.run_id),
-                        "node_key": str(completed.node_key) if completed else str(node.node_key),
-                        "status": str(completed.status) if completed else "queued",
-                        "output_summary": str(completed.output_summary or "") if completed else "",
+                        "node_id": int(node.id),
+                        "run_id": int(node.run_id),
+                        "node_key": str(node.node_key),
+                        "status": str(node.status or "queued"),
+                        "output_summary": "",
+                        "event_id": int(event.id),
                     },
                     "error": None,
                 }
@@ -140,30 +170,23 @@ class NodeExecuteTool(ToolBase):
             run_id=int(node.run_id),
             status=MessageEventStatus.PENDING,
         )
-        from app.event_runtime.dispatcher import dispatch_message_event_chain
-
-        await dispatch_message_event_chain(
-            EventDispatchRequest(
-                db=self._db,
-                group_id=int(node.group_id),
-                sender_member_id=int(system_member.id),
-                message_id=int(control_message.id),
-                message_type="system",
-                content=str(control_message.content or ""),
-                meta_json=str(control_message.metadata_json or "{}"),
-                event_id=int(event.id),
-            )
+        _schedule_event_dispatch(
+            group_id=int(node.group_id),
+            sender_member_id=int(system_member.id),
+            message_id=int(control_message.id),
+            message_type="system",
+            content=str(control_message.content or ""),
+            meta_json=str(control_message.metadata_json or "{}"),
         )
-        completed = get_node(self._db, node_id=int(node.id))
         return build_tool_chunk(
             {
                 "ok": True,
                 "result": {
-                    "node_id": int(completed.id) if completed else int(node.id),
-                    "run_id": int(completed.run_id) if completed else int(node.run_id),
-                    "node_key": str(completed.node_key) if completed else str(node.node_key),
-                    "status": str(completed.status) if completed else "queued",
-                    "output_summary": str(completed.output_summary or "") if completed else "",
+                    "node_id": int(node.id),
+                    "run_id": int(node.run_id),
+                    "node_key": str(node.node_key),
+                    "status": str(node.status or "queued"),
+                    "output_summary": "",
                     "message_id": int(control_message.id),
                     "event_id": int(event.id),
                 },

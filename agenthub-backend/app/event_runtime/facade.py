@@ -9,6 +9,7 @@ from sqlalchemy.orm import Session
 from app.event_runtime.types import (
     MessageEventCategory,
     MessageEventStatus,
+    default_message_event_status,
     describe_message_event_operation as _describe_message_event_operation,
 )
 from app.models.message import Message
@@ -56,7 +57,7 @@ def create_message_event(
     event_type: str,
     payload: dict | None = None,
     category: str | None = None,
-    status: str = MessageEventStatus.PENDING,
+    status: str | None = None,
     run_id: int | None = None,
 ) -> MessageEvent:
     message = db.query(Message).filter(Message.id == int(message_id)).first()
@@ -75,7 +76,7 @@ def create_message_event(
         seq=_next_seq(db, message_id=int(message_id)),
         event_type=str(event_type),
         category=str(category or _infer_event_category(event_type)),
-        status=str(status or MessageEventStatus.PENDING),
+        status=str(status or default_message_event_status(event_type)),
         payload_json=json.dumps(event_payload, ensure_ascii=False),
     )
     db.add(event)

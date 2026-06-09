@@ -3,6 +3,7 @@ from __future__ import annotations
 from typing import Any
 
 from agentscope.agent import Agent
+from agentscope.agent import ReActConfig
 from agentscope.credential import OpenAICredential
 from agentscope.message import Msg
 from agentscope.model import OpenAIChatModel
@@ -41,6 +42,7 @@ class ManagerAgentScopeReactEngine(BaseManagerEngine):
             system_prompt=str(getattr(req, "system_prompt", "") or ""),
             model=model,
             toolkit=getattr(req, "toolkit", None),
+            react_config=ReActConfig(max_iters=max(8, int(settings.manager_react_max_iters or 60))),
         )
         try:
             agent.state.permission_context.mode = PermissionMode.BYPASS

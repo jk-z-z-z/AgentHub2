@@ -1,4 +1,6 @@
-from contextlib import asynccontextmanager
+import asyncio
+import os
+from contextlib import asynccontextmanager, suppress
 
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
@@ -26,6 +28,7 @@ from app.core.config import settings
 from app.db.base import Base
 from app.db.migrations import run_sqlite_task_schema_migrations
 from app.db.session import SessionLocal, engine
+from app.event_runtime.recovery import run_pending_message_event_recovery_loop
 from app.services.auth_service import ensure_default_admin
 from app.services.storage_init_service import ensure_user_space
 from app.agent_runtime.tool._registry import ensure_builtin_tools_seeded
@@ -33,6 +36,7 @@ from app.agent_runtime.tool._registry import ensure_builtin_tools_seeded
 
 @asynccontextmanager
 async def lifespan(_: FastAPI):
+    recovery_task: asyncio.Task[None] | None = None
     if settings.reset_db_on_startup:
         Base.metadata.drop_all(bind=engine)
     Base.metadata.create_all(bind=engine)
@@ -48,7 +52,15 @@ async def lifespan(_: FastAPI):
 
     # Always ensure storage dirs exist; safe in production and idempotent.
     ensure_user_space(1)
-    yield
+    if settings.message_event_recovery_enabled and os.environ.get("PYTEST_CURRENT_TEST") is None:
+        recovery_task = asyncio.create_task(run_pending_message_event_recovery_loop())
+    try:
+        yield
+    finally:
+        if recovery_task is not None:
+            recovery_task.cancel()
+            with suppress(asyncio.CancelledError):
+                await recovery_task
 
 
 app = FastAPI(title=settings.app_name, lifespan=lifespan)

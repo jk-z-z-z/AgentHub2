@@ -556,12 +556,15 @@ def complete_node(db: Session, *, node_id: int, member_id: int, output_summary: 
     node = get_node(db, node_id=int(node_id))
     if not node:
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Node not found")
+    normalized_summary = str(output_summary or "").strip()
+    if not normalized_summary:
+        raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail="output_summary is required")
     if not node.assignee_member_id:
         node.assignee_member_id = int(member_id)
     if int(node.assignee_member_id) != int(member_id):
         raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail="Only assignee can complete this node")
     node.status = "completed"
-    node.output_summary = str(output_summary or "").strip()
+    node.output_summary = normalized_summary
     node.result_json = json.dumps({"summary": node.output_summary, "status": "completed"}, ensure_ascii=False)
     node.error = ""
     node.manager_review_status = "pending"
