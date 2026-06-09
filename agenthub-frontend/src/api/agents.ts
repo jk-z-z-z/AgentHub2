@@ -8,6 +8,8 @@ import type {
   AgentProfileCreateRequest,
   AgentSkillConfig,
   AgentSkillConfigUpdateRequest,
+  AgentMcpToggles,
+  AgentMcpTogglesUpdateRequest,
   AgentToolToggles,
   AgentToolTogglesUpdateRequest,
   FsEntry,
@@ -169,6 +171,17 @@ export async function apiUpdateAgentToolToggles(
   return httpPut<AgentToolToggles, AgentToolTogglesUpdateRequest>(`/api/v1/agents/${agentId}/tools/toggles`, { enabled })
 }
 
+export async function apiGetAgentMcpToggles(agentId: string): Promise<ApiResult<AgentMcpToggles>> {
+  return httpGet<AgentMcpToggles>(`/api/v1/agents/${agentId}/mcps/toggles`)
+}
+
+export async function apiUpdateAgentMcpToggles(
+  agentId: string,
+  enabled: Record<string, boolean>,
+): Promise<ApiResult<AgentMcpToggles>> {
+  return httpPut<AgentMcpToggles, AgentMcpTogglesUpdateRequest>(`/api/v1/agents/${agentId}/mcps/toggles`, { enabled })
+}
+
 export async function apiListAgentSkillPool(): Promise<ApiResult<SkillPoolItem[]>> {
   return httpGet<SkillPoolItem[]>('/api/v1/agents/skill-pool')
 }
@@ -193,6 +206,8 @@ export type {
   AgentProfileCreateRequest,
   AgentSkillConfig,
   AgentSkillConfigUpdateRequest,
+  AgentMcpToggles,
+  AgentMcpTogglesUpdateRequest,
   AgentToolToggles,
   AgentToolTogglesUpdateRequest,
   FsEntry,

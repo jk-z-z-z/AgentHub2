@@ -37,6 +37,12 @@ export type SkillPoolItem = Schema['SkillPoolItemOut']
 export type AgentSkillConfig = Schema['AgentSkillConfigOut']
 export type AgentToolToggles = Schema['AgentToolTogglesOut']
 export type AgentToolTogglesUpdateRequest = Schema['AgentToolTogglesUpdateRequest']
+export type AgentMcpToggles = {
+  enabled: Record<string, boolean>
+}
+export type AgentMcpTogglesUpdateRequest = {
+  enabled: Record<string, boolean>
+}
 export type UserCreateRequest = Schema['UserCreateRequest']
 export type UserSelfUpdate = Schema['UserSelfUpdateRequest']
 export type UserProfileMd = Schema['UserProfileMdOut']

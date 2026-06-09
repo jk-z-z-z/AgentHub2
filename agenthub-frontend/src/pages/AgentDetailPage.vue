@@ -3,482 +3,128 @@
     <WorkspacePanel :title="`智能体详情：${agent?.display_name || agentId}`">
       <template #actions>
         <el-button @click="router.push('/agents')">返回管理</el-button>
-        <el-button @click="reloadAll" :disabled="!agentId || saving">刷新</el-button>
-        <el-button
-          type="primary"
-          @click="save"
-          :loading="saving"
-          :disabled="!agentId || !activeFilePath"
-        >
-          保存
+        <el-button @click="reloadAll" :disabled="!agentId || loading">刷新</el-button>
+        <el-button type="primary" @click="saveActiveFile" :loading="saving" :disabled="!canSaveActiveFile">
+          保存文件
         </el-button>
       </template>
 
-      <div class="panelInner">
-        <aside class="files">
-          <div class="filesHeader">
-            <div class="filesTitle">文件</div>
-            <div class="hiddenToggle">
-              <span class="hiddenToggleLabel">隐藏文件</span>
-              <el-switch
-                :model-value="showHiddenFiles"
-                inline-prompt
-                @change="showHiddenFiles = Boolean($event)"
-              />
-            </div>
-          </div>
-          <div v-if="loading" class="hint">加载中…</div>
-          <el-input
-            v-model="filter"
-            placeholder="搜索文件…"
-            size="small"
-            style="margin: 6px 0 10px 0"
+      <el-tabs v-model="activeSection" class="detailTabs">
+        <el-tab-pane label="文件" name="files">
+          <AgentDetailFilesPanel
+            :files="coreFiles"
+            :active-file="activeCoreFile"
+            :active-path="activeFilePath"
+            :content="content"
+            :dirty="content !== originalContent"
+            :saving="saving"
+            :can-delete="canDeleteCoreFile"
+            :err="err"
+            @select-file="activeCoreFile = $event"
+            @update:content="content = $event"
+            @save="saveActiveFile"
+            @reset="resetContent"
+            @copy="copyContent"
+            @delete-file="deleteCoreFile"
           />
+        </el-tab-pane>
 
-          <div class="tree">
-            <AgentFileTreeNode
-              v-for="n in treeRoots"
-              :key="n.path"
-              :node="n"
-              :active-path="activeFilePath"
-              :open-dirs="openDirs"
-              @open="openFile"
-              @toggle="toggleDir"
-            />
-          </div>
+        <el-tab-pane label="技能" name="skills">
+          <AgentDetailSkillsPanel
+            :skills="skillPool"
+            :selected-codes="skillConfig.pool_skill_codes"
+            :enable-local-skills="skillConfig.enable_agent_local_skills"
+            :saving="skillSaving"
+            @toggle-skill="toggleSkillPoolCode"
+            @update:enable-local-skills="skillConfig.enable_agent_local_skills = $event"
+            @save="saveSkillConfig"
+          />
+        </el-tab-pane>
 
-          <div class="ops">
-            <el-select v-model="newFileDir" style="width: 140px">
-              <el-option label="skills/" value="skills/" />
-              <el-option label="knowledge/" value="knowledge/" />
-              <el-option label="mcps/" value="mcps/" />
-            </el-select>
-            <el-input v-model="newFilePath" placeholder="例如：web/search.md 或 notes.md" />
-            <el-button type="primary" @click="createFile" :disabled="!newFilePath.trim()">
-              新建
-            </el-button>
-          </div>
-        </aside>
+        <el-tab-pane label="知识库" name="knowledge">
+          <AgentDetailKnowledgePanel :files="knowledgeFiles" @open-file="openKnowledge" />
+        </el-tab-pane>
 
-        <main class="editor">
-          <div class="editorHeader">
-            <div class="editorTitle">{{ activeFilePath || '选择一个文件' }}</div>
-            <div class="editorActions">
-              <el-button
-                size="small"
-                type="danger"
-                plain
-                @click="removeFile"
-                :disabled="!canDeleteActive"
-              >
-                删除
-              </el-button>
-            </div>
-          </div>
-          <div class="editorBody">
-            <div class="toolPanel">
-              <div class="toolTitle">工具启用</div>
-              <div class="toolHint">工具为内置能力；智能体仅配置是否启用。</div>
-              <el-table
-                :data="tools"
-                size="small"
-                empty-text="暂无内置工具"
-                class="toolList"
-                height="240"
-              >
-                <el-table-column label="工具" min-width="220">
-                  <template #default="{ row }">
-                    <div class="tName">{{ row.name }}</div>
-                    <div class="tMeta">{{ row.code }} · {{ row.source_type }}</div>
-                  </template>
-                </el-table-column>
-                <el-table-column label="启用" width="100" align="right">
-                  <template #default="{ row }">
-                    <el-switch v-model="toolToggles[row.code]" />
-                  </template>
-                </el-table-column>
-              </el-table>
-              <div class="toolActions">
-                <el-button size="small" :loading="toolSaving" @click="saveToolToggles">
-                  保存工具开关
-                </el-button>
-              </div>
-            </div>
+        <el-tab-pane label="工具" name="tools">
+          <AgentDetailToolsPanel :tools="tools" :enabled="toolToggles" :saving="toolSaving" @toggle-tool="toggleTool" @save="saveToolToggles" />
+        </el-tab-pane>
 
-            <div class="toolPanel">
-              <div class="toolTitle">技能加载</div>
-              <div class="toolHint">
-                可从全局 Skill 池选择，也可控制是否加载该 Agent 本地 skills 目录。
-              </div>
-              <div class="toolRow">
-                <div class="tLeft">
-                  <div class="tName">加载本地 skills/</div>
-                  <div class="tMeta">开启后会递归加载该智能体目录下的 SKILL.md</div>
-                </div>
-                <div class="tRight">
-                  <el-switch v-model="skillConfig.enable_agent_local_skills" />
-                </div>
-              </div>
-              <el-table
-                :data="skillPool"
-                size="small"
-                empty-text="全局 Skill 池为空（请在后端 skill-pool 目录下放置 SKILL.md）"
-                class="toolList"
-                height="240"
-              >
-                <el-table-column label="技能" min-width="220">
-                  <template #default="{ row }">
-                    <div class="tName">{{ row.name || row.code }}</div>
-                    <div class="tMeta">{{ row.code }} · {{ row.description || '无描述' }}</div>
-                  </template>
-                </el-table-column>
-                <el-table-column label="选择" width="100" align="right">
-                  <template #default="{ row }">
-                    <el-checkbox
-                      :model-value="skillConfig.pool_skill_codes.includes(row.code)"
-                      @change="(v: boolean) => togglePoolSkill(row.code, v)"
-                    />
-                  </template>
-                </el-table-column>
-              </el-table>
-              <div class="toolActions">
-                <el-button size="small" :loading="skillSaving" @click="saveSkillConfig">
-                  保存技能配置
-                </el-button>
-              </div>
-            </div>
-
-            <div v-if="!activeFilePath" class="hint">从左侧选择文件</div>
-            <el-input
-              v-else
-              v-model="content"
-              type="textarea"
-              :rows="20"
-              placeholder="编辑内容"
-            />
-            <div v-if="err" class="err">{{ err }}</div>
-          </div>
-        </main>
-      </div>
+        <el-tab-pane label="MCP" name="mcps">
+          <AgentDetailMcpPanel :mcps="mcps" :enabled="mcpToggles" :saving="mcpSaving" @toggle-mcp="toggleMcp" @save="saveMcpToggles" />
+        </el-tab-pane>
+      </el-tabs>
     </WorkspacePanel>
+
+    <AgentDetailKnowledgeDialog
+      v-model:open="knowledgeDialogOpen"
+      :path="activeKnowledgePath"
+      :content="content"
+      :dirty="content !== originalContent"
+      :saving="saving"
+      :err="err"
+      @update:content="content = $event"
+      @save="saveActiveFile"
+      @reset="resetContent"
+      @copy="copyContent"
+    />
   </div>
 </template>
 
 <script setup lang="ts">
-import { computed, onMounted, ref } from 'vue'
-import { useRoute, useRouter } from 'vue-router'
-import {
-  apiDeleteAgentFsFile,
-  apiGetAgentSkillConfig,
-  apiGetAgentToolToggles,
-  apiListAgentFs,
-  apiListAgentSkillPool,
-  apiListAgents,
-  apiListTools,
-  apiReadAgentFsFile,
-  apiUpdateAgentSkillConfig,
-  apiUpdateAgentToolToggles,
-  apiWriteAgentFsFile,
-  type Agent,
-  type FsEntry,
-  type SkillPoolItem,
-  type Tool,
-} from '../api/agents'
-import { ElMessage } from 'element-plus'
-import AgentFileTreeNode, { type FileTreeNode } from '../components/AgentFileTreeNode.vue'
 import WorkspacePanel from '../components/common/WorkspacePanel.vue'
+import AgentDetailFilesPanel from '../components/agents/AgentDetailFilesPanel.vue'
+import AgentDetailSkillsPanel from '../components/agents/AgentDetailSkillsPanel.vue'
+import AgentDetailKnowledgePanel from '../components/agents/AgentDetailKnowledgePanel.vue'
+import AgentDetailToolsPanel from '../components/agents/AgentDetailToolsPanel.vue'
+import AgentDetailMcpPanel from '../components/agents/AgentDetailMcpPanel.vue'
+import AgentDetailKnowledgeDialog from '../components/agents/AgentDetailKnowledgeDialog.vue'
+import { useAgentDetail } from '../composables/useAgentDetail'
 
-const route = useRoute()
-const router = useRouter()
-
-const agentId = computed(() => String(route.params.id || ''))
-const agent = ref<Agent | null>(null)
-
-const files = ref<FsEntry[]>([])
-const loading = ref(false)
-const activeFilePath = ref('')
-const content = ref('')
-const saving = ref(false)
-const err = ref('')
-
-const tools = ref<Tool[]>([])
-const toolToggles = ref<Record<string, boolean>>({})
-const toolSaving = ref(false)
-const skillPool = ref<SkillPoolItem[]>([])
-const skillConfig = ref<{ enable_agent_local_skills: boolean; pool_skill_codes: string[] }>({
-  enable_agent_local_skills: true,
-  pool_skill_codes: [],
-})
-const skillSaving = ref(false)
-const showHiddenFiles = ref(false)
-
-const newFileDir = ref<'skills/' | 'knowledge/' | 'mcps/'>('skills/')
-const newFilePath = ref('')
-const filter = ref('')
-const openDirs = ref<Record<string, boolean>>({
-  'core/': true,
-  'skills/': true,
-  'knowledge/': true,
-  'mcps/': true,
-})
-
-const filteredFiles = computed(() => {
-  const q = filter.value.trim().toLowerCase()
-  if (!q) return files.value
-  return files.value.filter((f) => f.path.toLowerCase().includes(q))
-})
-
-function splitPath(p: string) {
-  const clean = p.replace(/\\/g, '/').replace(/^\/+/, '')
-  return clean.split('/').filter(Boolean)
-}
-
-function buildTree(entries: FsEntry[], showHiddenFiles: boolean): FileTreeNode[] {
-  const nodes = new Map<string, FileTreeNode>()
-  const ensure = (path: string, is_dir: boolean, size: number): FileTreeNode => {
-    if (nodes.has(path)) return nodes.get(path)!
-    const parts = splitPath(path)
-    const last = parts.slice(-1)[0] || path.replace(/\/+$/, '')
-    const label = path.endsWith('/') ? `${last}/` : last
-    const n: FileTreeNode = { path, label, is_dir, size, children: [] }
-    nodes.set(path, n)
-    return n
-  }
-  const addChild = (parent: FileTreeNode, child: FileTreeNode) => {
-    if (!parent.children.some((c) => c.path === child.path)) parent.children.push(child)
-  }
-
-  const core = ensure('core/', true, 0)
-  const skills = ensure('skills/', true, 0)
-  const knowledge = ensure('knowledge/', true, 0)
-  const mcps = ensure('mcps/', true, 0)
-
-  for (const e of entries) {
-    const raw = e.path
-    if (!raw) continue
-    const partsAll = splitPath(raw)
-    if (!showHiddenFiles && partsAll.some((segment) => segment.startsWith('.'))) continue
-    const isDir = e.is_dir || raw.endsWith('/')
-    if (
-      raw === 'SOUL.md' ||
-      raw === 'PROFILE.md' ||
-      raw === 'BOOTSTRAP.md' ||
-      raw === 'MEMORY.md' ||
-      raw === 'tools.json' ||
-      raw === 'skills.json' ||
-      raw === 'profile.enabled_files.json'
-    ) {
-      addChild(core, ensure(`core/${raw}`, false, e.size || 0))
-      continue
-    }
-    const parts = partsAll
-    const top = parts[0]
-    if (top !== 'skills' && top !== 'knowledge' && top !== 'mcps') continue
-    let parent = top === 'skills' ? skills : top === 'knowledge' ? knowledge : mcps
-    for (let i = 1; i < parts.length; i++) {
-      const isLast = i === parts.length - 1
-      const p = `${parts.slice(0, i + 1).join('/')}${isLast && isDir ? '/' : ''}`
-      const node = ensure(p, isLast ? isDir : true, isLast ? (isDir ? 0 : e.size || 0) : 0)
-      addChild(parent, node)
-      parent = node
-    }
-  }
-
-  const sortNode = (n: FileTreeNode) => {
-    n.children.sort((a, b) => {
-      if (a.is_dir !== b.is_dir) return a.is_dir ? -1 : 1
-      return a.label.localeCompare(b.label)
-    })
-    n.children.forEach(sortNode)
-  }
-  ;[core, skills, knowledge, mcps].forEach(sortNode)
-  return [core, skills, knowledge, mcps]
-}
-
-const treeRoots = computed(() => buildTree(filteredFiles.value, showHiddenFiles.value))
-
-async function loadAgentMeta() {
-  const res = await apiListAgents()
-  agent.value = res.data.find((a) => String(a.id) === agentId.value) || null
-}
-
-async function loadTools() {
-  const res = await apiListTools()
-  tools.value = res.data
-}
-
-async function loadToolToggles() {
-  if (!agentId.value) return
-  const res = await apiGetAgentToolToggles(agentId.value)
-  toolToggles.value = res.data.enabled || {}
-}
-
-async function loadSkillPool() {
-  const res = await apiListAgentSkillPool()
-  skillPool.value = res.data || []
-}
-
-async function loadSkillConfig() {
-  if (!agentId.value) return
-  const res = await apiGetAgentSkillConfig(agentId.value)
-  skillConfig.value = {
-    enable_agent_local_skills: res.data.enable_agent_local_skills,
-    pool_skill_codes: Array.isArray(res.data.pool_skill_codes)
-      ? [...res.data.pool_skill_codes]
-      : [],
-  }
-}
-
-async function reloadAll() {
-  err.value = ''
-  if (!agentId.value) return
-  try {
-    loading.value = true
-    await Promise.all([loadToolToggles(), loadTools(), loadSkillPool(), loadSkillConfig()])
-    const res = await apiListAgentFs(agentId.value)
-    files.value = res.data.filter((x) => !x.path.endsWith('/'))
-    if (!activeFilePath.value) {
-      const prefer = ['SOUL.md', 'PROFILE.md']
-      const first =
-        prefer.find((p) => files.value.some((f) => f.path === p)) || files.value[0]?.path
-      if (first) await openFile(first)
-    } else {
-      await openFile(activeFilePath.value)
-    }
-  } catch (e) {
-    err.value = e instanceof Error ? e.message : String(e)
-  } finally {
-    loading.value = false
-  }
-}
-
-function togglePoolSkill(code: string, checked: boolean) {
-  const s = new Set(skillConfig.value.pool_skill_codes)
-  if (checked) s.add(code)
-  else s.delete(code)
-  skillConfig.value.pool_skill_codes = Array.from(s)
-}
-
-async function saveSkillConfig() {
-  if (!agentId.value) return
-  skillSaving.value = true
-  try {
-    const payload = {
-      enable_agent_local_skills: !!skillConfig.value.enable_agent_local_skills,
-      pool_skill_codes: Array.from(new Set(skillConfig.value.pool_skill_codes)),
-    }
-    await apiUpdateAgentSkillConfig(agentId.value, payload)
-    ElMessage.success('已保存技能配置')
-  } catch (e) {
-    ElMessage.error(e instanceof Error ? e.message : String(e))
-  } finally {
-    skillSaving.value = false
-  }
-}
-
-async function saveToolToggles() {
-  if (!agentId.value) return
-  toolSaving.value = true
-  try {
-    await apiUpdateAgentToolToggles(agentId.value, toolToggles.value)
-    ElMessage.success('已保存工具开关')
-  } catch (e) {
-    ElMessage.error(e instanceof Error ? e.message : String(e))
-  } finally {
-    toolSaving.value = false
-  }
-}
-
-async function openFile(path: string) {
-  err.value = ''
-  if (!agentId.value) return
-  activeFilePath.value = path
-  try {
-    const actual = path.startsWith('core/') ? path.replace(/^core\//, '') : path
-    const res = await apiReadAgentFsFile(agentId.value, actual)
-    content.value = res.data.content || ''
-  } catch (e) {
-    err.value = e instanceof Error ? e.message : String(e)
-  }
-}
-
-async function save() {
-  err.value = ''
-  if (!agentId.value) return
-  if (!activeFilePath.value) return
-  saving.value = true
-  try {
-    const actual = activeFilePath.value.startsWith('core/')
-      ? activeFilePath.value.replace(/^core\//, '')
-      : activeFilePath.value
-    await apiWriteAgentFsFile(agentId.value, actual, content.value)
-  } catch (e) {
-    err.value = e instanceof Error ? e.message : String(e)
-  } finally {
-    saving.value = false
-  }
-}
-
-const canDeleteActive = computed(() => {
-  const p = activeFilePath.value
-  if (!p) return false
-  const actual = p.startsWith('core/') ? p.replace(/^core\//, '') : p
-  if (actual === 'SOUL.md' || actual === 'PROFILE.md') return false
-  return (
-    actual.startsWith('skills/') || actual.startsWith('knowledge/') || actual.startsWith('mcps/')
-  )
-})
-
-async function createFile() {
-  err.value = ''
-  if (!agentId.value) return
-  const rel = newFilePath.value.trim().replace(/\\/g, '/').replace(/^\/+/, '')
-  if (!rel) return
-  if (rel.includes('..')) {
-    err.value = '路径不能包含 ..'
-    return
-  }
-  const path = `${newFileDir.value}${rel}`
-  try {
-    await apiWriteAgentFsFile(agentId.value, path, '')
-    newFilePath.value = ''
-    await reloadAll()
-    await openFile(path)
-  } catch (e) {
-    err.value = e instanceof Error ? e.message : String(e)
-  }
-}
-
-async function removeFile() {
-  err.value = ''
-  if (!agentId.value) return
-  if (!canDeleteActive.value) return
-  const actual = activeFilePath.value.startsWith('core/')
-    ? activeFilePath.value.replace(/^core\//, '')
-    : activeFilePath.value
-  try {
-    await apiDeleteAgentFsFile(agentId.value, actual)
-    activeFilePath.value = ''
-    content.value = ''
-    await reloadAll()
-  } catch (e) {
-    err.value = e instanceof Error ? e.message : String(e)
-  }
-}
-
-function toggleDir(path: string) {
-  openDirs.value = { ...openDirs.value, [path]: !openDirs.value[path] }
-}
-
-onMounted(async () => {
-  await Promise.all([loadAgentMeta(), reloadAll()])
-})
+const {
+  agentId,
+  agent,
+  activeSection,
+  loading,
+  content,
+  originalContent,
+  saving,
+  err,
+  tools,
+  toolToggles,
+  toolSaving,
+  skillPool,
+  skillConfig,
+  skillSaving,
+  mcps,
+  mcpToggles,
+  mcpSaving,
+  activeCoreFile,
+  activeKnowledgePath,
+  knowledgeDialogOpen,
+  coreFiles,
+  knowledgeFiles,
+  activeFilePath,
+  canDeleteCoreFile,
+  canSaveActiveFile,
+  reloadAll,
+  saveActiveFile,
+  resetContent,
+  copyContent,
+  deleteCoreFile,
+  openKnowledge,
+  saveSkillConfig,
+  saveToolToggles,
+  saveMcpToggles,
+  toggleSkillPoolCode,
+  toggleTool,
+  toggleMcp,
+  router,
+} = useAgentDetail()
 </script>
 
 <style scoped>
 .shell {
   height: 100%;
-  min-height: 0;
 }
 .shell :deep(.el-button) {
   box-shadow: none;
@@ -487,172 +133,37 @@ onMounted(async () => {
   --el-button-bg-color: var(--ah-surface-soft);
   --el-button-border-color: transparent;
   --el-button-text-color: var(--ah-text-primary);
-  --el-button-hover-bg-color: var(--ah-conv-item-hover-bg, var(--ah-hover-strong));
-  --el-button-hover-border-color: transparent;
-  --el-button-hover-text-color: var(--ah-text-primary);
-  --el-button-active-bg-color: var(--ah-conv-item-active-bg, var(--ah-list-active-bg));
-  --el-button-active-border-color: transparent;
-  --el-button-active-text-color: var(--ah-text-primary);
 }
-.shell :deep(.el-button--primary) {
-  --el-button-bg-color: color-mix(in srgb, var(--ah-text-strong) 42%, transparent);
-  --el-button-border-color: transparent;
-  --el-button-text-color: var(--ah-text-on-primary);
-  --el-button-hover-bg-color: color-mix(in srgb, var(--ah-text-strong) 46%, transparent);
-  --el-button-hover-border-color: transparent;
-  --el-button-hover-text-color: var(--ah-text-on-primary);
-  --el-button-active-bg-color: color-mix(in srgb, var(--ah-text-strong) 50%, transparent);
-  --el-button-active-border-color: transparent;
-  --el-button-active-text-color: var(--ah-text-on-primary);
-  --el-button-disabled-bg-color: var(--ah-surface-soft);
-  --el-button-disabled-border-color: transparent;
-  --el-button-disabled-text-color: var(--ah-text-muted);
-}
-.shell :deep(.el-button--danger.is-plain) {
-  --el-button-bg-color: transparent;
-  --el-button-border-color: color-mix(in srgb, var(--ah-danger) 38%, var(--ah-border));
-  --el-button-text-color: var(--ah-danger);
-  --el-button-hover-bg-color: color-mix(in srgb, var(--ah-danger) 10%, transparent);
-  --el-button-hover-border-color: var(--ah-danger);
-  --el-button-hover-text-color: var(--ah-danger-strong);
-  --el-button-active-bg-color: color-mix(in srgb, var(--ah-danger) 14%, transparent);
-  --el-button-active-border-color: var(--ah-danger-strong);
-  --el-button-active-text-color: var(--ah-danger-strong);
-}
-.panelInner {
+.detailTabs {
+  min-height: 0;
   flex: 1;
-  display: grid;
-  grid-template-columns: 320px 1fr;
-  gap: 14px;
-  min-height: 0;
-}
-.files {
-  border: 1px solid var(--ah-border-soft);
-  border-radius: 16px;
-  overflow: auto;
-  padding: 10px;
-  min-height: 0;
-}
-.filesTitle {
-  font-weight: 900;
-  margin-bottom: 8px;
-}
-.filesHeader {
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  gap: 12px;
-  margin-bottom: 8px;
-}
-.hiddenToggle {
-  display: inline-flex;
-  align-items: center;
-  gap: 8px;
-  color: var(--ah-text-secondary);
-}
-.hiddenToggleLabel {
-  font-size: 12px;
-  white-space: nowrap;
-}
-.tree {
-  display: grid;
-  gap: 4px;
-}
-.editor {
-  border: 1px solid var(--ah-border-soft);
-  border-radius: 16px;
-  overflow: hidden;
   display: flex;
   flex-direction: column;
+}
+.detailTabs :deep(.el-tabs__content) {
   min-height: 0;
-}
-.editorHeader {
-  height: 52px;
-  border-bottom: 1px solid var(--ah-border-soft);
+  height: calc(100vh - 220px);
   display: flex;
-  align-items: center;
-  padding: 0 12px;
-  justify-content: space-between;
+  flex-direction: column;
 }
-.editorTitle {
-  font-weight: 900;
-}
-.editorActions {
-  display: flex;
-  gap: 8px;
-}
-.editorBody {
-  padding: 12px;
-  overflow: auto;
+.detailTabs :deep(.el-tab-pane) {
   min-height: 0;
-}
-.toolPanel {
-  border: 1px solid var(--ah-border-soft);
-  border-radius: 14px;
-  padding: 12px;
-  margin-bottom: 12px;
-  background: var(--ah-surface-soft);
-}
-.toolTitle {
-  font-weight: 900;
-}
-.toolHint {
-  margin-top: 4px;
-  font-size: 12px;
-  opacity: 0.7;
-}
-.toolList {
-  margin-top: 10px;
-  display: grid;
-  gap: 8px;
-}
-.toolRow {
+  flex: 1;
   display: flex;
-  justify-content: space-between;
-  align-items: center;
-  border: 1px solid var(--ah-border-soft);
-  border-radius: 12px;
-  padding: 10px;
+  flex-direction: column;
 }
-.tName {
-  font-weight: 900;
-}
-.tMeta {
-  margin-top: 2px;
-  font-size: 12px;
+.tabHint {
+  margin-bottom: 10px;
   color: var(--ah-text-tertiary);
-}
-.toolActions {
-  margin-top: 10px;
-  display: flex;
-  justify-content: flex-end;
+  font-size: 12px;
 }
 .shell :deep(.el-switch) {
   --el-switch-on-color: color-mix(in srgb, var(--ah-text-strong) 42%, transparent);
   --el-switch-off-color: var(--ah-border-strong);
 }
-.shell :deep(.el-checkbox) {
-  --el-checkbox-checked-bg-color: color-mix(in srgb, var(--ah-text-strong) 42%, transparent);
-  --el-checkbox-checked-input-border-color: color-mix(in srgb, var(--ah-text-strong) 42%, transparent);
-  --el-checkbox-input-border-color-hover: color-mix(in srgb, var(--ah-text-strong) 42%, transparent);
-  --el-checkbox-checked-text-color: var(--ah-text-primary);
-}
-.err {
-  margin-top: 10px;
-  color: var(--ah-danger);
-  font-size: 12px;
-}
-.hint {
-  opacity: 0.6;
-  padding: 6px 2px;
-}
-.ops {
-  margin-top: 12px;
-  border-top: 1px solid var(--ah-border-soft);
-  padding-top: 10px;
-  display: grid;
-  grid-template-columns: 140px 1fr 80px;
-  gap: 8px;
-  align-items: center;
+@media (max-width: 1100px) {
+  .detailTabs :deep(.el-tabs__content) {
+    height: auto;
+  }
 }
 </style>

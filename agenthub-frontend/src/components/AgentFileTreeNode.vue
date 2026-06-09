@@ -19,11 +19,12 @@
       <div class="nMeta">{{ node.is_dir ? '' : formatSize(node.size) }}</div>
       <div class="nActions" @click.stop>
         <el-button
+          v-if="!node.is_dir"
           class="nodeActionBtn"
           text
           :icon="Delete"
-          :title="node.is_dir ? '删除目录' : '删除文件'"
-          :aria-label="node.is_dir ? '删除目录' : '删除文件'"
+          title="删除文件"
+          aria-label="删除文件"
           @click.stop="$emit('delete', { path: node.path, is_dir: node.is_dir, label: node.label })"
         />
       </div>

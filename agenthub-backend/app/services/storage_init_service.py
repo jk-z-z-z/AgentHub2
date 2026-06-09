@@ -54,6 +54,7 @@ def ensure_agent_space(agent_id: int, soul_md: str | None = None, profile_md: st
     (root / "MEMORY.md").touch(exist_ok=True)
     (root / "tools.json").touch(exist_ok=True)
     (root / "skills.json").touch(exist_ok=True)
+    (root / "mcps.json").touch(exist_ok=True)
 
 
 def ensure_runtime_personal(agent_id: int, user_id: int) -> None:

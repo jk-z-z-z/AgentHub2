@@ -7,6 +7,7 @@ from app.models.agent_instance import AgentInstance
 from app.models.member import Member
 from app.schemas.agent_instance import AgentInstanceCreateRequest, AgentInstanceOut, AgentInstanceSoulOut
 from app.schemas.agent_skills import AgentSkillConfigOut, AgentSkillConfigUpdateRequest, SkillPoolItemOut
+from app.schemas.agent_mcps import AgentMcpTogglesOut, AgentMcpTogglesUpdateRequest
 from app.schemas.common import ApiResponse
 from app.schemas.fs import FsEntryOut, TextFileOut, TextFileWriteRequest
 from app.services.agent_instance_service import (
@@ -25,6 +26,7 @@ from app.services.skill_runtime_service import (
     load_agent_skills_config,
     save_agent_skills_config,
 )
+from app.services.agent_mcp_service import get_agent_mcp_toggles, update_agent_mcp_toggles
 
 
 router = APIRouter(prefix="/agents", tags=["agents"])
@@ -265,3 +267,24 @@ def update_agent_skill_config_api(
         pool_skill_codes=payload.pool_skill_codes,
     )
     return ApiResponse(data=AgentSkillConfigOut.model_validate(cfg))
+
+
+@router.get("/{agent_id}/mcps/toggles", response_model=ApiResponse[AgentMcpTogglesOut])
+def get_agent_mcp_toggles_api(
+    agent_id: int,
+    db: Session = Depends(get_db),
+    user=Depends(get_current_user),
+):
+    enabled = get_agent_mcp_toggles(db, agent_id=int(agent_id), creator_user_id=int(user.id))
+    return ApiResponse(data=AgentMcpTogglesOut(enabled=enabled))
+
+
+@router.put("/{agent_id}/mcps/toggles", response_model=ApiResponse[AgentMcpTogglesOut])
+def update_agent_mcp_toggles_api(
+    agent_id: int,
+    payload: AgentMcpTogglesUpdateRequest,
+    db: Session = Depends(get_db),
+    user=Depends(get_current_user),
+):
+    enabled = update_agent_mcp_toggles(db, agent_id=int(agent_id), creator_user_id=int(user.id), enabled=payload.enabled)
+    return ApiResponse(data=AgentMcpTogglesOut(enabled=enabled))
