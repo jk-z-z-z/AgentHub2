@@ -155,9 +155,10 @@ defineEmits<{
   gap: 12px;
   margin-bottom: 12px;
   padding: 10px 12px;
-  border-radius: 16px;
-  background: rgba(47, 111, 237, 0.08);
-  border: 1px solid rgba(47, 111, 237, 0.12);
+  border-radius: 14px;
+  background: rgba(120, 104, 82, 0.08);
+  border: 1px solid rgba(120, 104, 82, 0.2);
+  border-left: 4px solid rgba(120, 104, 82, 0.34);
 }
 .replyBannerBody {
   min-width: 0;
@@ -165,24 +166,24 @@ defineEmits<{
 .replyBannerTitle {
   font-size: 12px;
   font-weight: 800;
-  color: var(--ah-text-secondary);
+  color: rgba(72, 62, 49, 0.92);
 }
 .replyBannerText {
   margin-top: 4px;
   font-size: 13px;
   line-height: 1.5;
-  color: var(--ah-text-primary);
+  color: rgba(72, 62, 49, 0.8);
   word-break: break-word;
 }
 .replyBannerClose {
   border: 0;
   background: transparent;
-  color: var(--ah-text-tertiary);
+  color: rgba(120, 104, 82, 0.7);
   cursor: pointer;
   font-size: 12px;
 }
 .replyBannerClose:hover {
-  color: var(--ah-text-secondary);
+  color: rgba(72, 62, 49, 0.9);
 }
 .input {
   width: 100%;
