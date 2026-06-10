@@ -23,8 +23,8 @@ router = APIRouter(prefix="/groups", tags=["groups"])
 
 
 @router.get("", response_model=ApiResponse[list[GroupOut]])
-def list_groups_api(db: Session = Depends(get_db)):
-    rows = list_groups(db)
+def list_groups_api(db: Session = Depends(get_db), user=Depends(get_current_user)):
+    rows = list_groups(db, user_id=int(user.id))
     data: list[GroupOut] = []
     for row in rows:
         workspace = get_workspace_for_project(db, project_id=int(row.id)) if str(row.type) == "project" else None

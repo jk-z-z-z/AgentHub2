@@ -10,8 +10,14 @@ from app.services.storage_paths import project_dir
 from app.services.storage_init_service import ensure_personal_group_space, ensure_project_space
 
 
-def list_groups(db: Session) -> list[Group]:
-    return db.query(Group).order_by(Group.id.asc()).all()
+def list_groups(db: Session, *, user_id: int | None = None) -> list[Group]:
+    query = db.query(Group)
+    if user_id is not None:
+        query = (
+            query.join(Member, Member.group_id == Group.id)
+            .filter(Member.kind == "user", Member.user_ref == str(user_id))
+        )
+    return query.order_by(Group.id.asc()).all()
 
 
 def create_group(

@@ -263,6 +263,7 @@ type GraphLayoutColumn = {
 const props = defineProps<{
   activeGroup: Group | null
   members: Member[]
+  currentUserId: string
   runs: GroupTaskRun[]
   activeRunId: string
   activeRun: GroupTaskRun | null
@@ -457,7 +458,9 @@ function nodeStatusClass(status: string) {
 }
 
 function isNodeMine(node: GroupTaskNode) {
-  const me = props.members.find((member) => member.kind === 'user')
+  const me = props.members.find(
+    (member) => member.kind === 'user' && String(member.user_ref || '') === String(props.currentUserId || ''),
+  )
   return !!me && String(node.assignee_member_id || '') === String(me.id)
 }
 </script>

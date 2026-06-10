@@ -89,6 +89,7 @@ const props = defineProps<{
   activeGroup: Group | null
   messages: Message[]
   members: Member[]
+  currentUserId: string
 }>()
 
 defineEmits<{
@@ -206,7 +207,7 @@ function codeDiffLabel(message: Message) {
 
 function sideClass(message: Message) {
   const sender = props.members.find((item) => String(item.id) === String(message.sender_member_id))
-  if (sender?.kind === 'user') return 'right'
+  if (sender?.kind === 'user' && String(sender.user_ref || '') === String(props.currentUserId || '')) return 'right'
   return 'left'
 }
 

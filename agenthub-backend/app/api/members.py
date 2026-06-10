@@ -1,7 +1,9 @@
-from fastapi import APIRouter, Depends, Query
+from fastapi import APIRouter, Depends, HTTPException, Query, status
 from sqlalchemy.orm import Session
 
 from app.db.session import get_db
+from app.dependencies.auth import get_current_user
+from app.models.member import Member
 from app.schemas.common import ApiResponse
 from app.schemas.member import AgentMemberCreateRequest, MemberOut, UserMemberCreateRequest
 from app.services.member_service import create_agent_member, create_user_member, delete_member, list_members
@@ -11,7 +13,19 @@ router = APIRouter(prefix="/members", tags=["members"])
 
 
 @router.get("", response_model=ApiResponse[list[MemberOut]])
-def list_members_api(group_id: str | None = Query(None), db: Session = Depends(get_db)):
+def list_members_api(
+    group_id: str | None = Query(None),
+    db: Session = Depends(get_db),
+    user=Depends(get_current_user),
+):
+    if group_id is not None:
+        member = (
+            db.query(Member)
+            .filter(Member.group_id == int(group_id), Member.kind == "user", Member.user_ref == str(user.id))
+            .first()
+        )
+        if not member:
+            raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail="Forbidden")
     rows = list_members(db, int(group_id) if group_id is not None else None)
     return ApiResponse(data=[MemberOut.model_validate(row) for row in rows])
 

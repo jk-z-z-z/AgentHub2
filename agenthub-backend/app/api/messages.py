@@ -1,8 +1,9 @@
-from fastapi import APIRouter, Depends, Query
+from fastapi import APIRouter, Depends, HTTPException, Query, status
 from sqlalchemy.orm import Session
 
 from app.db.session import get_db
 from app.dependencies.auth import get_current_user
+from app.models.member import Member
 from app.schemas.common import ApiResponse
 from app.schemas.message_events import MessageEventOut
 from app.schemas.message_code_diff import MessageCodeDiffOut
@@ -21,7 +22,15 @@ def list_messages_api(
     cursor: str | None = None,
     limit: int = Query(20, ge=1, le=200),
     db: Session = Depends(get_db),
+    user=Depends(get_current_user),
 ):
+    member = (
+        db.query(Member)
+        .filter(Member.group_id == int(group_id), Member.kind == "user", Member.user_ref == str(user.id))
+        .first()
+    )
+    if not member:
+        raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail="Forbidden")
     rows = list_messages(
         db,
         group_id=int(group_id),

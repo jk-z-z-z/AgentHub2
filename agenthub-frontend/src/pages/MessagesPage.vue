@@ -46,6 +46,7 @@
         :active-group="activeGroup"
         :messages="messages"
         :members="members"
+        :current-user-id="currentUserId"
         @open-code-diff="openCodeDiffPanel"
         @open-message-events="openMessageEventsPanel"
       />
@@ -134,6 +135,7 @@
         v-else
         :active-group="activeGroup"
         :members="members"
+        :current-user-id="currentUserId"
         :runs="taskRuns"
         :active-run-id="activeRunId"
         :active-run="activeTaskRun"
@@ -360,6 +362,12 @@ const agents = ref<Agent[]>([])
 const pickedUserIds = ref<Set<string>>(new Set())
 const pickedAgentIds = ref<Set<string>>(new Set())
 const currentUserId = ref('')
+const currentUserMember = computed(
+  () =>
+    members.value.find(
+      (member) => member.kind === 'user' && String(member.user_ref || '') === String(currentUserId.value || ''),
+    ) || null,
+)
 const addableUsers = computed(() => {
   const memberUserRefs = new Set(
     members.value
@@ -771,7 +779,7 @@ function connectWs(groupId: string) {
 
 async function send() {
   if (!activeGroup.value) return
-  const userMember = members.value.find((m) => m.kind === 'user')
+  const userMember = currentUserMember.value
   if (!userMember) return
   const text = draft.value.trim()
   if (!text) return
@@ -1147,7 +1155,7 @@ async function selectTaskRun(runId: string) {
 
 async function createTaskRunNow() {
   if (!activeGroup.value) return
-  const me = members.value.find((m) => m.kind === 'user')
+  const me = currentUserMember.value
   if (!me) {
     manageErr.value = '当前会话缺少用户成员'
     return
@@ -1184,7 +1192,7 @@ async function createTaskRunNow() {
 }
 
 async function claimNode(node: GroupTaskNode) {
-  const me = members.value.find((m) => m.kind === 'user')
+  const me = currentUserMember.value
   if (!me) return
   try {
     await apiClaimGroupTaskNode(String(node.id), String(me.id))
