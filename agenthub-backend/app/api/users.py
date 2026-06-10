@@ -1,6 +1,6 @@
 from pathlib import Path
 
-from fastapi import APIRouter, Body, Depends, HTTPException, Query, status
+from fastapi import APIRouter, Depends, HTTPException, Query, status
 from sqlalchemy.orm import Session
 
 from app.db.session import get_db
@@ -10,6 +10,7 @@ from app.services.storage_paths import user_dir
 from app.models.user import User
 from app.schemas.common import ApiResponse
 from app.schemas.user import UserCreateRequest, UserOut, UserProfileMdOut, UserSelfUpdateRequest
+from app.services.auth_service import create_user_account
 
 router = APIRouter(prefix="/users", tags=["users"])
 
@@ -36,35 +37,16 @@ def create_user_api(
     payload: UserCreateRequest,
     db: Session = Depends(get_db),
 ):
-    # Minimal admin-less create for demo; production should validate + hash password.
-    email = payload.email
-    username =payload.username
-    password = payload.password
-    display_name = payload.display_name
-    status_value = payload.status
-    bio = payload.bio
-    role = payload.role
-
-    if not email or not username or not password:
-        raise HTTPException(status_code=status.HTTP_422_UNPROCESSABLE_ENTITY, detail="email/username/password required")
-
-    exists = db.query(User).filter((User.email == email) | (User.username == username)).first()
-    if exists:
-        raise HTTPException(status_code=status.HTTP_409_CONFLICT, detail="email or username already exists")
-
-    row = User(
-        email=email,
-        username=username,
-        password=password,
-        display_name=display_name,
-        status=status_value,
-        bio=bio,
-        role=role,
+    row = create_user_account(
+        db,
+        email=payload.email,
+        username=payload.username,
+        password=payload.password,
+        display_name=payload.display_name,
+        role=payload.role,
+        status_value=payload.status,
+        bio=payload.bio,
     )
-    db.add(row)
-    db.commit()
-    db.refresh(row)
-    ensure_user_space(int(row.id))
     return ApiResponse(data=UserOut.model_validate(row))
 
 

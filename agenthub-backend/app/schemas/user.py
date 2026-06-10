@@ -27,13 +27,21 @@ class LoginOut(ORMBaseModel):
     user: UserOut
 
 class UserCreateRequest(ORMBaseModel):
-    email: str
-    username: str
-    display_name: str | None
-    password: str
-    role: str
-    status: str
-    bio: str
+    email: str = Field(min_length=3, max_length=255)
+    username: str = Field(min_length=2, max_length=120)
+    display_name: str | None = Field(default=None, max_length=120)
+    password: str = Field(min_length=6, max_length=255)
+    role: str = Field(default="user", min_length=1, max_length=50)
+    status: str = Field(default="active", min_length=1, max_length=20)
+    bio: str = Field(default="", max_length=2000)
+
+
+class UserRegisterRequest(ORMBaseModel):
+    email: str = Field(min_length=3, max_length=255)
+    username: str = Field(min_length=2, max_length=120)
+    display_name: str | None = Field(default=None, max_length=120)
+    password: str = Field(min_length=6, max_length=255)
+    bio: str = Field(default="", max_length=2000)
 
 
 class UserSelfUpdateRequest(ORMBaseModel):
