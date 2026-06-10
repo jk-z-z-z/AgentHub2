@@ -3,7 +3,7 @@
     <aside class="rail">
       <div class="railTop">
         <div class="railLogo">
-          <img class="railLogoImg" :src="railLogoSrc" alt="AgentHub" />
+          <img class="railLogoImg" :src="railLogoSrc" alt="agenthub-weon" />
         </div>
 
         <el-tooltip placement="right" effect="light" :show-after="0" :hide-after="0" :enterable="false">
