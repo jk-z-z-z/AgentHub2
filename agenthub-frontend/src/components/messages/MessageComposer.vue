@@ -7,7 +7,7 @@
         <div v-if="replyPreview" class="replyBanner">
           <div class="replyBannerBody">
             <div class="replyBannerTitle">回复 {{ replyPreview.senderName }}</div>
-            <div class="replyBannerText">{{ replyPreview.content }}</div>
+            <MessageMarkdown class="replyBannerText" :content="replyPreview.content" />
           </div>
           <button type="button" class="replyBannerClose" @click="$emit('clear-reply')">取消</button>
         </div>
@@ -70,6 +70,7 @@
 import { computed, nextTick, ref } from 'vue'
 import { ArrowUp } from '@element-plus/icons-vue'
 import type { Member } from '@/api/models.ts'
+import MessageMarkdown from './MessageMarkdown.vue'
 
 const props = defineProps<{
   draft: string
@@ -174,6 +175,14 @@ defineEmits<{
   line-height: 1.5;
   color: rgba(72, 62, 49, 0.8);
   word-break: break-word;
+}
+.replyBannerText :deep(p) {
+  margin: 0;
+}
+.replyBannerText :deep(ul),
+.replyBannerText :deep(ol) {
+  margin: 4px 0 0;
+  padding-left: 18px;
 }
 .replyBannerClose {
   border: 0;

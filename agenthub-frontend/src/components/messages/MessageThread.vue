@@ -438,7 +438,7 @@ onMounted(() => {
   justify-content: flex-start;
 }
 .msgRow.right {
-  justify-content: flex-end;
+  justify-content: flex-start;
   flex-direction: row-reverse;
 }
 .msgRow.isTarget .bubble {
@@ -479,7 +479,8 @@ onMounted(() => {
 }
 .bubbleWrap {
   display: flex;
-  width: 100%;
+  width: auto;
+  max-width: 100%;
 }
 .bubbleWrap.is-right {
   justify-content: flex-end;
