@@ -28,8 +28,37 @@ def _build_execution_prompt(*, node_key: str, title: str, detail: str) -> str:
         f"node_key={node_key}\n"
         f"title={title}\n"
         f"detail={detail}\n"
-        "请输出结果 JSON，包含 summary、status、deliverables、evidence、confidence、issues、suggested_ops。"
+        "请给出结构化执行结果。\n"
+        "要求：\n"
+        "1. 优先提供简洁清晰的 summary，供聊天消息直接展示；\n"
+        "2. 再提供 status、deliverables、evidence、confidence、issues、suggested_ops；\n"
+        "3. 如果使用 JSON，请直接输出纯 JSON，不要使用 ```json 或其他 Markdown 代码块包裹。"
     )
+
+
+def _strip_markdown_code_fence(raw_text: str) -> str:
+    text = str(raw_text or "").strip()
+    if not text.startswith("```"):
+        return text
+    lines = text.splitlines()
+    if len(lines) < 3:
+        return text
+    first = lines[0].strip()
+    last = lines[-1].strip()
+    if not last.startswith("```"):
+        return text
+    if first == "```" or first.startswith("```"):
+        return "\n".join(lines[1:-1]).strip()
+    return text
+
+
+def _looks_like_json_text(raw_text: str) -> bool:
+    text = str(raw_text or "").strip()
+    if not text:
+        return False
+    if text.startswith("```"):
+        return True
+    return text.startswith("{") or text.startswith("[")
 
 
 def _build_agent_execution_reply_text(result: dict[str, Any]) -> str:
@@ -39,13 +68,13 @@ def _build_agent_execution_reply_text(result: dict[str, Any]) -> str:
         if isinstance(parsed_result, dict):
             for key in ("summary", "output_summary", "message"):
                 value = str(parsed_result.get(key) or "").strip()
-                if value:
+                if value and not _looks_like_json_text(value):
                     return value
         summary = str(payload.get("summary") or "").strip()
-        if summary:
+        if summary and not _looks_like_json_text(summary):
             return summary
     summary = str(result.get("output_summary") or "").strip()
-    if summary:
+    if summary and not _looks_like_json_text(summary):
         return summary
     return "节点执行完成"
 
@@ -242,7 +271,7 @@ def _derive_manager_review_status(*, node: GroupTaskNode, payload: dict[str, Any
 
 
 def _parse_node_result_text(raw_text: str) -> dict[str, Any]:
-    text = str(raw_text or "").strip()
+    text = _strip_markdown_code_fence(raw_text)
     if not text:
         return {}
     try:

@@ -14,6 +14,8 @@ from app.event_runtime.facade import create_message_event
 from app.event_runtime.handlers.task import (
     _build_agent_execution_reply_text,
     _derive_manager_review_status,
+    _parse_node_result_text,
+    _strip_markdown_code_fence,
     handle_task_completed,
     handle_node_exec_started,
 )
@@ -389,6 +391,43 @@ def test_agent_execution_reply_text_prefers_summary_over_raw_json() -> None:
     )
 
     assert text == "已完成登录页修复，并补充了会话校验。"
+
+
+def test_strip_markdown_code_fence_extracts_json_body() -> None:
+    raw = """```json
+{
+  "summary": "节点总结"
+}
+```"""
+    assert _strip_markdown_code_fence(raw) == '{\n  "summary": "节点总结"\n}'
+
+
+def test_parse_node_result_text_accepts_fenced_json() -> None:
+    raw = """```json
+{
+  "summary": "节点总结",
+  "status": "completed"
+}
+```"""
+    parsed = _parse_node_result_text(raw)
+    assert parsed["summary"] == "节点总结"
+    assert parsed["status"] == "completed"
+
+
+def test_agent_execution_reply_text_rejects_fenced_json_summary_text() -> None:
+    text = _build_agent_execution_reply_text(
+        {
+            "output_summary": "```json\n{\"summary\":\"bad\"}\n```",
+            "result_payload": {
+                "summary": "```json\n{\"summary\":\"bad\"}\n```",
+                "parsed_result": {
+                    "summary": "```json\n{\"summary\":\"bad\"}\n```",
+                },
+            },
+        }
+    )
+
+    assert text == "节点执行完成"
 
 
 def test_handle_node_exec_started_writes_task_event_before_final_message(monkeypatch) -> None:
