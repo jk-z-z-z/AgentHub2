@@ -13,6 +13,7 @@ type Block =
   | { type: 'heading'; level: number; text: string }
   | { type: 'paragraph'; text: string }
   | { type: 'list'; ordered: boolean; items: string[] }
+  | { type: 'table'; headers: string[]; aligns: Array<'left' | 'center' | 'right'>; rows: string[][] }
   | { type: 'code'; code: string }
 
 function escapeHtml(input: string) {
@@ -33,8 +34,32 @@ function renderInlineMarkdown(input: string) {
   return html
 }
 
+function normalizeSource(source: string) {
+  return String(source || '')
+    .replace(/\r\n/g, '\n')
+    .replace(/<br\s*\/?>/gi, '\n')
+}
+
+function splitTableRow(line: string) {
+  const normalized = line.trim().replace(/^\|/, '').replace(/\|$/, '')
+  return normalized.split('|').map((cell) => cell.trim())
+}
+
+function parseTableAligns(line: string) {
+  const cells = splitTableRow(line)
+  const aligns: Array<'left' | 'center' | 'right'> = []
+  for (const cell of cells) {
+    if (!/^:?-{3,}:?$/.test(cell.replace(/\s+/g, ''))) return null
+    const compact = cell.replace(/\s+/g, '')
+    if (compact.startsWith(':') && compact.endsWith(':')) aligns.push('center')
+    else if (compact.endsWith(':')) aligns.push('right')
+    else aligns.push('left')
+  }
+  return aligns
+}
+
 function parseBlocks(source: string): Block[] {
-  const lines = String(source || '').replace(/\r\n/g, '\n').split('\n')
+  const lines = normalizeSource(source).split('\n')
   const blocks: Block[] = []
   let index = 0
 
@@ -68,6 +93,24 @@ function parseBlocks(source: string): Block[] {
       })
       index += 1
       continue
+    }
+
+    const nextTrimmed = (lines[index + 1] ?? '').trim()
+    if (trimmed.includes('|') && nextTrimmed.includes('|')) {
+      const aligns = parseTableAligns(nextTrimmed)
+      if (aligns) {
+        const headers = splitTableRow(trimmed)
+        const rows: string[][] = []
+        index += 2
+        while (index < lines.length) {
+          const currentTrimmed = (lines[index] ?? '').trim()
+          if (!currentTrimmed || !currentTrimmed.includes('|')) break
+          rows.push(splitTableRow(currentTrimmed))
+          index += 1
+        }
+        blocks.push({ type: 'table', headers, aligns, rows })
+        continue
+      }
     }
 
     const unordered = trimmed.match(/^[-*]\s+(.*)$/)
@@ -121,6 +164,20 @@ function renderBlocks(source: string) {
         const items = block.items.map((item) => `<li>${renderInlineMarkdown(item)}</li>`).join('')
         return `<${tag}>${items}</${tag}>`
       }
+      if (block.type === 'table') {
+        const headerHtml = block.headers
+          .map((cell, idx) => `<th class="align-${block.aligns[idx] || 'left'}">${renderInlineMarkdown(cell)}</th>`)
+          .join('')
+        const bodyHtml = block.rows
+          .map(
+            (row) =>
+              `<tr>${row
+                .map((cell, idx) => `<td class="align-${block.aligns[idx] || 'left'}">${renderInlineMarkdown(cell)}</td>`)
+                .join('')}</tr>`,
+          )
+          .join('')
+        return `<div class="mdTableWrap"><table><thead><tr>${headerHtml}</tr></thead><tbody>${bodyHtml}</tbody></table></div>`
+      }
       return `<p>${renderInlineMarkdown(block.text)}</p>`
     })
     .join('')
@@ -156,6 +213,34 @@ const renderedHtml = computed(() => renderBlocks(props.content))
 .markdownBody :deep(ul + ul),
 .markdownBody :deep(ol + ol) {
   margin-top: 8px;
+}
+.markdownBody :deep(.mdTableWrap) {
+  overflow-x: auto;
+  margin-top: 8px;
+}
+.markdownBody :deep(table) {
+  width: 100%;
+  border-collapse: collapse;
+  font-size: 0.96em;
+}
+.markdownBody :deep(th),
+.markdownBody :deep(td) {
+  padding: 8px 10px;
+  border: 1px solid rgba(31, 35, 41, 0.12);
+  vertical-align: top;
+}
+.markdownBody :deep(th) {
+  font-weight: 700;
+  background: rgba(31, 35, 41, 0.05);
+}
+.markdownBody :deep(.align-left) {
+  text-align: left;
+}
+.markdownBody :deep(.align-center) {
+  text-align: center;
+}
+.markdownBody :deep(.align-right) {
+  text-align: right;
 }
 .markdownBody :deep(ul),
 .markdownBody :deep(ol) {
