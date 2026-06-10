@@ -4,7 +4,13 @@
     <div v-else-if="!activeGroup" class="empty">从左侧选择会话</div>
     <template v-else>
       <div v-if="messages.length === 0" class="empty">暂无消息</div>
-      <div v-for="m in messages" :key="m.id" class="msgRow" :class="sideClass(m)">
+      <div
+        v-for="m in messages"
+        :key="m.id"
+        class="msgRow"
+        :class="[sideClass(m), { isTarget: highlightedMessageId === String(m.id) }]"
+        :data-message-id="String(m.id)"
+      >
         <div class="bubble">
           <div class="msgMetaRow" :class="metaRowClass(m)">
             <button
@@ -42,7 +48,16 @@
               </el-icon>
             </button>
           </div>
-          <div v-if="replyPreview(m)" class="msgReplyPreview">
+          <div
+            v-if="replyPreview(m)"
+            class="msgReplyPreview"
+            :class="{ isMissing: replyPreview(m)?.missing }"
+            role="button"
+            tabindex="0"
+            @click="openReplyTarget(m)"
+            @keydown.enter.prevent="openReplyTarget(m)"
+            @keydown.space.prevent="openReplyTarget(m)"
+          >
             <div class="msgReplyTop">
               <div class="msgReplyName">{{ replyPreview(m)?.senderName }}</div>
               <div class="msgReplyActions">
@@ -50,7 +65,7 @@
                   v-if="replyPreview(m)?.isLong"
                   type="button"
                   class="msgReplyActionBtn"
-                  @click="toggleReplyExpanded(String(m.id))"
+                  @click.stop="toggleReplyExpanded(String(m.id))"
                 >
                   {{ isReplyExpanded(String(m.id)) ? '收起' : '展开' }}
                 </button>
@@ -119,12 +134,15 @@ const props = defineProps<{
   messages: Message[]
   members: Member[]
   currentUserId: string
+  scrollToMessageId?: string
 }>()
 
-defineEmits<{
+const emit = defineEmits<{
   (e: 'open-code-diff', messageId: string): void
   (e: 'open-message-events', messageId: string): void
   (e: 'reply-message', messageId: string): void
+  (e: 'locate-message', messageId: string): void
+  (e: 'scroll-target-handled', messageId: string): void
 }>()
 
 const scrollContainerRef = ref<HTMLElement | null>(null)
@@ -132,6 +150,7 @@ const bottomAnchorRef = ref<HTMLElement | null>(null)
 const pinnedToBottom = ref(true)
 const pendingInitialScroll = ref(true)
 const expandedReplyIds = ref<Set<string>>(new Set())
+const highlightedMessageId = ref('')
 
 const memberNameMap = computed(() => {
   const out: Record<string, string> = {}
@@ -158,13 +177,21 @@ function replyPreview(message: Message) {
   const targetId = replyTargetId(message)
   if (!targetId) return null
   const target = props.messages.find((item) => String(item.id) === targetId)
-  if (!target) return null
+  if (!target) {
+    return {
+      senderName: '原消息',
+      content: '点击定位到被回复的消息',
+      isLong: false,
+      missing: true,
+    }
+  }
   const content = String(target.content || '').trim()
   const normalized = content.replace(/\s+/g, ' ').trim()
   return {
     senderName: senderName(String(target.sender_member_id)),
     content: content || '空消息',
     isLong: normalized.length > 160 || content.split('\n').length > 5,
+    missing: false,
   }
 }
 
@@ -178,6 +205,28 @@ function toggleReplyExpanded(messageId: string) {
   if (next.has(normalized)) next.delete(normalized)
   else next.add(normalized)
   expandedReplyIds.value = next
+}
+
+async function scrollToMessage(messageId: string) {
+  const targetId = String(messageId || '').trim()
+  if (!targetId) return
+  await nextTick()
+  const container = scrollContainerRef.value
+  if (!container) return
+  const target = container.querySelector(`[data-message-id="${targetId}"]`) as HTMLElement | null
+  if (!target) {
+    emit('locate-message', targetId)
+    return
+  }
+  target.scrollIntoView({ behavior: 'smooth', block: 'center' })
+  highlightedMessageId.value = targetId
+  window.setTimeout(() => {
+    if (highlightedMessageId.value === targetId) highlightedMessageId.value = ''
+  }, 1800)
+}
+
+function openReplyTarget(message: Message) {
+  void scrollToMessage(replyTargetId(message))
 }
 
 function thinkingLabel(message: Message) {
@@ -319,6 +368,20 @@ watch(
 )
 
 watch(
+  () => String(props.scrollToMessageId || '').trim(),
+  async (messageId) => {
+    if (!messageId) return
+    const container = scrollContainerRef.value
+    await nextTick()
+    const target = container?.querySelector(`[data-message-id="${messageId}"]`) as HTMLElement | null
+    if (!target) return
+    await scrollToMessage(messageId)
+    emit('scroll-target-handled', messageId)
+  },
+  { flush: 'post' },
+)
+
+watch(
   () => [props.activeGroup?.id || '', props.loading, props.messages.length, lastMessageKey.value] as const,
   ([groupId, loading]) => {
     if (!groupId || loading) return
@@ -355,6 +418,10 @@ onMounted(() => {
 }
 .msgRow.right {
   justify-content: flex-end;
+}
+.msgRow.isTarget .bubble {
+  outline: 2px solid rgba(217, 119, 6, 0.34);
+  box-shadow: 0 0 0 6px rgba(245, 158, 11, 0.12);
 }
 .bubble {
   max-width: 72%;
@@ -449,6 +516,15 @@ onMounted(() => {
   border-left: 3px solid rgba(128, 108, 84, 0.42);
   border-radius: 12px;
   background: rgba(128, 108, 84, 0.06);
+  cursor: pointer;
+  transition: background 0.16s ease, border-color 0.16s ease;
+}
+.msgReplyPreview:hover {
+  background: rgba(128, 108, 84, 0.1);
+  border-color: rgba(128, 108, 84, 0.24);
+}
+.msgReplyPreview.isMissing {
+  border-style: dashed;
 }
 .msgReplyTop {
   display: flex;

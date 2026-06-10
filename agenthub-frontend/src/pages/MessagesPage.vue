@@ -47,9 +47,12 @@
         :messages="messages"
         :members="members"
         :current-user-id="currentUserId"
+        :scroll-to-message-id="pendingScrollToMessageId"
         @open-code-diff="openCodeDiffPanel"
         @open-message-events="openMessageEventsPanel"
         @reply-message="setReplyTarget"
+        @locate-message="locateMessage"
+        @scroll-target-handled="handleScrollTargetHandled"
       />
 
       <MessageComposer
@@ -289,6 +292,7 @@ const shellRef = ref<HTMLElement | null>(null)
 const composerRef = ref<{ focusEditor?: () => Promise<void> | void } | null>(null)
 const draft = ref('')
 const replyToMessageId = ref('')
+const pendingScrollToMessageId = ref('')
 const groups = ref<Group[]>([])
 const loadingGroups = ref(false)
 const activeGroupId = ref<string>('')
@@ -299,6 +303,7 @@ let loadSeq = 0
 let wsSeq = 0
 let wsReconnectTimer: number | null = null
 let wsReconnectAttempts = 0
+let locatingMessageRequestId = 0
 
 const lastPreviewMap = ref<Record<string, string>>({})
 const lastTimeMap = ref<Record<string, string>>({})
@@ -664,6 +669,7 @@ async function selectGroup(id: string) {
   members.value = mRes.data
   messages.value = msgRes.data.map((item) => normalizeMessage(item))
   replyToMessageId.value = ''
+  pendingScrollToMessageId.value = ''
   selectedMentions.value = new Set()
   mentionSuggestOpen.value = false
   mentionQuery.value = ''
@@ -844,6 +850,53 @@ function setReplyTarget(messageId: string) {
 
 function clearReplyTarget() {
   replyToMessageId.value = ''
+}
+
+function handleScrollTargetHandled(messageId: string) {
+  if (String(pendingScrollToMessageId.value) === String(messageId)) {
+    pendingScrollToMessageId.value = ''
+  }
+}
+
+async function locateMessage(messageId: string) {
+  const targetId = String(messageId || '').trim()
+  const groupId = String(activeGroupId.value || '').trim()
+  if (!targetId || !groupId) return
+  if (messages.value.some((item) => String(item.id) === targetId)) {
+    pendingScrollToMessageId.value = targetId
+    return
+  }
+
+  const requestId = ++locatingMessageRequestId
+  let cursor = String(messages.value[0]?.id || '').trim()
+  let found = false
+
+  for (let pass = 0; pass < 20; pass += 1) {
+    if (!cursor) break
+    const res = await apiListMessages(groupId, cursor, 50)
+    if (requestId !== locatingMessageRequestId || String(activeGroupId.value || '') !== groupId) return
+    const older = res.data.map((item) => normalizeMessage(item))
+    if (older.length === 0) break
+
+    const existingIds = new Set(messages.value.map((item) => String(item.id)))
+    const prepend = older.filter((item) => !existingIds.has(String(item.id)))
+    if (prepend.length > 0) {
+      messages.value = [...prepend, ...messages.value]
+    }
+    if (messages.value.some((item) => String(item.id) === targetId)) {
+      found = true
+      break
+    }
+    const nextCursor = String(older[0]?.id || '').trim()
+    if (!nextCursor || nextCursor === cursor) break
+    cursor = nextCursor
+  }
+
+  if (!found) {
+    ElMessage.info('未找到要定位的原消息，可能已超出当前可加载范围')
+    return
+  }
+  pendingScrollToMessageId.value = targetId
 }
 
 function removeMention(memberId: string) {
