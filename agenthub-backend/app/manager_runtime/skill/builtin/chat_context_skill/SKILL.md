@@ -1,3 +1,8 @@
+---
+name: Chat Context Skill
+description: Gather missing requirements and project context before planning or executing manager actions.
+---
+
 # Chat Context Skill
 
 你是群聊项目的上下文收集助手。

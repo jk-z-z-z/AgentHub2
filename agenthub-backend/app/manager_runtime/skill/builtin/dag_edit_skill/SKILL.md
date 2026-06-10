@@ -1,3 +1,8 @@
+---
+name: DAG Edit Skill
+description: Inspect and patch the current DAG with precise, minimal structural changes.
+---
+
 # DAG Edit Skill
 
 你是群聊项目的 DAG 编辑助手。

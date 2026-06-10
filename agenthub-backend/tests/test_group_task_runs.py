@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 import asyncio
+import json
 
 from sqlalchemy import create_engine
 from sqlalchemy.orm import Session, sessionmaker
@@ -8,8 +9,16 @@ from sqlalchemy.orm import Session, sessionmaker
 import app.models  # noqa: F401
 from app.core.config import settings
 from app.db.base import Base
+from app.event_runtime.context import EventDispatchRequest
 from app.event_runtime.facade import create_message_event
+from app.event_runtime.handlers.task import (
+    _build_agent_execution_reply_text,
+    _derive_manager_review_status,
+    handle_task_completed,
+    handle_node_exec_started,
+)
 from app.event_runtime.types import MessageEventType
+from app.manager_runtime.schemas import ManagerInvokeResult
 from app.manager_runtime.tool.base import extract_tool_result
 from app.manager_runtime.tool.builtins.dag_apply import DagApplyTool
 from app.manager_runtime.tool.builtins.dag_patch import DagPatchTool
@@ -21,6 +30,8 @@ from app.manager_runtime.assistant.state_store import (
     save_pending_plan,
 )
 from app.models.group import Group
+from app.models.message_event import MessageEvent
+from app.models.group_task_node import GroupTaskNode
 from app.models.member import Member
 from app.models.message import Message
 from app.services.group_task_service import (
@@ -254,6 +265,58 @@ def test_dag_apply_can_create_run_from_manager_runtime_context() -> None:
     assert graph["edges"] == [{"from": "n1", "to": "n2"}]
 
 
+def test_dag_apply_accepts_stringified_graph_payload() -> None:
+    db = _session()
+    group, member, message = _seed_group(db)
+    tool = DagApplyTool(db=db)
+    tool.set_runtime_context(
+        {
+            "group_id": int(group.id),
+            "sender_id": int(member.id),
+            "user_message_id": int(message.id),
+        }
+    )
+
+    chunk = asyncio.run(
+        tool(
+            graph=json.dumps(
+                {
+                    "title": "登录流程图",
+                    "goal": "覆盖登录主链路",
+                    "nodes": [
+                        {"node_key": "n1", "title": "确认入口", "detail": "", "deps": []},
+                        {"node_key": "n2", "title": "确认校验", "detail": "", "deps": ["n1"]},
+                    ],
+                },
+                ensure_ascii=False,
+            )
+        )
+    )
+    payload = extract_tool_result(chunk)
+
+    assert payload["ok"] is True
+    assert payload["result"]["action"] == "created"
+
+
+def test_dag_apply_rejects_non_object_node_items_with_clear_error() -> None:
+    db = _session()
+    group, member, message = _seed_group(db)
+    tool = DagApplyTool(db=db)
+    tool.set_runtime_context(
+        {
+            "group_id": int(group.id),
+            "sender_id": int(member.id),
+            "user_message_id": int(message.id),
+        }
+    )
+
+    chunk = asyncio.run(tool(graph={"nodes": ["not-a-node-object"]}))
+    payload = extract_tool_result(chunk)
+
+    assert payload["ok"] is False
+    assert payload["error"] == "graph_nodes_must_be_array_of_objects"
+
+
 def test_dag_view_without_run_id_returns_available_runs_instead_of_failing() -> None:
     db = _session()
     group, member, message = _seed_group(db)
@@ -309,3 +372,243 @@ def test_dag_patch_uses_runtime_bound_run_id() -> None:
     assert payload["result"]["run_id"] == int(run.id)
     graph = get_dag_view(db, run_id=int(run.id))
     assert graph["edges"] == [{"from": "n1", "to": "n2"}]
+
+
+def test_agent_execution_reply_text_prefers_summary_over_raw_json() -> None:
+    text = _build_agent_execution_reply_text(
+        {
+            "output_summary": "",
+            "result_payload": {
+                "summary": "",
+                "parsed_result": {
+                    "summary": "已完成登录页修复，并补充了会话校验。",
+                },
+                "agent_output": '{"summary":"raw-json"}',
+            },
+        }
+    )
+
+    assert text == "已完成登录页修复，并补充了会话校验。"
+
+
+def test_handle_node_exec_started_writes_task_event_before_final_message(monkeypatch) -> None:
+    db = _session()
+    group, user_member, user_message = _seed_group(db)
+    agent_member = Member(
+        group_id=int(group.id),
+        kind="agent",
+        display_name="Worker",
+        user_ref=None,
+        agent_instance_id=1,
+        title="executor",
+    )
+    db.add(agent_member)
+    db.commit()
+    db.refresh(agent_member)
+
+    run = create_run(
+        db,
+        group_id=int(group.id),
+        creator_member_id=int(user_member.id),
+        title="Run A",
+        goal_text="A goal",
+        nodes=[{"node_key": "n1", "title": "A1", "detail": "", "deps": []}],
+        trigger_message_id=int(user_message.id),
+    )
+    node = db.query(GroupTaskNode).filter(GroupTaskNode.run_id == int(run.id)).first()
+    assert node is not None
+
+    event = create_message_event(
+        db,
+        message_id=int(user_message.id),
+        event_type=MessageEventType.Task.NODE_EXEC_STARTED,
+        payload={
+            "group_id": int(group.id),
+            "run_id": int(run.id),
+            "node_id": int(node.id),
+            "member_id": int(agent_member.id),
+        },
+    )
+
+    async def fake_execute_node_task(*_args, **_kwargs):
+        return {
+            "node_id": int(node.id),
+            "run_id": int(run.id),
+            "node_key": str(node.node_key),
+            "status": "completed",
+            "output_summary": "节点已完成总结",
+            "error": "",
+            "result_payload": {
+                "summary": "节点已完成总结",
+                "parsed_result": {"summary": "节点已完成总结"},
+            },
+        }
+
+    async def fake_emit_ai_reply(
+        _db,
+        *,
+        group_id,
+        user_message_id,
+        sender_member_id,
+        content,
+        trigger,
+        ai_message_id=None,
+        status="done",
+        extra_metadata=None,
+        auto_dispatch_on_done=True,
+    ):
+        assert group_id == int(group.id)
+        assert user_message_id == int(user_message.id)
+        assert sender_member_id == int(agent_member.id)
+        assert content == "节点已完成总结"
+        assert trigger == f"node_execute:{int(node.id)}"
+        assert status == "done"
+        assert auto_dispatch_on_done is True
+        events = db.query(MessageEvent).filter(MessageEvent.message_id == int(ai_message_id)).all()
+        assert any(str(item.event_type) == MessageEventType.Task.TASK_COMPLETED for item in events)
+        return db.query(Message).filter(Message.id == int(ai_message_id)).first()
+
+    monkeypatch.setattr("app.event_runtime.handlers.task.execute_node_task", fake_execute_node_task)
+    monkeypatch.setattr("app.event_runtime.handlers.task.emit_ai_reply", fake_emit_ai_reply)
+
+    asyncio.run(
+        handle_node_exec_started(
+            EventDispatchRequest(
+                db=db,
+                group_id=int(group.id),
+                sender_member_id=int(user_member.id),
+                message_id=int(user_message.id),
+                message_type="text",
+                content=str(user_message.content or ""),
+                meta_json=str(user_message.metadata_json or "{}"),
+                event_id=int(event.id),
+            ),
+            event,
+        )
+    )
+
+
+def test_manager_review_status_derivation_falls_back_from_node_status() -> None:
+    db = _session()
+    group, member, message = _seed_group(db)
+    run = create_run(
+        db,
+        group_id=int(group.id),
+        creator_member_id=int(member.id),
+        title="Run A",
+        goal_text="A goal",
+        nodes=[{"node_key": "n1", "title": "A1", "detail": "", "deps": []}],
+        trigger_message_id=int(message.id),
+    )
+    node = db.query(GroupTaskNode).filter(GroupTaskNode.run_id == int(run.id)).first()
+    assert node is not None
+
+    node.status = "completed"
+    db.add(node)
+    db.commit()
+    db.refresh(node)
+    assert _derive_manager_review_status(node=node, payload={}) == "approved"
+
+    node.status = "failed"
+    db.add(node)
+    db.commit()
+    db.refresh(node)
+    assert _derive_manager_review_status(node=node, payload={}) == "rework"
+
+
+def test_task_completed_routes_into_manager_message_flow(monkeypatch) -> None:
+    db = _session()
+    group, user_member, child_message = _seed_group(db)
+    run = create_run(
+        db,
+        group_id=int(group.id),
+        creator_member_id=int(user_member.id),
+        title="Run A",
+        goal_text="A goal",
+        nodes=[{"node_key": "n1", "title": "A1", "detail": "", "deps": []}],
+        trigger_message_id=int(child_message.id),
+    )
+    node = db.query(GroupTaskNode).filter(GroupTaskNode.run_id == int(run.id)).first()
+    assert node is not None
+
+    event = create_message_event(
+        db,
+        message_id=int(child_message.id),
+        event_type=MessageEventType.Task.TASK_COMPLETED,
+        payload={
+            "node_id": int(node.id),
+            "run_id": int(run.id),
+            "node_key": str(node.node_key),
+            "member_id": int(user_member.id),
+            "status": "completed",
+            "output_summary": "子 agent 已完成总结",
+            "error": "",
+        },
+    )
+
+    seen: dict[str, object] = {}
+
+    async def fake_invoke_manager(*_args, **kwargs):
+        seen["extra_context"] = dict(kwargs["extra_context"])
+        return ManagerInvokeResult(
+            text="管家已复核，通过。",
+            action="assistant",
+            engine_type="agentscope_react",
+            plan={},
+            meta={"manager_review_status": "approved"},
+            system_prompt_used="",
+        )
+
+    async def fake_emit_ai_reply(
+        _db,
+        *,
+        group_id,
+        user_message_id,
+        sender_member_id,
+        content,
+        trigger,
+        ai_message_id=None,
+        status="done",
+        extra_metadata=None,
+        auto_dispatch_on_done=True,
+    ):
+        seen["reply"] = {
+            "group_id": group_id,
+            "user_message_id": user_message_id,
+            "sender_member_id": sender_member_id,
+            "content": content,
+            "trigger": trigger,
+            "ai_message_id": ai_message_id,
+            "status": status,
+            "extra_metadata": extra_metadata,
+            "auto_dispatch_on_done": auto_dispatch_on_done,
+        }
+        return db.query(Message).filter(Message.id == int(ai_message_id)).first()
+
+    monkeypatch.setattr("app.manager_runtime.invoke_manager", fake_invoke_manager)
+    monkeypatch.setattr("app.event_runtime.handlers.task.emit_ai_reply", fake_emit_ai_reply)
+
+    asyncio.run(
+        handle_task_completed(
+            EventDispatchRequest(
+                db=db,
+                group_id=int(group.id),
+                sender_member_id=int(user_member.id),
+                message_id=int(child_message.id),
+                message_type="ai",
+                content=str(child_message.content or ""),
+                meta_json=str(child_message.metadata_json or "{}"),
+                event_id=int(event.id),
+            ),
+            event,
+        )
+    )
+
+    extra_context = seen["extra_context"]
+    assert isinstance(extra_context, dict)
+    assert int(extra_context["source_message_id"]) == int(child_message.id)
+    reply = seen["reply"]
+    assert isinstance(reply, dict)
+    assert reply["trigger"] == "manager_runtime"
+    assert reply["content"] == "管家已复核，通过。"
+    assert reply["auto_dispatch_on_done"] is True

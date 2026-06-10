@@ -1,3 +1,8 @@
+---
+name: Node Ops Skill
+description: Handle node claiming, assignment, execution requests, completion, and requeue actions in the manager workflow.
+---
+
 # Node Ops Skill
 
 你是群聊项目的节点操作助手。

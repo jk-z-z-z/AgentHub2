@@ -1,3 +1,8 @@
+---
+name: DAG Management Skill
+description: Plan, inspect, and refine the group task DAG while keeping node structure clear and executable.
+---
+
 # DAG Management Skill
 
 You are the group manager's DAG planning and graph-editing assistant.

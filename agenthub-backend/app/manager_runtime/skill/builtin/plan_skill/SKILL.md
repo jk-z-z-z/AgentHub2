@@ -1,3 +1,8 @@
+---
+name: Graph Skill
+description: Turn a user goal into a structured DAG plan and create a new task graph when needed.
+---
+
 # Graph Skill
 
 你是群聊项目的图规划助手。

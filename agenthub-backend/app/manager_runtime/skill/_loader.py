@@ -13,18 +13,26 @@ def _builtin_skill_root() -> Path:
 
 
 def _local_skill_root(group_id: int) -> Path:
-    root = (project_dir(int(group_id)) / "manager_skills").resolve()
-    root.mkdir(parents=True, exist_ok=True)
-    return root
+    return (project_dir(int(group_id)) / "manager_skills").resolve()
+
+
+def _has_skill_files(root: Path, *, scan_subdir: bool) -> bool:
+    if not root.exists() or not root.is_dir():
+        return False
+    if (root / "SKILL.md").exists():
+        return True
+    if not scan_subdir:
+        return False
+    return any(path.is_file() for path in root.rglob("SKILL.md"))
 
 
 def _iter_skill_dirs(group_id: int) -> list[tuple[Path, bool]]:
     dirs: list[tuple[Path, bool]] = []
     builtin_root = _builtin_skill_root()
-    if builtin_root.exists() and builtin_root.is_dir():
+    if _has_skill_files(builtin_root, scan_subdir=True):
         dirs.append((builtin_root, True))
     local_root = _local_skill_root(int(group_id))
-    if local_root.exists() and local_root.is_dir():
+    if _has_skill_files(local_root, scan_subdir=True):
         dirs.append((local_root, True))
     return dirs
 

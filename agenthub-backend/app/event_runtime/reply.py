@@ -39,6 +39,7 @@ async def emit_ai_reply(
     ai_message_id: int | None = None,
     status: str = "done",
     extra_metadata: dict | None = None,
+    auto_dispatch_on_done: bool = True,
 ) -> Message:
     from app.agent_runtime.message_store import create_message, dispatch_latest_message_event, update_message
 
@@ -78,7 +79,7 @@ async def emit_ai_reply(
             "metadata": extra_metadata or {},
         },
     )
-    if str(status).lower() == "done":
+    if str(status).lower() == "done" and auto_dispatch_on_done:
         try:
             asyncio.create_task(
                 dispatch_latest_message_event(

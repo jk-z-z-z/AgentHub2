@@ -1,12 +1,31 @@
 from __future__ import annotations
 
+from functools import lru_cache
 from pathlib import Path
 
 from app.core.config import settings
 
 
+def _is_writable_dir(path: Path) -> bool:
+    try:
+        path.mkdir(parents=True, exist_ok=True)
+        probe = path / ".write_probe"
+        probe.write_text("", encoding="utf-8")
+        probe.unlink(missing_ok=True)
+        return True
+    except OSError:
+        return False
+
+
+@lru_cache(maxsize=1)
 def _root() -> Path:
-    return Path(settings.data_root).expanduser().resolve()
+    preferred = Path(settings.data_root).expanduser().resolve()
+    if _is_writable_dir(preferred):
+        return preferred
+
+    fallback = (Path(__file__).resolve().parents[2] / ".agenthub-data").resolve()
+    fallback.mkdir(parents=True, exist_ok=True)
+    return fallback
 
 
 def agents_root() -> Path:

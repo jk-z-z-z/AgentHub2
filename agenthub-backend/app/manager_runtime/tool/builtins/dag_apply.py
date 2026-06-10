@@ -1,5 +1,7 @@
 from __future__ import annotations
 
+import json
+
 from agentscope.tool import ToolBase, ToolChunk
 from sqlalchemy.orm import Session
 
@@ -38,9 +40,61 @@ class DagApplyTool(ManagerRuntimeContextMixin, ToolBase):
     async def check_permissions(self, _tool_input: dict, _context: object) -> object:
         return object()
 
+    def _coerce_graph_payload(self, raw_graph: object) -> tuple[dict, str | None]:
+        if raw_graph in (None, ""):
+            return {}, None
+        if isinstance(raw_graph, dict):
+            return dict(raw_graph), None
+        if isinstance(raw_graph, str):
+            text = raw_graph.strip()
+            if not text:
+                return {}, None
+            try:
+                parsed = json.loads(text)
+            except Exception:
+                return {}, "graph_must_be_object"
+            if not isinstance(parsed, dict):
+                return {}, "graph_must_be_object"
+            return dict(parsed), None
+        return {}, "graph_must_be_object"
+
+    def _coerce_nodes_payload(self, raw_nodes: object) -> tuple[list[dict], str | None]:
+        if raw_nodes in (None, ""):
+            return [], None
+        parsed = raw_nodes
+        if isinstance(raw_nodes, str):
+            text = raw_nodes.strip()
+            if not text:
+                return [], None
+            try:
+                parsed = json.loads(text)
+            except Exception:
+                return [], "graph_nodes_must_be_array_of_objects"
+        if not isinstance(parsed, list):
+            return [], "graph_nodes_must_be_array_of_objects"
+        nodes: list[dict] = []
+        for item in parsed:
+            if isinstance(item, str):
+                text = item.strip()
+                if not text:
+                    return [], "graph_nodes_must_be_array_of_objects"
+                try:
+                    item = json.loads(text)
+                except Exception:
+                    return [], "graph_nodes_must_be_array_of_objects"
+            if not isinstance(item, dict):
+                return [], "graph_nodes_must_be_array_of_objects"
+            nodes.append(dict(item))
+        return nodes, None
+
     async def __call__(self, **kwargs) -> ToolChunk:
-        graph = dict(kwargs.get("graph") or {})
-        nodes = list(graph.get("nodes") or kwargs.get("nodes") or [])
+        graph, graph_error = self._coerce_graph_payload(kwargs.get("graph"))
+        if graph_error:
+            return build_error_chunk(graph_error)
+
+        nodes, nodes_error = self._coerce_nodes_payload(graph.get("nodes") or kwargs.get("nodes"))
+        if nodes_error:
+            return build_error_chunk(nodes_error)
         if not nodes:
             return build_error_chunk("graph_nodes_required")
 

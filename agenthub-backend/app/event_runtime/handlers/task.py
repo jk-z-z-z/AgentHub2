@@ -4,9 +4,11 @@ import json
 from typing import Any, Awaitable, Callable
 
 from app.agent_runtime import invoke_agent
+from app.agent_runtime.message_store import create_pending_ai_message, dispatch_message_event_for_message
 from app.common.project_prompt import build_project_system_prompt
-from app.event_runtime.context import EventDispatchRequest, build_short_term_memory, get_or_create_manager_member
+from app.event_runtime.context import EventDispatchRequest, build_short_term_memory, get_or_create_manager_member, mark_failed_reply
 from app.event_runtime.facade import create_message_event, list_message_events
+from app.event_runtime.reply import emit_ai_reply
 from app.event_runtime.types import MessageEventStatus, MessageEventType
 from app.models.agent_instance import AgentInstance
 from app.models.group_task_node import GroupTaskNode
@@ -28,6 +30,50 @@ def _build_execution_prompt(*, node_key: str, title: str, detail: str) -> str:
         f"detail={detail}\n"
         "请输出结果 JSON，包含 summary、status、deliverables、evidence、confidence、issues、suggested_ops。"
     )
+
+
+def _build_agent_execution_reply_text(result: dict[str, Any]) -> str:
+    payload = result.get("result_payload")
+    if isinstance(payload, dict):
+        parsed_result = payload.get("parsed_result")
+        if isinstance(parsed_result, dict):
+            for key in ("summary", "output_summary", "message"):
+                value = str(parsed_result.get(key) or "").strip()
+                if value:
+                    return value
+        summary = str(payload.get("summary") or "").strip()
+        if summary:
+            return summary
+    summary = str(result.get("output_summary") or "").strip()
+    if summary:
+        return summary
+    return "节点执行完成"
+
+
+def _schedule_message_dispatch(
+    *,
+    group_id: int,
+    sender_member_id: int,
+    message_id: int,
+    message_type: str,
+    content: str,
+    meta_json: str,
+) -> None:
+    try:
+        import asyncio
+
+        asyncio.create_task(
+            dispatch_message_event_for_message(
+                group_id=int(group_id),
+                sender_member_id=int(sender_member_id),
+                message_id=int(message_id),
+                message_type=str(message_type),
+                content=str(content),
+                meta_json=str(meta_json),
+            )
+        )
+    except RuntimeError:
+        return
 
 
 def _payload_as_dict(event: Any | None) -> dict[str, Any]:
@@ -78,6 +124,96 @@ def _build_review_prompt(
     )
 
 
+async def _run_manager_review_flow(
+    request: EventDispatchRequest,
+    *,
+    node: GroupTaskNode,
+    member_id: int,
+    source_event_type: str,
+    review_status: str,
+    output_summary: str,
+    error_text: str,
+) -> None:
+    from app.manager_runtime import invoke_manager
+
+    manager_member = get_or_create_manager_member(request.db, group_id=int(node.group_id))
+    manager_message = await create_pending_ai_message(
+        request.db,
+        group_id=int(node.group_id),
+        sender_member_id=int(manager_member.id),
+        reply_to_message_id=int(request.message_id),
+        trigger="manager_runtime",
+    )
+    review_prompt = _build_review_prompt(
+        node=node,
+        member_id=int(member_id),
+        status=review_status,
+        output_summary=output_summary,
+        error=error_text,
+        source_message_id=int(request.message_id),
+    )
+    result = await invoke_manager(
+        request.db,
+        group_id=int(node.group_id),
+        short_term_memory=build_short_term_memory(
+            request.db,
+            group_id=int(node.group_id),
+            exclude_message_id=int(manager_message.id),
+        ),
+        extra_context={
+            "purpose": "node_review",
+            "group_type": "project",
+            "group_id": int(node.group_id),
+            "project_id": int(node.group_id),
+            "run_id": int(node.run_id),
+            "node_id": int(node.id),
+            "node_key": str(node.node_key),
+            "member_id": int(member_id),
+            "source_event_type": source_event_type,
+            "source_message_id": int(request.message_id),
+            "source_reply_message_id": int(request.message_id),
+            "node_status": str(node.status),
+            "node_output_summary": output_summary,
+            "node_error": error_text,
+            "review_status": review_status,
+            "goal_text": review_prompt,
+            "input_text": review_prompt,
+        },
+        trace_message_id=int(manager_message.id),
+    )
+    result_meta = result.meta if isinstance(getattr(result, "meta", None), dict) else {}
+    create_message_event(
+        request.db,
+        message_id=int(manager_message.id),
+        event_type=MessageEventType.Task.TASK_REVIEWED,
+        payload={
+            "node_id": int(node.id),
+            "run_id": int(node.run_id),
+            "node_key": str(node.node_key),
+            "member_id": int(member_id),
+            "review_status": review_status,
+            "manager_review_status": str(result_meta.get("manager_review_status") or ""),
+            "source_event_type": source_event_type,
+            "source_message_id": int(request.message_id),
+            "review_text": str(getattr(result, "text", "") or ""),
+            "review_meta": result_meta,
+        },
+        run_id=int(node.run_id),
+        status=MessageEventStatus.PENDING,
+    )
+    await emit_ai_reply(
+        request.db,
+        group_id=int(node.group_id),
+        user_message_id=int(request.message_id),
+        sender_member_id=int(manager_member.id),
+        content=str(getattr(result, "text", "") or ""),
+        trigger="manager_runtime",
+        ai_message_id=int(manager_message.id),
+        extra_metadata=result_meta,
+        auto_dispatch_on_done=True,
+    )
+
+
 def _derive_review_status(*, source_event_type: str, node_status: str) -> str:
     normalized_status = str(node_status or "").strip().lower()
     if normalized_status in {"completed", "failed"}:
@@ -93,8 +229,15 @@ def _derive_manager_review_status(*, node: GroupTaskNode, payload: dict[str, Any
     explicit_status = str(payload.get("manager_review_status") or payload.get("review_status") or "").strip().lower()
     if explicit_status in {"approved", "rework"}:
         return explicit_status
-    if explicit_status == "completed" and str(node.status or "").strip().lower() == "completed":
+    normalized_node_status = str(node.status or "").strip().lower()
+    if explicit_status == "completed" and normalized_node_status == "completed":
         return "approved"
+    if explicit_status in {"failed", "requeued"}:
+        return "rework"
+    if normalized_node_status == "completed":
+        return "approved"
+    if normalized_node_status in {"blocked", "failed", "pending"}:
+        return "rework"
     return None
 
 
@@ -265,18 +408,30 @@ async def handle_node_exec_started(request: EventDispatchRequest, event: Any | N
     member_id = payload.get("member_id")
     if node_id is None or member_id is None:
         return
+    node = get_node(request.db, node_id=int(node_id))
+    member = request.db.query(Member).filter(Member.id == int(member_id)).first()
+    if not node or not member:
+        return
+    trigger = f"node_execute:{int(node.id)}"
+    ai_message = await create_pending_ai_message(
+        request.db,
+        group_id=int(node.group_id),
+        sender_member_id=int(member.id),
+        reply_to_message_id=int(request.message_id),
+        trigger=trigger,
+    )
     try:
         result = await execute_node_task(
             request,
             node_id=int(node_id),
             member_id=int(member_id),
-            trace_message_id=int(request.message_id),
+            trace_message_id=int(ai_message.id),
         )
         node = get_node(request.db, node_id=int(node_id))
         if node:
             create_message_event(
                 request.db,
-                message_id=int(request.message_id),
+                message_id=int(ai_message.id),
                 event_type=(
                     MessageEventType.Task.TASK_FAILED
                     if str(result.get("status") or "").strip().lower() == "failed"
@@ -290,32 +445,73 @@ async def handle_node_exec_started(request: EventDispatchRequest, event: Any | N
                     "status": str(result.get("status") or "completed"),
                     "output_summary": str(result.get("output_summary") or ""),
                     "error": str(result.get("error") or ""),
+                    "source_message_id": int(request.message_id),
+                    "agent_message_id": int(ai_message.id),
                     "result_payload": result.get("result_payload") if isinstance(result.get("result_payload"), dict) else {},
                     "source_event_type": MessageEventType.Task.NODE_EXEC_STARTED,
                 },
                 run_id=int(node.run_id),
                 status=MessageEventStatus.PENDING,
             )
+        await emit_ai_reply(
+            request.db,
+            group_id=int(node.group_id),
+            user_message_id=int(request.message_id),
+            sender_member_id=int(member.id),
+            content=_build_agent_execution_reply_text(result),
+            trigger=trigger,
+            ai_message_id=int(ai_message.id),
+            extra_metadata={
+                "node_execution": {
+                    "node_id": int(node.id),
+                    "run_id": int(node.run_id),
+                    "node_key": str(node.node_key),
+                    "member_id": int(member.id),
+                    "status": str(result.get("status") or ""),
+                    "output_summary": str(result.get("output_summary") or ""),
+                    "error": str(result.get("error") or ""),
+                }
+            },
+            auto_dispatch_on_done=True,
+        )
     except Exception as exc:
-        if request.message_id is not None:
-            try:
-                create_message_event(
-                    request.db,
-                    message_id=int(request.message_id),
-                    event_type=MessageEventType.Task.TASK_FAILED,
-                    payload={
-                        "node_id": int(node_id),
-                        "run_id": int(node.run_id) if "node" in locals() and node else payload.get("run_id"),
-                        "member_id": int(member_id),
-                        "status": "failed",
-                        "error": str(exc),
-                        "source_event_type": MessageEventType.Task.NODE_EXEC_STARTED,
-                    },
-                    run_id=int(node.run_id) if "node" in locals() and node else None,
-                    status=MessageEventStatus.PENDING,
-                )
-            except Exception:
-                pass
+        try:
+            create_message_event(
+                request.db,
+                message_id=int(ai_message.id),
+                event_type=MessageEventType.Task.TASK_FAILED,
+                payload={
+                    "node_id": int(node_id),
+                    "run_id": int(node.run_id) if node else payload.get("run_id"),
+                    "member_id": int(member_id),
+                    "status": "failed",
+                    "error": str(exc),
+                    "source_message_id": int(request.message_id),
+                    "agent_message_id": int(ai_message.id),
+                    "source_event_type": MessageEventType.Task.NODE_EXEC_STARTED,
+                },
+                run_id=int(node.run_id) if node else None,
+                status=MessageEventStatus.PENDING,
+            )
+        except Exception:
+            pass
+        try:
+            await mark_failed_reply(
+                ai_message,
+                reply_to_message_id=int(request.message_id),
+                trigger=trigger,
+                db=request.db,
+            )
+            _schedule_message_dispatch(
+                group_id=int(node.group_id) if node else int(request.group_id),
+                sender_member_id=int(member.id),
+                message_id=int(ai_message.id),
+                message_type="ai",
+                content="AI 回复失败，请稍后重试。",
+                meta_json=f'{{"reply_to":"{int(request.message_id)}","trigger":"{trigger}","status":"failed"}}',
+            )
+        except Exception:
+            pass
         return
 
 
@@ -346,8 +542,6 @@ async def handle_task_claimed(request: EventDispatchRequest, event: Any | None =
 
 
 async def handle_task_completed(request: EventDispatchRequest, event: Any | None = None) -> None:
-    from app.manager_runtime import invoke_manager
-
     payload = _payload_as_dict(event)
     node_id = payload.get("node_id")
     member_id = payload.get("member_id")
@@ -372,68 +566,18 @@ async def handle_task_completed(request: EventDispatchRequest, event: Any | None
         output_summary=output_summary,
         error=error_text,
     )
-    result = await invoke_manager(
-        request.db,
-        group_id=int(node.group_id),
-        short_term_memory=build_short_term_memory(
-            request.db,
-            group_id=int(node.group_id),
-            exclude_message_id=int(request.message_id),
-        ),
-        extra_context={
-            "purpose": "node_review",
-            "group_type": "project",
-            "group_id": int(node.group_id),
-            "project_id": int(node.group_id),
-            "run_id": int(node.run_id),
-            "node_id": int(node.id),
-            "node_key": str(node.node_key),
-            "member_id": int(member_id),
-            "source_event_type": source_event_type,
-            "source_message_id": int(request.message_id),
-            "node_status": str(final_node.status),
-            "node_output_summary": output_summary,
-            "review_status": review_status,
-            "goal_text": _build_review_prompt(
-                node=final_node,
-                member_id=int(member_id),
-                status=review_status,
-                output_summary=output_summary,
-                error=error_text,
-                source_message_id=int(request.message_id),
-            ),
-            "input_text": _build_review_prompt(
-                node=final_node,
-                member_id=int(member_id),
-                status=review_status,
-                output_summary=output_summary,
-                error=error_text,
-                source_message_id=int(request.message_id),
-            ),
-        },
-        trace_message_id=int(request.message_id),
-    )
-    create_message_event(
-        request.db,
-        message_id=int(request.message_id),
-        event_type=MessageEventType.Task.TASK_REVIEWED,
-        payload={
-            "node_id": int(node.id),
-            "run_id": int(node.run_id),
-            "node_key": str(node.node_key),
-            "member_id": int(member_id),
-            "review_status": review_status,
-            "source_event_type": source_event_type,
-            "review_text": str(getattr(result, "text", "") or ""),
-        },
-        run_id=int(node.run_id),
-        status=MessageEventStatus.PENDING,
+    await _run_manager_review_flow(
+        request,
+        node=final_node,
+        member_id=int(member_id),
+        source_event_type=source_event_type,
+        review_status=review_status,
+        output_summary=output_summary,
+        error_text=error_text,
     )
 
 
 async def handle_task_failed(request: EventDispatchRequest, event: Any | None = None) -> None:
-    from app.manager_runtime import invoke_manager
-
     payload = _payload_as_dict(event)
     node_id = payload.get("node_id")
     if node_id is None:
@@ -457,62 +601,14 @@ async def handle_task_failed(request: EventDispatchRequest, event: Any | None = 
         output_summary=output_summary,
         error=error_text,
     )
-    result = await invoke_manager(
-        request.db,
-        group_id=int(node.group_id),
-        short_term_memory=build_short_term_memory(
-            request.db,
-            group_id=int(node.group_id),
-            exclude_message_id=int(request.message_id),
-        ),
-        extra_context={
-            "purpose": "node_review",
-            "group_type": "project",
-            "group_id": int(node.group_id),
-            "project_id": int(node.group_id),
-            "run_id": int(node.run_id),
-            "node_id": int(node.id),
-            "node_key": str(node.node_key),
-            "member_id": int(payload.get("member_id") or 0),
-            "source_event_type": source_event_type,
-            "source_message_id": int(request.message_id),
-            "node_status": str(final_node.status),
-            "node_error": error_text,
-            "review_status": review_status,
-            "goal_text": _build_review_prompt(
-                node=final_node,
-                member_id=int(payload.get("member_id") or 0),
-                status=review_status,
-                output_summary=output_summary,
-                error=error_text,
-                source_message_id=int(request.message_id),
-            ),
-            "input_text": _build_review_prompt(
-                node=final_node,
-                member_id=int(payload.get("member_id") or 0),
-                status=review_status,
-                output_summary=output_summary,
-                error=error_text,
-                source_message_id=int(request.message_id),
-            ),
-        },
-        trace_message_id=int(request.message_id),
-    )
-    create_message_event(
-        request.db,
-        message_id=int(request.message_id),
-        event_type=MessageEventType.Task.TASK_REVIEWED,
-        payload={
-            "node_id": int(node.id),
-            "run_id": int(node.run_id),
-            "node_key": str(node.node_key),
-            "member_id": int(payload.get("member_id") or 0),
-            "review_status": review_status,
-            "source_event_type": source_event_type,
-            "review_text": str(getattr(result, "text", "") or ""),
-        },
-        run_id=int(node.run_id),
-        status=MessageEventStatus.PENDING,
+    await _run_manager_review_flow(
+        request,
+        node=final_node,
+        member_id=int(payload.get("member_id") or 0),
+        source_event_type=source_event_type,
+        review_status=review_status,
+        output_summary=output_summary,
+        error_text=error_text,
     )
 
 
