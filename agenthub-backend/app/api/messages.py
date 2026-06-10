@@ -49,6 +49,7 @@ async def create_message_api(payload: MessageCreateRequest, db: Session = Depend
         message_type=payload.message_type,
         content=payload.content,
         meta_json=payload.metadata_json,
+        reply_to_message_id=int(payload.reply_to_message_id) if payload.reply_to_message_id not in (None, "") else None,
     )
     return ApiResponse(data=MessageOut.model_validate(row))
 

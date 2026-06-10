@@ -49,6 +49,7 @@
         :current-user-id="currentUserId"
         @open-code-diff="openCodeDiffPanel"
         @open-message-events="openMessageEventsPanel"
+        @reply-message="setReplyTarget"
       />
 
       <MessageComposer
@@ -60,12 +61,14 @@
         :mention-suggest-open="mentionSuggestOpen"
         :filtered-agent-members="filteredAgentMembers"
         :mention-names="mentionNames"
+        :reply-preview="replyPreview"
         @update:draft="updateDraft"
         @keydown="onDraftKeydown"
         @open-mention="openMention"
         @send="send"
         @remove-mention="removeMention"
         @pick-mention="pickMention"
+        @clear-reply="clearReplyTarget"
       />
     </section>
 
@@ -285,6 +288,7 @@ const route = useRoute()
 const shellRef = ref<HTMLElement | null>(null)
 const composerRef = ref<{ focusEditor?: () => Promise<void> | void } | null>(null)
 const draft = ref('')
+const replyToMessageId = ref('')
 const groups = ref<Group[]>([])
 const loadingGroups = ref(false)
 const activeGroupId = ref<string>('')
@@ -325,6 +329,18 @@ function supportsProjectWorkspace(group: Group | null | undefined) {
 }
 
 const canSend = computed(() => Boolean(activeGroup.value) && Boolean(draft.value.trim()))
+const replyPreview = computed(() => {
+  const targetId = String(replyToMessageId.value || '').trim()
+  if (!targetId) return null
+  const target = messages.value.find((item) => String(item.id) === targetId)
+  if (!target) return null
+  const sender = members.value.find((item) => String(item.id) === String(target.sender_member_id))
+  const content = String(target.content || '').replace(/\s+/g, ' ').trim()
+  return {
+    senderName: sender?.display_name || String(target.sender_member_id),
+    content: content.length > 96 ? `${content.slice(0, 96)}...` : content || '空消息',
+  }
+})
 const canMentionAgents = computed(() => supportsProjectWorkspace(activeGroup.value))
 const MANAGER_NAME = '管家'
 const agentMembers = computed(() =>
@@ -589,6 +605,7 @@ function normalizeMessage(raw: Message ): Message {
     sender_member_id: String(raw.sender_member_id ?? ''),
     message_type: String(raw.message_type ?? 'text'),
     content: String(raw.content ?? ''),
+    reply_to_message_id: raw.reply_to_message_id == null ? null : String(raw.reply_to_message_id),
     metadata_json: String(raw.metadata_json ?? '{}'),
     created_at: String(raw.created_at ?? ''),
     updated_at: String(raw.updated_at ?? ''),
@@ -646,6 +663,7 @@ async function selectGroup(id: string) {
   if (seq !== loadSeq || String(activeGroupId.value) !== String(id)) return
   members.value = mRes.data
   messages.value = msgRes.data.map((item) => normalizeMessage(item))
+  replyToMessageId.value = ''
   selectedMentions.value = new Set()
   mentionSuggestOpen.value = false
   mentionQuery.value = ''
@@ -791,11 +809,16 @@ async function send() {
     if (text.includes(`@${name}`)) mentionIds.add(String(m.id))
   }
   const meta =
-    mentionIds.size > 0
-      ? JSON.stringify({
-          mentions: Array.from(mentionIds).map((id) => ({ kind: 'agent', member_id: id })),
-        })
-      : '{}'
+    JSON.stringify(
+      {
+        ...(mentionIds.size > 0
+          ? { mentions: Array.from(mentionIds).map((id) => ({ kind: 'agent', member_id: id })) }
+          : {}),
+        ...(replyToMessageId.value ? { reply_to: String(replyToMessageId.value) } : {}),
+      },
+      undefined,
+      0,
+    )
 
   draft.value = ''
   const res = await apiCreateMessage({
@@ -804,12 +827,23 @@ async function send() {
     message_type: 'text',
     content: text,
     metadata_json: meta,
+    reply_to_message_id: replyToMessageId.value || null,
   })
   // Optimistic append: even if WS is disconnected, show the sent message immediately.
   const created = normalizeMessage(res.data)
   upsertMessage(created)
   updatePreview(activeGroup.value.id)
   selectedMentions.value = new Set()
+  replyToMessageId.value = ''
+}
+
+function setReplyTarget(messageId: string) {
+  replyToMessageId.value = String(messageId || '').trim()
+  void nextTick(() => composerRef.value?.focusEditor?.())
+}
+
+function clearReplyTarget() {
+  replyToMessageId.value = ''
 }
 
 function removeMention(memberId: string) {

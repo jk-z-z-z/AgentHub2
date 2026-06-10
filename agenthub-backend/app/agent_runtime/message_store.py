@@ -11,6 +11,7 @@ from app.models.group import Group
 from app.models.member import Member
 from app.models.message import Message
 from app.db.session import SessionLocal
+from app.event_runtime.context import extract_reply_to_message_id
 from app.event_runtime.types import MessageEventType
 from app.ws_runtime import WsEventType, ws_manager
 
@@ -134,6 +135,7 @@ async def create_message(
     message_type: str,
     content: str,
     meta_json: str,
+    reply_to_message_id: int | None = None,
 ) -> Message:
     """
     Create a message row and its initial `message.created` event.
@@ -143,11 +145,15 @@ async def create_message(
     `message_events`, but they are not dispatched back into the runtime.
     """
     _assert_group_and_member(db, group_id=int(group_id), sender_member_id=int(sender_member_id))
+    resolved_reply_to_message_id = reply_to_message_id
+    if resolved_reply_to_message_id is None:
+        resolved_reply_to_message_id = extract_reply_to_message_id(str(meta_json or "{}"))
     item = Message(
         group_id=int(group_id),
         sender_member_id=int(sender_member_id),
         message_type=str(message_type),
         content=str(content),
+        reply_to_message_id=int(resolved_reply_to_message_id) if resolved_reply_to_message_id is not None else None,
         metadata_json=str(meta_json),
     )
     db.add(item)

@@ -25,6 +25,7 @@ export async function apiCreateMessage(body: {
   message_type: string
   content: string
   metadata_json: string
+  reply_to_message_id?: string | null
 }): Promise<ApiResult<Message>> {
   return httpPost<Message, typeof body>('/api/v1/messages', body)
 }

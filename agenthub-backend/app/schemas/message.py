@@ -11,6 +11,7 @@ class MessageCreateRequest(ORMBaseModel):
     message_type: str = Field(default="text", min_length=1, max_length=50)
     content: str = Field(min_length=1)
     metadata_json: str = "{}"
+    reply_to_message_id: str | None = None
 
 
 class MessageOut(ORMBaseModel):
@@ -19,6 +20,7 @@ class MessageOut(ORMBaseModel):
     sender_member_id: str
     message_type: str
     content: str
+    reply_to_message_id: str | None = None
     metadata_json: str
     created_at: datetime
     updated_at: datetime

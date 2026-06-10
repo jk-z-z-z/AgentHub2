@@ -1,11 +1,16 @@
 <template>
   <el-card class="chatComposer" shadow="never">
     <div class="composerShell">
-      <div v-if="showPlaceholder" class="composerPlaceholder">
-        同步更多项目背景和信息，提升协作效率
-      </div>
+
 
       <div class="editorArea">
+        <div v-if="replyPreview" class="replyBanner">
+          <div class="replyBannerBody">
+            <div class="replyBannerTitle">回复 {{ replyPreview.senderName }}</div>
+            <div class="replyBannerText">{{ replyPreview.content }}</div>
+          </div>
+          <button type="button" class="replyBannerClose" @click="$emit('clear-reply')">取消</button>
+        </div>
         <el-input
           ref="inputRef"
           :model-value="draft"
@@ -74,6 +79,7 @@ const props = defineProps<{
   mentionSuggestOpen: boolean
   filteredAgentMembers: Member[]
   mentionNames: Record<string, string>
+  replyPreview: { senderName: string; content: string } | null
 }>()
 
 const inputRef = ref<{ textarea?: HTMLTextAreaElement | null; focus?: () => void } | null>(null)
@@ -104,6 +110,7 @@ defineEmits<{
   (e: 'send'): void
   (e: 'remove-mention', memberId: string): void
   (e: 'pick-mention', memberId: string): void
+  (e: 'clear-reply'): void
 }>()
 </script>
 
@@ -140,6 +147,42 @@ defineEmits<{
   position: relative;
   min-height: 92px;
   padding-right: 74px;
+}
+.replyBanner {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 12px;
+  margin-bottom: 12px;
+  padding: 10px 12px;
+  border-radius: 16px;
+  background: rgba(47, 111, 237, 0.08);
+  border: 1px solid rgba(47, 111, 237, 0.12);
+}
+.replyBannerBody {
+  min-width: 0;
+}
+.replyBannerTitle {
+  font-size: 12px;
+  font-weight: 800;
+  color: var(--ah-text-secondary);
+}
+.replyBannerText {
+  margin-top: 4px;
+  font-size: 13px;
+  line-height: 1.5;
+  color: var(--ah-text-primary);
+  word-break: break-word;
+}
+.replyBannerClose {
+  border: 0;
+  background: transparent;
+  color: var(--ah-text-tertiary);
+  cursor: pointer;
+  font-size: 12px;
+}
+.replyBannerClose:hover {
+  color: var(--ah-text-secondary);
 }
 .input {
   width: 100%;

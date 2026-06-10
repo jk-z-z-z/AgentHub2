@@ -21,6 +21,15 @@
             </button>
             <span class="msgMeta">{{ senderName(m.sender_member_id) }}</span>
             <button
+              type="button"
+              class="msgReplyBtn"
+              :title="'回复这条消息'"
+              aria-label="回复这条消息"
+              @click="$emit('reply-message', String(m.id))"
+            >
+              回复
+            </button>
+            <button
               v-if="sideClass(m) === 'left'"
               type="button"
               class="msgEventBtn"
@@ -32,6 +41,26 @@
                 <ArrowRight />
               </el-icon>
             </button>
+          </div>
+          <div v-if="replyPreview(m)" class="msgReplyPreview">
+            <div class="msgReplyTop">
+              <div class="msgReplyName">{{ replyPreview(m)?.senderName }}</div>
+              <div class="msgReplyActions">
+                <button
+                  v-if="replyPreview(m)?.isLong"
+                  type="button"
+                  class="msgReplyActionBtn"
+                  @click="toggleReplyExpanded(String(m.id))"
+                >
+                  {{ isReplyExpanded(String(m.id)) ? '收起' : '展开' }}
+                </button>
+              </div>
+            </div>
+            <MessageMarkdown
+              class="msgReplyText"
+              :class="{ collapsed: replyPreview(m)?.isLong && !isReplyExpanded(String(m.id)) }"
+              :content="replyPreview(m)?.content || ''"
+            />
           </div>
           <div v-if="thinkingLabel(m)" class="msgThinking">{{ thinkingLabel(m) }}</div>
           <MessageMarkdown v-else class="msgText" :content="m.content" />
@@ -95,12 +124,14 @@ const props = defineProps<{
 defineEmits<{
   (e: 'open-code-diff', messageId: string): void
   (e: 'open-message-events', messageId: string): void
+  (e: 'reply-message', messageId: string): void
 }>()
 
 const scrollContainerRef = ref<HTMLElement | null>(null)
 const bottomAnchorRef = ref<HTMLElement | null>(null)
 const pinnedToBottom = ref(true)
 const pendingInitialScroll = ref(true)
+const expandedReplyIds = ref<Set<string>>(new Set())
 
 const memberNameMap = computed(() => {
   const out: Record<string, string> = {}
@@ -112,6 +143,41 @@ const memberNameMap = computed(() => {
 
 function senderName(memberId: string) {
   return memberNameMap.value[String(memberId)] || String(memberId)
+}
+
+function replyTargetId(message: Message) {
+  if (message.reply_to_message_id != null && String(message.reply_to_message_id).trim()) {
+    return String(message.reply_to_message_id)
+  }
+  const meta = messageMeta(message)
+  const replyTo = meta.reply_to
+  return replyTo == null ? '' : String(replyTo)
+}
+
+function replyPreview(message: Message) {
+  const targetId = replyTargetId(message)
+  if (!targetId) return null
+  const target = props.messages.find((item) => String(item.id) === targetId)
+  if (!target) return null
+  const content = String(target.content || '').trim()
+  const normalized = content.replace(/\s+/g, ' ').trim()
+  return {
+    senderName: senderName(String(target.sender_member_id)),
+    content: content || '空消息',
+    isLong: normalized.length > 160 || content.split('\n').length > 5,
+  }
+}
+
+function isReplyExpanded(messageId: string) {
+  return expandedReplyIds.value.has(String(messageId))
+}
+
+function toggleReplyExpanded(messageId: string) {
+  const next = new Set(expandedReplyIds.value)
+  const normalized = String(messageId)
+  if (next.has(normalized)) next.delete(normalized)
+  else next.add(normalized)
+  expandedReplyIds.value = next
 }
 
 function thinkingLabel(message: Message) {
@@ -363,6 +429,66 @@ onMounted(() => {
   line-height: 1.6;
   color: var(--ah-text-tertiary);
   font-style: italic;
+}
+.msgReplyBtn {
+  margin-left: 8px;
+  border: 0;
+  background: transparent;
+  color: var(--ah-text-tertiary);
+  font-size: 12px;
+  cursor: pointer;
+  transition: color 0.16s ease;
+}
+.msgReplyBtn:hover {
+  color: var(--ah-text-secondary);
+}
+.msgReplyPreview {
+  margin: 8px 0 10px;
+  padding: 10px 12px;
+  border: 1px solid rgba(128, 108, 84, 0.16);
+  border-left: 3px solid rgba(128, 108, 84, 0.42);
+  border-radius: 12px;
+  background: rgba(128, 108, 84, 0.06);
+}
+.msgReplyTop {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+}
+.msgReplyActions {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+}
+.msgReplyName {
+  font-size: 12px;
+  font-weight: 700;
+  color: var(--ah-text-secondary);
+}
+.msgReplyActionBtn {
+  border: 0;
+  background: transparent;
+  color: var(--ah-text-tertiary);
+  cursor: pointer;
+  font-size: 12px;
+  padding: 0;
+}
+.msgReplyActionBtn:hover {
+  color: var(--ah-text-secondary);
+}
+.msgReplyText {
+  margin-top: 8px;
+  font-size: 13px;
+  color: var(--ah-text-primary);
+  line-height: 1.45;
+  word-break: break-word;
+}
+.msgReplyText.collapsed {
+  max-height: 118px;
+  overflow: hidden;
+  mask-image: linear-gradient(to bottom, black 72%, transparent 100%);
+  -webkit-mask-image: linear-gradient(to bottom, black 72%, transparent 100%);
 }
 .msgDelivery {
   margin-top: 10px;

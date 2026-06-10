@@ -34,8 +34,17 @@ async def create_message_and_trigger_ai(
     message_type: str,
     content: str,
     meta_json: str,
+    reply_to_message_id: int | None = None,
 ) -> Message:
-    user_message = await create_message(db, group_id=group_id, sender_member_id=sender_member_id, message_type=message_type, content=content, meta_json=meta_json)
+    user_message = await create_message(
+        db,
+        group_id=group_id,
+        sender_member_id=sender_member_id,
+        message_type=message_type,
+        content=content,
+        meta_json=meta_json,
+        reply_to_message_id=reply_to_message_id,
+    )
 
     # UX: acknowledge immediately so the frontend can show "sent" even if AI reply is slow.
     try:

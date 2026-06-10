@@ -5,7 +5,9 @@ export type Id = string | number
 
 export type Group = Schema['GroupOut']
 export type Member = Schema['MemberOut']
-export type Message = Schema['MessageOut']
+export type Message = Schema['MessageOut'] & {
+  reply_to_message_id?: string | null
+}
 export type MessageEvent = Schema['MessageEventOut']
 export type Agent = Schema['AgentInstanceOut']
 export type AgentProfile = Schema['AgentProfileOut']
@@ -23,7 +25,9 @@ export type GroupCreateAgentSelection = {
 }
 export type UserMemberCreateRequest = Schema['UserMemberCreateRequest']
 export type AgentMemberCreateRequest = Schema['AgentMemberCreateRequest']
-export type MessageCreateRequest = Schema['MessageCreateRequest']
+export type MessageCreateRequest = Schema['MessageCreateRequest'] & {
+  reply_to_message_id?: string | null
+}
 export type GroupTaskNodeIn = Schema['GroupTaskNodeIn']
 export type GroupTaskNode = Schema['GroupTaskNodeOut'] & {
   run_id: string
