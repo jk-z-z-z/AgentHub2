@@ -14,9 +14,9 @@ class _FakeTool:
         return kwargs
 
 
-def test_traced_manager_tool_uses_api_safe_name() -> None:
+def test_traced_manager_tool_preserves_original_tool_name() -> None:
     wrapped = _TracedManagerTool(code="manager.project_md", tool=_FakeTool())
-    assert wrapped.name == "manager_project_md"
+    assert wrapped.name == "manager.project_md"
     assert wrapped._code == "manager.project_md"
 
 
@@ -26,7 +26,7 @@ def test_build_manager_tool_groups_match_internal_codes() -> None:
 
     assert len(groups) == 1
     assert groups[0].name == "context"
-    assert [tool.name for tool in groups[0].tools] == ["manager_project_md"]
+    assert [tool.name for tool in groups[0].tools] == ["manager.project_md"]
 
 
 def test_traced_manager_tool_check_permissions_returns_passthrough_decision() -> None:

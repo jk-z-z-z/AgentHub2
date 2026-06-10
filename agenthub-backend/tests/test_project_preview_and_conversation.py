@@ -553,7 +553,7 @@ def test_manager_reply_returns_before_background_node_execution_finishes(monkeyp
         async def run(self, *, ctx, req, tool_executor=None):  # type: ignore[no-untyped-def]
             _ = ctx
             _ = tool_executor
-            tool = await req.toolkit.get_tool("manager_node_execute")
+            tool = await req.toolkit.get_tool("manager.node_execute")
             assert tool is not None
             await tool(node_id=int(holder["node_id"]), member_id=int(holder["agent_member_id"]))
             return "已开始执行任务。", {"mode": "manager"}

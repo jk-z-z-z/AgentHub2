@@ -1,6 +1,5 @@
 from __future__ import annotations
 
-import re
 from typing import Any
 
 from agentscope.skill import LocalSkillLoader
@@ -11,13 +10,6 @@ from app.event_runtime.types import MessageEventType
 from app.manager_runtime.skill._loader import load_manager_skill_loaders
 from app.manager_runtime.tool.base import build_error_chunk, extract_tool_result, permission_passthrough_decision
 from app.manager_runtime.tool._registry import get_manager_tool_factories
-
-
-def _tool_api_name(code: str) -> str:
-    normalized = re.sub(r"[^a-zA-Z0-9_-]+", "_", str(code or "").strip())
-    return normalized.strip("_") or "manager_tool"
-
-
 def load_manager_tools(db: Session) -> dict[str, ToolBase]:
     tools: dict[str, ToolBase] = {}
     for code, factory in get_manager_tool_factories().items():
@@ -85,7 +77,7 @@ class _TracedManagerTool(ToolBase):
         tool: object,
         trace: Any | None = None,
     ) -> None:
-        self.name = _tool_api_name(code)
+        self.name = str(code).strip() or "manager.tool"
         self._code = str(code)
         self._tool = tool
         self._trace = trace
