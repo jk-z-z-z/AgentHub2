@@ -26,6 +26,38 @@
           </div>
         </div>
         <div class="chatActions">
+          <div class="chatFontTools" aria-label="聊天字号调节">
+            <el-tooltip content="减小聊天字号" placement="bottom">
+              <button
+                type="button"
+                class="chatFontBtn"
+                :disabled="chatFontSize <= CHAT_FONT_SIZE_MIN"
+                @click="decreaseChatFontSize"
+              >
+                A-
+              </button>
+            </el-tooltip>
+            <el-tooltip content="恢复默认字号" placement="bottom">
+              <button
+                type="button"
+                class="chatFontBtn chatFontBtnReset"
+                :disabled="chatFontSize === CHAT_FONT_SIZE_DEFAULT"
+                @click="resetChatFontSize"
+              >
+                默认
+              </button>
+            </el-tooltip>
+            <el-tooltip content="增大聊天字号" placement="bottom">
+              <button
+                type="button"
+                class="chatFontBtn"
+                :disabled="chatFontSize >= CHAT_FONT_SIZE_MAX"
+                @click="increaseChatFontSize"
+              >
+                A+
+              </button>
+            </el-tooltip>
+          </div>
           <el-tooltip v-if="supportsProjectWorkspace(activeGroup)" content="查看代码" placement="bottom">
             <el-button class="iconBtn iconBtnLarge" text :icon="FolderOpened" @click="openProjectCode" aria-label="查看代码" />
           </el-tooltip>
@@ -48,6 +80,7 @@
         :members="members"
         :current-user-id="currentUserId"
         :scroll-to-message-id="pendingScrollToMessageId"
+        :chat-font-size="chatFontSize"
         @open-code-diff="openCodeDiffPanel"
         @open-message-events="openMessageEventsPanel"
         @reply-message="setReplyTarget"
@@ -290,9 +323,14 @@ import { ElMessage, ElMessageBox } from 'element-plus'
 const route = useRoute()
 const shellRef = ref<HTMLElement | null>(null)
 const composerRef = ref<{ focusEditor?: () => Promise<void> | void } | null>(null)
+const CHAT_FONT_SIZE_STORAGE_KEY = 'agenthub.messages.chatFontSize'
+const CHAT_FONT_SIZE_MIN = 12
+const CHAT_FONT_SIZE_MAX = 18
+const CHAT_FONT_SIZE_DEFAULT = 14
 const draft = ref('')
 const replyToMessageId = ref('')
 const pendingScrollToMessageId = ref('')
+const chatFontSize = ref(CHAT_FONT_SIZE_DEFAULT)
 const groups = ref<Group[]>([])
 const loadingGroups = ref(false)
 const activeGroupId = ref<string>('')
@@ -528,6 +566,34 @@ const activePreviewJob = computed(() => {
 const shellStyle = computed(() => ({
   '--side-pane-width': `${sidePaneWidth.value}px`,
 }))
+
+function normalizeChatFontSize(value: number) {
+  if (!Number.isFinite(value)) return CHAT_FONT_SIZE_DEFAULT
+  return Math.min(CHAT_FONT_SIZE_MAX, Math.max(CHAT_FONT_SIZE_MIN, Math.round(value)))
+}
+
+function persistChatFontSize() {
+  try {
+    localStorage.setItem(CHAT_FONT_SIZE_STORAGE_KEY, String(chatFontSize.value))
+  } catch {}
+}
+
+function setChatFontSize(value: number) {
+  chatFontSize.value = normalizeChatFontSize(value)
+  persistChatFontSize()
+}
+
+function decreaseChatFontSize() {
+  setChatFontSize(chatFontSize.value - 1)
+}
+
+function increaseChatFontSize() {
+  setChatFontSize(chatFontSize.value + 1)
+}
+
+function resetChatFontSize() {
+  setChatFontSize(CHAT_FONT_SIZE_DEFAULT)
+}
 
 function slugify(text: string) {
   return (
@@ -1711,6 +1777,11 @@ onMounted(async () => {
   } catch {
     sidePaneWidth.value = clampSidePaneWidth(SIDE_PANE_DEFAULT_WIDTH)
   }
+  try {
+    chatFontSize.value = normalizeChatFontSize(Number(localStorage.getItem(CHAT_FONT_SIZE_STORAGE_KEY) || ''))
+  } catch {
+    chatFontSize.value = CHAT_FONT_SIZE_DEFAULT
+  }
   window.addEventListener('resize', handleWindowResize)
   const [u, a, me] = await Promise.all([apiListUsers(), apiListAgents(), apiGetCurrentUser()])
   currentUserId.value = String(me.data.id || '')
@@ -1934,6 +2005,37 @@ async function createGroup() {
   gap: 8px;
   align-items: center;
   flex: 0 0 auto;
+}
+.chatFontTools {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  margin-right: 4px;
+}
+.chatFontBtn {
+  min-width: 34px;
+  height: 34px;
+  padding: 0 10px;
+  border: 0;
+  border-radius: 10px;
+  background: rgba(31, 35, 41, 0.06);
+  color: var(--ah-text-secondary);
+  font-size: 12px;
+  font-weight: 800;
+  cursor: pointer;
+  transition: background 0.16s ease, color 0.16s ease, opacity 0.16s ease;
+}
+.chatFontBtnReset {
+  min-width: 48px;
+}
+.chatFontBtn:hover,
+.chatFontBtn:focus-visible {
+  background: rgba(31, 35, 41, 0.1);
+  color: var(--ah-text-primary);
+}
+.chatFontBtn:disabled {
+  cursor: not-allowed;
+  opacity: 0.45;
 }
 .iconBtn {
   width: 34px;

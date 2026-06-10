@@ -1,5 +1,5 @@
 <template>
-  <div ref="scrollContainerRef" class="chatBody" @scroll="updatePinnedState">
+  <div ref="scrollContainerRef" class="chatBody" :style="chatStyle" @scroll="updatePinnedState">
     <div v-if="loading" class="empty">加载中…</div>
     <div v-else-if="!activeGroup" class="empty">从左侧选择会话</div>
     <template v-else>
@@ -11,7 +11,10 @@
         :class="[sideClass(m), { isTarget: highlightedMessageId === String(m.id) }]"
         :data-message-id="String(m.id)"
       >
-        <div class="bubble">
+        <div class="msgAvatar" :class="`is-${sideClass(m)}`" aria-hidden="true">
+          {{ senderAvatarText(m.sender_member_id) }}
+        </div>
+        <div class="msgMain" :class="`is-${sideClass(m)}`">
           <div class="msgMetaRow" :class="metaRowClass(m)">
             <button
               v-if="sideClass(m) === 'right'"
@@ -48,71 +51,75 @@
               </el-icon>
             </button>
           </div>
-          <div
-            v-if="replyPreview(m)"
-            class="msgReplyPreview"
-            :class="{ isMissing: replyPreview(m)?.missing }"
-            role="button"
-            tabindex="0"
-            @click="openReplyTarget(m)"
-            @keydown.enter.prevent="openReplyTarget(m)"
-            @keydown.space.prevent="openReplyTarget(m)"
-          >
-            <div class="msgReplyTop">
-              <div class="msgReplyName">{{ replyPreview(m)?.senderName }}</div>
-              <div class="msgReplyActions">
+          <div class="bubbleWrap" :class="`is-${sideClass(m)}`">
+            <div class="bubble">
+              <div
+                v-if="replyPreview(m)"
+                class="msgReplyPreview"
+                :class="{ isMissing: replyPreview(m)?.missing }"
+                role="button"
+                tabindex="0"
+                @click="openReplyTarget(m)"
+                @keydown.enter.prevent="openReplyTarget(m)"
+                @keydown.space.prevent="openReplyTarget(m)"
+              >
+                <div class="msgReplyTop">
+                  <div class="msgReplyName">{{ replyPreview(m)?.senderName }}</div>
+                  <div class="msgReplyActions">
+                    <button
+                      v-if="replyPreview(m)?.isLong"
+                      type="button"
+                      class="msgReplyActionBtn"
+                      @click.stop="toggleReplyExpanded(String(m.id))"
+                    >
+                      {{ isReplyExpanded(String(m.id)) ? '收起' : '展开' }}
+                    </button>
+                  </div>
+                </div>
+                <MessageMarkdown
+                  class="msgReplyText"
+                  :class="{ collapsed: replyPreview(m)?.isLong && !isReplyExpanded(String(m.id)) }"
+                  :content="replyPreview(m)?.content || ''"
+                />
+              </div>
+              <div v-if="thinkingLabel(m)" class="msgThinking">{{ thinkingLabel(m) }}</div>
+              <MessageMarkdown v-else class="msgText" :content="m.content" />
+              <div v-if="deliveryResult(m)" class="msgDelivery" :data-status="deliveryStatus(m)">
+                <span class="msgDeliveryPill">查看交付结果</span>
+                <span v-if="appliedFileCount(m) > 0" class="msgDeliveryPill">已写入 {{ appliedFileCount(m) }} 个文件</span>
+                <span class="msgDeliveryPill">{{ validationLabel(m) }}</span>
+              </div>
+              <div v-if="codeDiffMeta(m)" class="msgDelivery" :data-status="codeDiffTone(m)">
                 <button
-                  v-if="replyPreview(m)?.isLong"
                   type="button"
-                  class="msgReplyActionBtn"
-                  @click.stop="toggleReplyExpanded(String(m.id))"
+                  class="msgDeliveryPill msgDeliveryButton"
+                  :disabled="codeDiffDisabled(m)"
+                  @click="$emit('open-code-diff', codeDiffMessageId(m) || String(m.id))"
                 >
-                  {{ isReplyExpanded(String(m.id)) ? '收起' : '展开' }}
+                  {{ codeDiffLabel(m) }}
                 </button>
               </div>
+              <div v-if="previewUrl(m) || deployUrl(m)" class="msgActions">
+                <a
+                  v-if="previewUrl(m)"
+                  class="msgActionLink"
+                  :href="previewUrl(m) || '#'"
+                  target="_blank"
+                  rel="noreferrer"
+                >
+                  打开预览
+                </a>
+                <a
+                  v-if="deployUrl(m)"
+                  class="msgActionLink"
+                  :href="deployUrl(m) || '#'"
+                  target="_blank"
+                  rel="noreferrer"
+                >
+                  打开部署
+                </a>
+              </div>
             </div>
-            <MessageMarkdown
-              class="msgReplyText"
-              :class="{ collapsed: replyPreview(m)?.isLong && !isReplyExpanded(String(m.id)) }"
-              :content="replyPreview(m)?.content || ''"
-            />
-          </div>
-          <div v-if="thinkingLabel(m)" class="msgThinking">{{ thinkingLabel(m) }}</div>
-          <MessageMarkdown v-else class="msgText" :content="m.content" />
-          <div v-if="deliveryResult(m)" class="msgDelivery" :data-status="deliveryStatus(m)">
-            <span class="msgDeliveryPill">查看交付结果</span>
-            <span v-if="appliedFileCount(m) > 0" class="msgDeliveryPill">已写入 {{ appliedFileCount(m) }} 个文件</span>
-            <span class="msgDeliveryPill">{{ validationLabel(m) }}</span>
-          </div>
-          <div v-if="codeDiffMeta(m)" class="msgDelivery" :data-status="codeDiffTone(m)">
-            <button
-              type="button"
-              class="msgDeliveryPill msgDeliveryButton"
-              :disabled="codeDiffDisabled(m)"
-              @click="$emit('open-code-diff', codeDiffMessageId(m) || String(m.id))"
-            >
-              {{ codeDiffLabel(m) }}
-            </button>
-          </div>
-          <div v-if="previewUrl(m) || deployUrl(m)" class="msgActions">
-            <a
-              v-if="previewUrl(m)"
-              class="msgActionLink"
-              :href="previewUrl(m) || '#'"
-              target="_blank"
-              rel="noreferrer"
-            >
-              打开预览
-            </a>
-            <a
-              v-if="deployUrl(m)"
-              class="msgActionLink"
-              :href="deployUrl(m) || '#'"
-              target="_blank"
-              rel="noreferrer"
-            >
-              打开部署
-            </a>
           </div>
         </div>
       </div>
@@ -135,6 +142,7 @@ const props = defineProps<{
   members: Member[]
   currentUserId: string
   scrollToMessageId?: string
+  chatFontSize?: number
 }>()
 
 const emit = defineEmits<{
@@ -151,6 +159,11 @@ const pinnedToBottom = ref(true)
 const pendingInitialScroll = ref(true)
 const expandedReplyIds = ref<Set<string>>(new Set())
 const highlightedMessageId = ref('')
+const chatStyle = computed(() => ({
+  '--ah-chat-font-size': `${Math.max(12, Number(props.chatFontSize || 14))}px`,
+  '--ah-chat-reply-font-size': `${Math.max(11, Number(props.chatFontSize || 14) - 1)}px`,
+  '--ah-chat-meta-font-size': `${Math.max(11, Number(props.chatFontSize || 14) - 2)}px`,
+}))
 
 const memberNameMap = computed(() => {
   const out: Record<string, string> = {}
@@ -162,6 +175,12 @@ const memberNameMap = computed(() => {
 
 function senderName(memberId: string) {
   return memberNameMap.value[String(memberId)] || String(memberId)
+}
+
+function senderAvatarText(memberId: string) {
+  const name = senderName(memberId).trim()
+  if (!name) return '?'
+  return name.slice(0, 1).toUpperCase()
 }
 
 function replyTargetId(message: Message) {
@@ -412,19 +431,64 @@ onMounted(() => {
 }
 .msgRow {
   display: flex;
+  align-items: flex-start;
+  gap: 10px;
 }
 .msgRow.left {
   justify-content: flex-start;
 }
 .msgRow.right {
   justify-content: flex-end;
+  flex-direction: row-reverse;
 }
 .msgRow.isTarget .bubble {
   outline: 2px solid rgba(217, 119, 6, 0.34);
   box-shadow: 0 0 0 6px rgba(245, 158, 11, 0.12);
 }
+.msgAvatar {
+  width: 34px;
+  height: 34px;
+  border-radius: 999px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  flex: 0 0 34px;
+  font-size: 13px;
+  font-weight: 800;
+  color: #fff;
+  box-shadow: var(--ah-shadow-sm);
+  user-select: none;
+}
+.msgAvatar.is-left {
+  background: linear-gradient(135deg, #8b7355, #b08968);
+}
+.msgAvatar.is-right {
+  background: linear-gradient(135deg, #c26d1f, #e7a24d);
+}
+.msgMain {
+  display: flex;
+  flex-direction: column;
+  min-width: 0;
+  max-width: min(72%, 820px);
+}
+.msgMain.is-right {
+  align-items: flex-end;
+}
+.msgMain.is-left {
+  align-items: flex-start;
+}
+.bubbleWrap {
+  display: flex;
+  width: 100%;
+}
+.bubbleWrap.is-right {
+  justify-content: flex-end;
+}
+.bubbleWrap.is-left {
+  justify-content: flex-start;
+}
 .bubble {
-  max-width: 72%;
+  max-width: 100%;
   padding: 11px 13px;
   border-radius: 16px;
   background: var(--ah-chat-bubble-ai);
@@ -438,7 +502,8 @@ onMounted(() => {
   align-items: center;
   gap: 4px;
   min-height: 22px;
-  margin-bottom: 6px;
+  margin-bottom: 5px;
+  padding: 0 2px;
 }
 .msgMetaRow.is-right {
   justify-content: flex-end;
@@ -454,7 +519,7 @@ onMounted(() => {
 .msgMeta {
   display: inline-flex;
   align-items: center;
-  font-size: 12px;
+  font-size: var(--ah-chat-meta-font-size, 12px);
   color: var(--ah-text-secondary);
   line-height: 1;
   white-space: nowrap;
@@ -487,12 +552,12 @@ onMounted(() => {
   display: block;
 }
 .msgText {
-  font-size: 14px;
+  font-size: var(--ah-chat-font-size, 14px);
   line-height: 1.6;
   overflow-wrap: anywhere;
 }
 .msgThinking {
-  font-size: 13px;
+  font-size: var(--ah-chat-reply-font-size, 13px);
   line-height: 1.6;
   color: var(--ah-text-tertiary);
   font-style: italic;
@@ -502,7 +567,7 @@ onMounted(() => {
   border: 0;
   background: transparent;
   color: var(--ah-text-tertiary);
-  font-size: 12px;
+  font-size: var(--ah-chat-meta-font-size, 12px);
   cursor: pointer;
   transition: color 0.16s ease;
 }
@@ -538,7 +603,7 @@ onMounted(() => {
   gap: 6px;
 }
 .msgReplyName {
-  font-size: 12px;
+  font-size: var(--ah-chat-meta-font-size, 12px);
   font-weight: 700;
   color: var(--ah-text-secondary);
 }
@@ -547,7 +612,7 @@ onMounted(() => {
   background: transparent;
   color: var(--ah-text-tertiary);
   cursor: pointer;
-  font-size: 12px;
+  font-size: var(--ah-chat-meta-font-size, 12px);
   padding: 0;
 }
 .msgReplyActionBtn:hover {
@@ -555,7 +620,7 @@ onMounted(() => {
 }
 .msgReplyText {
   margin-top: 8px;
-  font-size: 13px;
+  font-size: var(--ah-chat-reply-font-size, 13px);
   color: var(--ah-text-primary);
   line-height: 1.45;
   word-break: break-word;
