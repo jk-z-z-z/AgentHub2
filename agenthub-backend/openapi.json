@@ -3785,7 +3785,7 @@
             "maxLength": 40,
             "minLength": 1,
             "title": "Engine Type",
-            "default": "internal_llm"
+            "default": "agentscope_react"
           },
           "engine_config_json": {
             "type": "string",

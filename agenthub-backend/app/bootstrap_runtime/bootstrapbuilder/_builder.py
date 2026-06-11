@@ -169,5 +169,5 @@ def build_complete_bootstrap(
             int(agent.id),
             runtime_context=runtime_context,
         ),
-        engine_type=str(getattr(agent, "engine_type", "internal_llm") or "internal_llm"),
+        engine_type=str(getattr(agent, "engine_type", "agentscope_react") or "agentscope_react").strip().lower(),
     )

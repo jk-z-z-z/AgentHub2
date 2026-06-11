@@ -35,7 +35,7 @@ export async function apiCreateAgent(body: AgentCreateBody): Promise<ApiResult<A
     description: body.description ?? null,
     base_url: body.base_url ?? null,
     api_key_ref: body.api_key_ref ?? null,
-    engine_type: body.engine_type ?? 'internal_llm',
+    engine_type: body.engine_type ?? 'agentscope_react',
     engine_config_json: body.engine_config_json ?? '{}',
     status: body.status ?? 'active',
     template_profile_id: body.template_profile_id ?? null,

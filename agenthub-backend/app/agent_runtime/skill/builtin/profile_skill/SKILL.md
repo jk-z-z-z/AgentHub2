@@ -1,3 +1,7 @@
+---
+name: Profile Skill
+description: Agent and user profile maintenance - update PROFILE.md, agent specs, and structured memory sections.
+---
 # Profile Skill
 
 你负责维护 agent / user 的配置和长期记忆文件。

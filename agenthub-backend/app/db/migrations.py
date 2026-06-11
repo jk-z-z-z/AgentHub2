@@ -106,6 +106,23 @@ def _ensure_groups_schema(conn) -> None:
     conn.execute(text("CREATE INDEX IF NOT EXISTS ix_groups_creator_user_id ON groups (creator_user_id)"))
 
 
+def _normalize_agent_engine_types(conn) -> None:
+    if not _table_exists(conn, "agent_instances"):
+        return
+    columns = _table_columns(conn, "agent_instances")
+    if "engine_type" not in columns:
+        return
+    conn.execute(
+        text(
+            """
+            UPDATE agent_instances
+            SET engine_type = 'agentscope_react'
+            WHERE engine_type IS NULL OR TRIM(engine_type) = ''
+            """
+        )
+    )
+
+
 def run_sqlite_task_schema_migrations(engine: Engine) -> None:
     if engine.dialect.name != "sqlite":
         return
@@ -175,5 +192,6 @@ def run_sqlite_task_schema_migrations(engine: Engine) -> None:
         if rebuild_runs and _table_exists(conn, "message_events") and "run_id" in _table_columns(conn, "message_events"):
             conn.execute(text("UPDATE message_events SET run_id = NULL"))
 
+        _normalize_agent_engine_types(conn)
         _create_task_indexes(conn)
         conn.execute(text("PRAGMA foreign_keys=ON"))

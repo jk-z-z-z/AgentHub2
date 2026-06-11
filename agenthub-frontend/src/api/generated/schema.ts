@@ -1105,7 +1105,7 @@ export interface components {
             api_key_ref?: string | null;
             /**
              * Engine Type
-             * @default internal_llm
+             * @default agentscope_react
              */
             engine_type: string;
             /**

@@ -1,3 +1,7 @@
+---
+name: Project Skill
+description: Project shared code operations - list, read, write project files and run sandboxed commands, previews, and deployments.
+---
 # Project Skill
 
 你负责项目共享代码和命令。
@@ -20,7 +24,7 @@
 2. 只读取回答问题所需的最小文件集
 3. 默认关闭网络，只有安装依赖等确实需要时才开启 `network_enabled`
 4. 需要落文件时，直接写入项目共享代码，不要只给用户教程
-5. 默认先做本地预览，只有用户明确说“部署/上线”时再走部署
+5. 默认先做本地预览，只有用户明确说"部署/上线"时再走部署
 6. 部署前尽量先跑 `test_command` 或 `build_command`
 
 ## 失败处理

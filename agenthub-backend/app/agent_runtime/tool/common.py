@@ -20,13 +20,13 @@ ALLOWED_FILE_TOOL_ROOTS: set[str] = {"knowledge", "skills", "mcps"}
 def safe_resolve_under_agent(agent_id: int, rel_path: str) -> Path:
     root = agent_dir(agent_id).resolve()
     rel = normalize_rel_path(rel_path)
-    parts = rel.split("/", 1)
-    top = parts[0]
-    if top not in ALLOWED_FILE_TOOL_ROOTS:
-        raise HTTPException(
-            status_code=status.HTTP_400_BAD_REQUEST,
-            detail=f"Path must be under one of: {', '.join(sorted(ALLOWED_FILE_TOOL_ROOTS))}",
-        )
+    if "/" in rel:
+        top = rel.split("/", 1)[0]
+        if top not in ALLOWED_FILE_TOOL_ROOTS:
+            raise HTTPException(
+                status_code=status.HTTP_400_BAD_REQUEST,
+                detail=f"Path must be under one of: {', '.join(sorted(ALLOWED_FILE_TOOL_ROOTS))}",
+            )
     full = (root / rel).resolve()
     if root not in full.parents and full != root:
         raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail="Path escapes agent workspace")

@@ -71,6 +71,7 @@ def get_or_create_bootstrap_group(db: Session, *, agent_instance: AgentInstance,
 def create_agent_instance(db: Session, payload: dict, creator_user_id: int) -> AgentInstance:
     template_profile_id = payload.pop("template_profile_id", None)
     soul_md = payload.pop("soul_md", None)
+    payload["engine_type"] = str(payload.get("engine_type") or "agentscope_react").strip().lower()
     template_profile_id_int: int | None = None
     if template_profile_id not in (None, ""):
         try:

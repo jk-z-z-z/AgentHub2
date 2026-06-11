@@ -586,7 +586,7 @@ def test_manager_reply_returns_before_background_node_execution_finishes(monkeyp
                 description="",
                 base_url=None,
                 api_key_ref=None,
-                engine_type="internal_llm",
+                engine_type="agentscope_react",
                 engine_config_json="{}",
                 status="active",
             )

@@ -139,8 +139,16 @@ export function useAgentDetail() {
     skillConfig.value.pool_skill_codes = Array.from(next)
   }
 
-  function toggleTool(code: string, checked: boolean) {
+  async function toggleTool(code: string, checked: boolean) {
     toolToggles.value = { ...toolToggles.value, [code]: checked }
+    toolSaving.value = true
+    try {
+      await apiUpdateAgentToolToggles(agentId.value, toolToggles.value)
+    } catch (e) {
+      ElMessage.error(e instanceof Error ? e.message : String(e))
+    } finally {
+      toolSaving.value = false
+    }
   }
 
   function toggleMcp(code: string, checked: boolean) {

@@ -145,12 +145,14 @@ const {
   height: calc(100vh - 220px);
   display: flex;
   flex-direction: column;
+  overflow: hidden;
 }
 .detailTabs :deep(.el-tab-pane) {
   min-height: 0;
   flex: 1;
   display: flex;
   flex-direction: column;
+  overflow-y: auto;
 }
 .tabHint {
   margin-bottom: 10px;

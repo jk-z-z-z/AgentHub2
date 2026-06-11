@@ -172,7 +172,7 @@ def ensure_agent(ctx: Ctx, *, display_name: str, profile_id: int) -> dict:
             "description": "seeded demo agent",
             "base_url": None,
             "api_key_ref": None,
-            "engine_type": "internal_llm",
+            "engine_type": "agentscope_react",
             "engine_config_json": "{}",
             "status": "active",
             "template_profile_id": profile_id,
@@ -370,13 +370,22 @@ def seed_project_code(ctx: Ctx, *, project_group: dict) -> None:
         write_project_code_file(ctx, group_id=group_id, path=path, content=content)
 
 
-def ensure_agent_tools_and_skills(ctx: Ctx, *, agent_id: int, pool_skill_codes: list[str]) -> None:
+def ensure_agent_tools_and_skills(
+    ctx: Ctx,
+    *,
+    agent_id: int,
+    pool_skill_codes: list[str],
+    extra_tool_codes: set[str] | None = None,
+) -> None:
     tools_res = _get(ctx, "/tools")
-    enabled = {}
+    always_enable = {"file_list", "file_read", "file_write", "file_edit"}
+    if extra_tool_codes:
+        always_enable |= extra_tool_codes
+    enabled: dict[str, bool] = {}
     for tool in tools_res:
         code = str(tool.get("code"))
         is_active = int(tool.get("is_active", 0)) == 1
-        enabled[code] = bool(is_active and code in {"file_list", "file_read", "file_write"})
+        enabled[code] = bool(is_active and (code in always_enable))
     _put(ctx, f"/agents/{agent_id}/tools/toggles", {"enabled": enabled})
 
     _put(
@@ -536,11 +545,33 @@ def main() -> None:
             display_name="开发同学A",
         )
 
-        profile = ensure_agent_profile(
+        profile = ensure_agent_profile_with_payload(
             ctx,
-            name="后端开发工程师模版",
-            role="backend-engineer",
-            soul_md="你是一个严谨的后端工程师助手，回答简洁、可执行、优先给最小改动方案。",
+            {
+                "name": "后端开发工程师模版",
+                "role": "backend-engineer",
+                "description": "面向 Python/FastAPI 的后端工程助手，擅长读写代码、运行命令和部署",
+                "soul_md": "# 身份\n你是一个严谨的后端工程师，擅长 Python、FastAPI 和数据库操作。\n\n# 行为准则\n- 使用工具主动探索项目结构\n- 先读代码再改代码\n- 每次修改后运行相关测试或命令验证\n- 给出最小可执行的改动方案\n",
+                "profile_md": "# 工作方式\n- 用 file_list/project_code_list 先了解目录结构\n- 用 file_read/project_code_read 阅读关键文件\n- 用 file_write/file_edit 做最小改动\n- 用 project_command_run 运行 lint、测试或构建验证\n",
+                "bootstrap_md": "",
+                "enabled_files_json": json.dumps(
+                    {
+                        "SOUL.md": True,
+                        "PROFILE.md": True,
+                        "BOOTSTRAP.md": False,
+                        "tools.json": True,
+                        "skills.json": True,
+                    },
+                    ensure_ascii=False,
+                ),
+                "tools_json": json.dumps({"preferred": ["file_list", "file_read", "file_write", "file_edit", "project_code_list", "project_code_read", "project_code_write", "project_command_run"]}, ensure_ascii=False),
+                "skills_json": json.dumps({"preferred_pool": ["code-review-mini", "api-design-mini"]}, ensure_ascii=False),
+                "model_name": "qwen3.6-plus",
+                "temperature": 0.3,
+                "top_p": 1.0,
+                "max_output_tokens": None,
+                "is_active": 1,
+            },
         )
         agent = ensure_agent(
             ctx,
@@ -553,9 +584,9 @@ def main() -> None:
                 "name": "前端工程助手模版",
                 "role": "frontend-engineer",
                 "description": "面向 Vue3 + TypeScript + Element Plus 的前端工程助手",
-                "soul_md": "# 身份\n你是一个经验扎实的前端工程师，擅长在现有 Vue 项目中做最小可控改动。\n",
-                "profile_md": "# 工作方式\n- 先读目录和接口\n- 保持最小修改\n- 完成后至少做一次 type-check 或 build\n",
-                "bootstrap_md": "# Bootstrap\n1. 先确认项目结构\n2. 再确认关键页面和 API\n3. 形成最小改动计划\n",
+                "soul_md": "# 身份\n你是一个经验扎实的前端工程师，擅长 Vue3 + TypeScript + Element Plus。\n\n# 行为准则\n- 使用工具主动探索项目结构和现有组件\n- 先读代码再改代码，避免重复造轮子\n- 保持最小可控改动，每次只改必要的文件\n- 改完后用 project_command_run 运行 type-check 或 build 验证\n",
+                "profile_md": "# 工作方式\n- 用 file_list/project_code_list 先了解目录和组件结构\n- 用 file_read/project_code_read 阅读关键页面和 API 调用\n- 用 file_write/file_edit 做最小改动\n- 用 project_preview_run 启动预览，用 project_command_run 运行验证\n",
+                "bootstrap_md": "# Bootstrap\n1. 先确认项目结构：读 package.json、vite.config、路由配置\n2. 再确认关键页面和 API 调用\n3. 形成最小改动计划\n",
                 "enabled_files_json": json.dumps(
                     {
                         "SOUL.md": True,
@@ -566,7 +597,7 @@ def main() -> None:
                     },
                     ensure_ascii=False,
                 ),
-                "tools_json": json.dumps({"preferred": ["file_list", "file_read", "file_write"]}, ensure_ascii=False),
+                "tools_json": json.dumps({"preferred": ["file_list", "file_read", "file_write", "file_edit", "project_code_list", "project_code_read", "project_code_write", "project_command_run", "project_preview_run"]}, ensure_ascii=False),
                 "skills_json": json.dumps({"preferred_pool": ["vue-feature-delivery", "frontend-spec-reader"]}, ensure_ascii=False),
                 "model_name": "qwen3.6-plus",
                 "temperature": 0.3,
@@ -581,8 +612,18 @@ def main() -> None:
             profile_id=int(frontend_profile["id"]),
         )
 
-        ensure_agent_tools_and_skills(ctx, agent_id=int(agent["id"]), pool_skill_codes=pool_codes)
-        ensure_agent_tools_and_skills(ctx, agent_id=int(frontend_agent["id"]), pool_skill_codes=pool_codes)
+        ensure_agent_tools_and_skills(
+            ctx,
+            agent_id=int(agent["id"]),
+            pool_skill_codes=pool_codes,
+            extra_tool_codes={"project_code_list", "project_code_read", "project_code_write", "project_command_run"},
+        )
+        ensure_agent_tools_and_skills(
+            ctx,
+            agent_id=int(frontend_agent["id"]),
+            pool_skill_codes=pool_codes,
+            extra_tool_codes={"project_code_list", "project_code_read", "project_code_write", "project_command_run", "project_preview_run"},
+        )
         write_agent_workspace_files(ctx, agent_id=int(agent["id"]))
         write_agent_workspace_files(ctx, agent_id=int(frontend_agent["id"]))
 

@@ -1,3 +1,7 @@
+---
+name: Workspace Skill
+description: Agent workspace file operations - read, write, and edit files like SOUL.md, PROFILE.md, and configuration files.
+---
 # Workspace Skill
 
 你负责当前 agent 工作区内的文件操作。

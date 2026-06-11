@@ -119,7 +119,7 @@ def build_complete_agent(
         tool_executor=tool_executor,
     )
 
-    engine_type = str(getattr(agent_instance, "engine_type", "internal_llm") or "internal_llm")
+    engine_type = str(getattr(agent_instance, "engine_type", "agentscope_react") or "agentscope_react").strip().lower()
     engine_cfg = str(getattr(agent_instance, "engine_config_json", "{}") or "{}")
     engine_ctx = EngineContext(
         agent_id=int(agent_id),
